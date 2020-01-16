@@ -35,6 +35,12 @@
 static int i2c_fd = -1;
 static pthread_t comms_thread;
 
+#ifdef USE_DUMMY_I2C
+#include "dummy-i2c.h"
+#define read(f,b,n) dummy_i2c_read(f,b,n)
+#define write(f,b,n) dummy_i2c_write(f,b,n)
+#endif
+
 
 static void report_comms_error(int rv)
 {
@@ -52,8 +58,10 @@ static int send_command(uint8_t *buffer)
 {
     size_t nbytes;
 
+#ifndef USE_DUMMY_I2C
     if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
         return 0;
+#endif
 
     /* Construct the buffer length */
     nbytes = buffer[0];
@@ -71,8 +79,14 @@ static int read_message(uint8_t **pbuffer)
     size_t nbytes;
     uint8_t byte;
     uint8_t *buffer;
+    int offset = 1;
 
     *pbuffer = NULL;
+
+#ifndef USE_DUMMY_I2C
+    if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
+        return 0;
+#endif
 
     /* Read in the length */
     if (read(i2c_fd, &byte, 1) < 0)
@@ -90,9 +104,12 @@ static int read_message(uint8_t **pbuffer)
         return -2;
     buffer[0] = nbytes & 0x7f;
     if (nbytes >= 0x80)
+    {
         buffer[1] = (nbytes >> 7) & 0xff;
+        offset = 2;
+    }
 
-    if (read(i2c_fd, buffer+2, nbytes-2) < 0)
+    if (read(i2c_fd, buffer+offset, nbytes-offset) < 0)
     {
         free(buffer);
         return -1;
@@ -169,14 +186,23 @@ static void *run_comms(void *args __attribute__((unused)))
  */
 int i2c_open_hat(void)
 {
-    int fd;
     int rv;
 
+#ifdef USE_DUMMY_I2C
+    const char *err_str;
+    if ((i2c_fd = open_dummy_i2c_socket(&err_str)) < 0)
+    {
+        PyErr_SetString(PyExc_IOError, err_str);
+        return -1;
+    }
+#else
     if ((i2c_fd = open(I2C_DEVICE_NAME, O_RDWR)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
+#endif /* USE_DUMMY_I2C */
+
     /* Initialise thread work queue */
     if ((rv = queue_init()) != 0)
     {
@@ -193,7 +219,7 @@ int i2c_open_hat(void)
         return -1;
     }
 
-    return fd;
+    return i2c_fd;
 }
 
 /* Close the connection to the Hat (so that others can access the I2C

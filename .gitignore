@@ -2,3 +2,7 @@ build/*
 *~
 *.so
 *.egg-info
+dist/*
+# The venv running this installation is called "hat_env"
+# on the development machine.
+hat_env/*
