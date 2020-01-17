@@ -28,4 +28,10 @@ extern void cmd_deinit(void);
  */
 extern PyObject *cmd_get_hardware_version(void);
 
+/* Sends a Hub Property Request Update command for the FW Version
+ * property and waits for the Hub Property Update in response.  The
+ * version is converted into a Python string of the form "M.m.BB.bbbb"
+ */
+extern PyObject *cmd_get_firmware_version(void);
+
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

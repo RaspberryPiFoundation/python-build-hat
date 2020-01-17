@@ -114,3 +114,61 @@ PyObject *cmd_get_hardware_version(void)
 
     return version;
 }
+
+
+PyObject *cmd_get_firmware_version(void)
+{
+    uint8_t *buffer = malloc(5);
+    uint8_t *response;
+    PyObject *version;
+
+    if (buffer == NULL)
+        return PyErr_NoMemory();
+
+    buffer[0] = 5; /* Length */
+    buffer[1] = 0; /* Hub ID (reserved) */
+    buffer[2] = TYPE_HUB_PROPERTY;
+    buffer[3] = PROP_FW_VERSION;
+    buffer[4] = PROP_OP_REQUEST;
+    if (queue_add_buffer(buffer) != 0)
+    {
+        /* Python exception already raised. */
+        free(buffer);
+        return NULL;
+    }
+    /* At this point, responsibility for `buffer` has been handed
+     * over to the comms thread.
+     */
+
+    if (queue_get(&response) != 0)
+        /* Python exception already raised */
+        return NULL;
+
+    /* Response is dynamically allocated and our responsibility */
+    if (response[1] != 0x00)
+    {
+        free(response);
+        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        return NULL;
+    }
+
+    if (response[0] != 9 ||
+        response[2] != TYPE_HUB_PROPERTY ||
+        response[3] != PROP_FW_VERSION ||
+        response[4] != PROP_OP_UPDATE)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to F/W Version Request");
+        return NULL;
+    }
+
+    version = PyUnicode_FromFormat("%d.%d.%d.%d",
+                                   (response[8] >> 4) & 7,
+                                   response[8] & 0x0f,
+                                   bcd_byte(response[7]),
+                                   bcd_2byte(response[6], response[5]));
+    free(response);
+
+    return version;
+}

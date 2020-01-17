@@ -20,6 +20,7 @@ hub_info(PyObject *self, PyObject *args)
 {
     PyObject *dict;
     PyObject *hw_revision;
+    PyObject *fw_revision;
 
     if (!PyArg_ParseTuple(args, "")) /* No args to this function */
         return NULL;
@@ -29,8 +30,19 @@ hub_info(PyObject *self, PyObject *args)
     if (hw_revision == NULL)
         return NULL;
 
-    dict = Py_BuildValue("{sO}", "hardware_revision", hw_revision);
+    /* ...and the firmware revision while we're at it */
+    fw_revision = cmd_get_firmware_version();
+    if (fw_revision == NULL)
+    {
+        Py_DECREF(hw_revision);
+        return NULL;
+    }
+
+    dict = Py_BuildValue("{sOsO}",
+                         "hardware_revision", hw_revision,
+                         "firmware_revision", fw_revision);
     Py_DECREF(hw_revision);
+    Py_DECREF(fw_revision);
     return dict;
 }
 
