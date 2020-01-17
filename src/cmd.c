@@ -18,6 +18,18 @@
 PyObject *hub_protocol_error;
 
 
+const char *error_message[] = {
+    "Error: ACK",
+    "Error: MACK",
+    "Buffer overflow",
+    "Timeout",
+    "Command not recognised",
+    "Invalid use",
+    "Overcurrent",
+    "Internal error"
+};
+
+
 static inline int bcd_byte(uint8_t byte)
 {
     return ((byte >> 4) * 10) + (byte & 0x0f);
@@ -30,6 +42,26 @@ static inline int bcd_2byte(uint8_t hi, uint8_t lo)
         ((hi & 0x0f) * 100) +
         ((lo >> 4) * 10) +
         (lo & 0x0f);
+}
+
+
+static void handle_generic_error(uint8_t expected_type, uint8_t *buffer)
+{
+    /* XXX: Arguably ACK/MACK are not errors */
+    if (buffer[0] != 5 || buffer[3] != expected_type)
+    {
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected error: wrong type in error");
+        return;
+    }
+
+    if (buffer[4] == 0x00 || buffer[4] > 0x08)
+    {
+        PyErr_SetString(hub_protocol_error, "Unknown error number");
+        return;
+    }
+
+    PyErr_SetString(hub_protocol_error, error_message[buffer[4]-1]);
 }
 
 
@@ -94,6 +126,14 @@ PyObject *cmd_get_hardware_version(void)
         return NULL;
     }
 
+    /* Check for an error return */
+    if (response[2] == TYPE_GENERIC_ERROR)
+    {
+        handle_generic_error(TYPE_HUB_PROPERTY, response);
+        free(response);
+        return NULL;
+    }
+
     if (response[0] != 9 ||
         response[2] != TYPE_HUB_PROPERTY ||
         response[3] != PROP_HW_VERSION ||
@@ -149,6 +189,14 @@ PyObject *cmd_get_firmware_version(void)
     {
         free(response);
         PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        return NULL;
+    }
+
+    /* Check for an error return */
+    if (response[2] == TYPE_GENERIC_ERROR)
+    {
+        handle_generic_error(TYPE_HUB_PROPERTY, response);
+        free(response);
         return NULL;
     }
 
