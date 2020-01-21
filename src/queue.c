@@ -238,7 +238,12 @@ int queue_check(uint8_t **pbuffer)
 
 int queue_get(uint8_t **pbuffer)
 {
-    int rv = get_item(&from_i2c_q, pbuffer, wait_on_sem_1s);
+    int rv;
+
+    /* Release the GIL while doing potentially lenghthy I/O */
+    Py_BEGIN_ALLOW_THREADS
+    rv = get_item(&from_i2c_q, pbuffer, wait_on_sem_1s);
+    Py_END_ALLOW_THREADS
 
     if (rv != 0)
     {

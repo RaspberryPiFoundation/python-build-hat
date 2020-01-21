@@ -90,6 +90,16 @@ void cmd_deinit(void)
 }
 
 
+PyObject *cmd_version_as_unicode(uint8_t *buffer)
+{
+    return PyUnicode_FromFormat("%d.%d.%d.%d",
+                                (buffer[3] >> 4) & 7,
+                                buffer[3] & 0x0f,
+                                bcd_byte(buffer[2]),
+                                bcd_2byte(buffer[1], buffer[0]));
+}
+
+
 PyObject *cmd_get_hardware_version(void)
 {
     uint8_t *buffer = malloc(5);
@@ -145,11 +155,7 @@ PyObject *cmd_get_hardware_version(void)
         return NULL;
     }
 
-    version = PyUnicode_FromFormat("%d.%d.%d.%d",
-                                   (response[8] >> 4) & 7,
-                                   response[8] & 0x0f,
-                                   bcd_byte(response[7]),
-                                   bcd_2byte(response[6], response[5]));
+    version = cmd_version_as_unicode(response + 5);
     free(response);
 
     return version;
@@ -211,11 +217,7 @@ PyObject *cmd_get_firmware_version(void)
         return NULL;
     }
 
-    version = PyUnicode_FromFormat("%d.%d.%d.%d",
-                                   (response[8] >> 4) & 7,
-                                   response[8] & 0x0f,
-                                   bcd_byte(response[7]),
-                                   bcd_2byte(response[6], response[5]));
+    version = cmd_version_as_unicode(response + 5);
     free(response);
 
     return version;

@@ -9,7 +9,10 @@
 #include <Python.h>
 #include "structmember.h"
 
+#include <stdint.h>
+
 #include "port.h"
+#include "cmd.h"
 
 
 /* The actual Port type */
@@ -18,6 +21,10 @@ typedef struct
 {
     PyObject_HEAD
     PyObject *device;
+    PyObject *callback;
+    PyObject *hw_revision;
+    PyObject *fw_revision;
+    uint16_t type_id;
     /* XXX: etc */
 } PortObject;
 
@@ -56,6 +63,8 @@ Port_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     {
         self->device = Py_None;
         Py_INCREF(Py_None);
+        self->callback = Py_None;
+        Py_INCREF(Py_None);
     }
     return (PyObject *)self;
 }
@@ -66,6 +75,43 @@ static PyMemberDef Port_members[] =
     {
         "device", T_OBJECT_EX, offsetof(PortObject, device), 0,
         "Generic device handler"
+    },
+    { NULL }
+};
+
+
+static int
+Port_set_callback(PortObject *self, PyObject *value, void *closure)
+{
+    PyObject *temp;
+
+    if (!PyCallable_Check(value))
+    {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return -1;
+    }
+
+    temp = self->callback;
+    Py_XINCREF(value);
+    self->callback = value;
+    Py_XDECREF(temp);
+
+    return 0;
+}
+
+
+static PyObject *
+Port_get_callback(PortObject *self, void *closure)
+{
+    Py_INCREF(self->callback);
+    return self->callback;
+}
+
+static PyGetSetDef Port_getsetters[] =
+{
+    {
+        "callback", (getter)Port_get_callback, (setter)Port_set_callback,
+        "Callback function for hot-plugging events", NULL
     },
     { NULL }
 };
@@ -83,7 +129,8 @@ static PyTypeObject PortType =
     .tp_dealloc = (destructor)Port_dealloc,
     .tp_traverse = (traverseproc)Port_traverse,
     .tp_clear = (inquiry)Port_clear,
-    .tp_members = Port_members
+    .tp_members = Port_members,
+    .tp_getset = Port_getsetters
 };
 
 
@@ -198,9 +245,11 @@ static PyTypeObject PortSetType =
 };
 
 
+/* The hub's (one and only) collection of ports */
+static PortSetObject *port_set;
+
 int port_init(PyObject *hub)
 {
-    PyObject *port_set;
     if (PyType_Ready(&PortSetType) < 0)
         return -1;
     Py_INCREF(&PortSetType);
@@ -212,12 +261,13 @@ int port_init(PyObject *hub)
     }
     Py_INCREF(&PortType);
 
-    port_set = PyObject_CallObject((PyObject *)&PortSetType, NULL);
+    port_set =
+        (PortSetObject *)PyObject_CallObject((PyObject *)&PortSetType, NULL);
     Py_DECREF(&PortType);
     Py_DECREF(&PortSetType);
     if (port_set == NULL)
         return -1;
-    if (PyModule_AddObject(hub, "port", port_set) < 0)
+    if (PyModule_AddObject(hub, "port", (PyObject *)port_set) < 0)
     {
         Py_DECREF(port_set);
         return -1;
@@ -229,3 +279,65 @@ int port_init(PyObject *hub)
 void port_deinit(void)
 {
 }
+
+
+/* Called from the communications thread */
+int port_attach_port(uint8_t port_id,
+                     uint16_t type_id,
+                     uint8_t *hw_revision,
+                     uint8_t *fw_revision)
+{
+    /* First we must claim the global interpreter lock */
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    PortObject *port = (PortObject *)port_set->ports[port_id];
+    PyObject *version;
+    PyObject *arg_list;
+    int rv = 0;
+
+    port->type_id = type_id;
+    version = cmd_version_as_unicode(hw_revision);
+    Py_XDECREF(port->hw_revision);
+    port->hw_revision = version;
+    version = cmd_version_as_unicode(fw_revision);
+    Py_XDECREF(port->fw_revision);
+    port->fw_revision = version;
+
+    if (port->callback != Py_None)
+    {
+        arg_list = Py_BuildValue("(i)", 1); /* ATTACHED */
+        rv = (PyObject_CallObject(port->callback, arg_list) != NULL) ? 0 : -1;
+    }
+
+    /* Release the GIL */
+    PyGILState_Release(gstate);
+
+    return rv;
+}
+
+
+int port_detach_port(uint8_t port_id)
+{
+    /* First claim the global interpreter lock */
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    PortObject *port = (PortObject *)port_set->ports[port_id];
+    PyObject *arg_list;
+    int rv = 0;
+
+    port->type_id = 0;
+    Py_XDECREF(port->hw_revision);
+    port->hw_revision = NULL;
+    Py_XDECREF(port->fw_revision);
+    port->fw_revision = NULL;
+
+    if (port->callback != Py_None)
+    {
+        arg_list = Py_BuildValue("(i)", 0); /* DETATCHED */
+        rv = (PyObject_CallObject(port->callback, arg_list) != NULL) ? 0 : 1;
+    }
+
+    /* Release the penguins^WGIL */
+    PyGILState_Release(gstate);
+
+    return rv;
+}
+

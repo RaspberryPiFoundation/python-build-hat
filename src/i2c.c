@@ -26,6 +26,8 @@
 
 #include "i2c.h"
 #include "queue.h"
+#include "port.h"
+#include "protocol.h"
 
 
 #define I2C_DEVICE_NAME "/dev/i2c-1"
@@ -40,6 +42,20 @@ static pthread_t comms_thread;
 #define read(f,b,n) dummy_i2c_read(f,b,n)
 #define write(f,b,n) dummy_i2c_write(f,b,n)
 #endif
+
+
+static inline uint16_t extract_uint16(uint8_t *buffer)
+{
+    return buffer[0] | (buffer[1] << 8);
+}
+
+static inline uint32_t extract_uint32(uint8_t *buffer)
+{
+    return buffer[0] |
+        (buffer[1] << 8) |
+        (buffer[2] << 16) |
+        (buffer[3] << 24);
+}
 
 
 static void report_comms_error(int rv)
@@ -66,7 +82,7 @@ static int send_command(uint8_t *buffer)
     /* Construct the buffer length */
     nbytes = buffer[0];
     if (nbytes >= 0x80)
-        nbytes = (nbytes & ~0x80) | (buffer[1] << 7);
+        nbytes = (nbytes & 0x7f) | (buffer[1] << 7);
     if (write(i2c_fd, buffer, nbytes) < 0)
         return 0;
     return 1;
@@ -120,6 +136,62 @@ static int read_message(uint8_t **pbuffer)
 }
 
 
+/* NB: returns -1 on error (with errno set), 1 if the message has
+ * been handled, and 0 if another handler should look at it.
+ */
+static int handle_attached_io_message(uint8_t *buffer)
+{
+    uint16_t nbytes = buffer[0];
+
+    if (nbytes >= 0x80)
+    {
+        buffer++;
+        nbytes = (nbytes & 0x7f) | (buffer[0] << 7);
+    }
+    /* Hab Attacked I/O messages are at least 5 bytes long */
+    if (nbytes < 5 || buffer[2] != TYPE_HUB_ATTACHED_IO)
+        return 0; /* Not for us */
+    if (buffer[1] != 0 || buffer[3] >= NUM_HUB_PORTS)
+    {
+        errno = EPROTO; /* Protocol error */
+        return -1;
+    }
+    switch (buffer[4])
+    {
+        case 0: /* Detached I/O message */
+            if (port_detach_port(buffer[3]) < 0)
+            {
+                errno = EPROTO;
+                return -1;
+            }
+            break;
+
+        case 1: /* Attached I/O message */
+            /* Attachment messages have another 10 bytes of data */
+            if (nbytes < 15)
+            {
+                errno = EPROTO;
+                return -1;
+            }
+            if (port_attach_port(buffer[3],
+                                 extract_uint16(buffer+5), /* ID */
+                                 buffer+7, /* hw_revision */
+                                 buffer+11 /* fw_revision */) < 0)
+            {
+                errno = EPROTO;
+                return -1;
+            }
+            break;
+
+        default:
+            errno = EPROTO;
+            return -1;
+    }
+
+    /* Packet was handled here */
+    return 1;
+}
+
 /* Returns 1 on success, 0 on failure */
 static int poll_i2c(void)
 {
@@ -135,7 +207,12 @@ static int poll_i2c(void)
     if (buffer == NULL)
         return 1;
 
-    /* TODO: Is this something to deal with immediately? */
+    /* Is this something to deal with immediately? */
+    if ((rv =  handle_attached_io_message(buffer)) != 0)
+    {
+        free(buffer);
+        return (rv < 0) ? 0 : 1;
+    }
 
     if (queue_return_buffer(buffer) < 0)
     {
