@@ -8,7 +8,8 @@ hub_module = Extension('hub',
                        sources = ['src/hubmodule.c',
                                   'src/i2c.c',
                                   'src/queue.c',
-                                  'src/cmd.c' ])
+                                  'src/cmd.c',
+                                  'src/port.c'])
 
 # If the environment variable USE_DUMMY_I2C is set, build with a fake
 # back end for testing on a desktop.
