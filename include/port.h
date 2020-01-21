@@ -12,19 +12,6 @@
 #include <Python.h>
 
 
-/* The "port" object itself just contains six slots for devices */
-
-typedef struct
-{
-    PyObject_HEAD
-    PyObject *A;
-    PyObject *B;
-    PyObject *C;
-    PyObject *D;
-    PyObject *E;
-    PyObject *F;
-} PortObject;
-
 extern int port_init(PyObject *hub);
 extern void port_deinit(void);
 
