@@ -21,7 +21,7 @@ typedef struct
 {
     PyObject_HEAD
     PyObject *device;
-    PyObject *callback;
+    PyObject *callback_fn;
     PyObject *hw_revision;
     PyObject *fw_revision;
     uint16_t type_id;
@@ -63,7 +63,7 @@ Port_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     {
         self->device = Py_None;
         Py_INCREF(Py_None);
-        self->callback = Py_None;
+        self->callback_fn = Py_None;
         Py_INCREF(Py_None);
     }
     return (PyObject *)self;
@@ -80,40 +80,38 @@ static PyMemberDef Port_members[] =
 };
 
 
-static int
-Port_set_callback(PortObject *self, PyObject *value, void *closure)
+static PyObject *
+Port_callback(PyObject *self, PyObject *args)
 {
+    PortObject *port = (PortObject *)self;
+    PyObject *result = NULL;
     PyObject *temp;
 
-    if (!PyCallable_Check(value))
+    if (PyArg_ParseTuple(args, "O:callback", &temp))
     {
-        PyErr_SetString(PyExc_TypeError, "callback must be callable");
-        return -1;
+        if (!PyCallable_Check(temp))
+        {
+            PyErr_SetString(PyExc_TypeError, "callback must be callable");
+            return NULL;
+        }
+        Py_XINCREF(temp);
+        Py_XDECREF(port->callback_fn);
+        port->callback_fn = temp;
+        /* Now return None */
+        Py_INCREF(Py_None);
+        result = Py_None;
     }
 
-    temp = self->callback;
-    Py_XINCREF(value);
-    self->callback = value;
-    Py_XDECREF(temp);
-
-    return 0;
+    return result;
 }
 
 
-static PyObject *
-Port_get_callback(PortObject *self, void *closure)
-{
-    Py_INCREF(self->callback);
-    return self->callback;
-}
-
-static PyGetSetDef Port_getsetters[] =
-{
+static PyMethodDef Port_methods[] = {
     {
-        "callback", (getter)Port_get_callback, (setter)Port_set_callback,
-        "Callback function for hot-plugging events", NULL
+        "callback", Port_callback, METH_VARARGS,
+        "Set a callback for plugging or unplugging devices in this port"
     },
-    { NULL }
+    { NULL, NULL, 0, NULL }
 };
 
 
@@ -130,7 +128,7 @@ static PyTypeObject PortType =
     .tp_traverse = (traverseproc)Port_traverse,
     .tp_clear = (inquiry)Port_clear,
     .tp_members = Port_members,
-    .tp_getset = Port_getsetters
+    .tp_methods = Port_methods
 };
 
 
@@ -302,10 +300,11 @@ int port_attach_port(uint8_t port_id,
     Py_XDECREF(port->fw_revision);
     port->fw_revision = version;
 
-    if (port->callback != Py_None)
+    if (port->callback_fn != Py_None)
     {
         arg_list = Py_BuildValue("(i)", 1); /* ATTACHED */
-        rv = (PyObject_CallObject(port->callback, arg_list) != NULL) ? 0 : -1;
+        rv = (PyObject_CallObject(port->callback_fn,
+                                  arg_list) != NULL) ? 0 : -1;
     }
 
     /* Release the GIL */
@@ -329,10 +328,11 @@ int port_detach_port(uint8_t port_id)
     Py_XDECREF(port->fw_revision);
     port->fw_revision = NULL;
 
-    if (port->callback != Py_None)
+    if (port->callback_fn != Py_None)
     {
         arg_list = Py_BuildValue("(i)", 0); /* DETATCHED */
-        rv = (PyObject_CallObject(port->callback, arg_list) != NULL) ? 0 : 1;
+        rv = (PyObject_CallObject(port->callback_fn,
+                                  arg_list) != NULL) ? 0 : 1;
     }
 
     /* Release the penguins^WGIL */
