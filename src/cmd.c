@@ -222,3 +222,75 @@ PyObject *cmd_get_firmware_version(void)
 
     return version;
 }
+
+
+port_modes_t *cmd_get_port_modes(uint8_t port_id)
+{
+    uint8_t *buffer = malloc(5);
+    uint8_t *response;
+    port_modes_t *results;
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    buffer[0] = 5; /* Length */
+    buffer[1] = 0; /* Hub ID (reserved) */
+    buffer[2] = TYPE_PORT_INFO_REQ;
+    buffer[3] = port_id;
+    buffer[4] = PORT_INFO_MODE;
+    if (queue_add_buffer(buffer) != 0)
+    {
+        /* Python exception already reaised */
+        free(buffer);
+        return NULL;
+    }
+    /* "buffer" now belongs to the comms system */
+
+    if (queue_get(&response) != 0)
+        /* Python exception already raised */
+        return NULL;
+
+    /* "response" is now our responsibility */
+    if (response[1] != 0x00)
+    {
+        free(response);
+        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        return NULL;
+    }
+
+    /* Check for an error return */
+    if (response[2] == TYPE_GENERIC_ERROR)
+    {
+        handle_generic_error(TYPE_PORT_INFO_REQ, response);
+        free(response);
+        return NULL;
+    }
+
+    if (response[0] != 11 ||
+        response[2] != TYPE_PORT_INFO ||
+        response[3] != port_id ||
+        response[4] != PORT_INFO_MODE)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Information Request");
+        return NULL;
+    }
+
+    if ((results = malloc(sizeof(port_modes_t))) == NULL)
+    {
+        free(response);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    results->capabilities = response[5];
+    results->count = response[6];
+    results->input_mode_mask = response[7] | (response[8] << 8);
+    results->output_mode_mask = response[9] | (response[10] << 8);
+
+    return results;
+}
+

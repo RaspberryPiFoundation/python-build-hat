@@ -25,11 +25,17 @@ typedef struct
     PyObject *hw_revision;
     PyObject *fw_revision;
     uint16_t type_id;
+    uint16_t input_mode_mask;
+    uint16_t output_mode_mask;
+    uint8_t  flags;
     /* XXX: etc */
 } PortObject;
 
+#define PO_FLAGS_GOT_MODE_INFO 0x01
+#define PO_FLAGS_COMBINABLE    0x02
 
-static int Port_traverse(PortObject *self, visitproc visit, void *arg)
+static int
+Port_traverse(PortObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->device);
     return 0;
@@ -106,11 +112,95 @@ Port_callback(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Port_info(PyObject *self, PyObject *args)
+{
+    PortObject *port = (PortObject *)self;
+    PyObject *results;
+    PyObject *mode_list;
+    int i;
+
+    /* Is the port attached to anything */
+    if (port->type_id == 0)
+        return Py_BuildValue("{sO}", "type", Py_None);
+
+    /* It is attached, build the desired dictionary */
+    if ((port->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
+    {
+        port_modes_t *mode = cmd_get_port_modes(port->type_id);
+
+        if (mode == NULL)
+            return NULL;
+        port->input_mode_mask = mode->input_mode_mask;
+        port->output_mode_mask = mode->output_mode_mask;
+        if ((mode->capabilities & CAP_MODE_COMBINABLE) != 0)
+            port->flags |= PO_FLAGS_COMBINABLE;
+        port->flags |= PO_FLAGS_GOT_MODE_INFO;
+    }
+
+    /* XXX: missing the "modes", "speed" and "combi_modes" keys */
+    results = Py_BuildValue("{sisOsO}",
+                            "type", port->type_id,
+                            "fw_version", port->fw_revision,
+                            "hw_version", port->hw_revision);
+    if (results == NULL)
+        return NULL;
+
+    if ((mode_list = PyList_New(0)) == NULL)
+    {
+        Py_DECREF(results);
+        return NULL;
+    }
+
+    for (i = 0; i < 16; i++)
+    {
+        PyObject *mode_entry;
+        char mode_name[10];
+
+        /* Taking a wild guess here, but the only thing I can see
+         * the mode number corresponding to is the position in the
+         * mode list.  Assume that that is the case, and each mode
+         * is either input or output but not both.  XXX: ask Lego
+         * the truth of this matter.
+         */
+        if ((port->input_mode_mask & (1 << i)) != 0)
+            sprintf(mode_name, "input%d", i);
+        else if ((port->output_mode_mask & (1 << i)) != 0)
+            sprintf(mode_name, "output%d", i);
+        else
+            break;
+        mode_entry = Py_BuildValue("{ss}", "name", mode_name);
+        if (mode_entry == NULL)
+        {
+            Py_DECREF(mode_list);
+            Py_DECREF(results);
+            return NULL;
+        }
+        if (PyList_Append(mode_list, mode_entry) < 0)
+        {
+            Py_DECREF(mode_entry);
+            Py_DECREF(mode_list);
+            Py_DECREF(results);
+            return NULL;
+        }
+    }
+    if (PyDict_SetItemString(results, "modes", mode_list) < 0)
+    {
+        Py_DECREF(mode_list);
+        Py_DECREF(results);
+        return NULL;
+    }
+
+    return results;
+}
+
+
 static PyMethodDef Port_methods[] = {
     {
         "callback", Port_callback, METH_VARARGS,
         "Set a callback for plugging or unplugging devices in this port"
     },
+    { "info", Port_info, METH_VARARGS, "Information on the attached device" },
     { NULL, NULL, 0, NULL }
 };
 
@@ -293,6 +383,7 @@ int port_attach_port(uint8_t port_id,
     int rv = 0;
 
     port->type_id = type_id;
+    port->flags = 0; /* Got nothing useful yet */
     version = cmd_version_as_unicode(hw_revision);
     Py_XDECREF(port->hw_revision);
     port->hw_revision = version;
@@ -323,6 +414,7 @@ int port_detach_port(uint8_t port_id)
     int rv = 0;
 
     port->type_id = 0;
+    port->flags = 0; /* Got nothing anymore */
     Py_XDECREF(port->hw_revision);
     port->hw_revision = NULL;
     Py_XDECREF(port->fw_revision);

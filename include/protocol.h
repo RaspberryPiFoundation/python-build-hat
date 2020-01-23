@@ -48,5 +48,13 @@ typedef enum protocol_prop_op_e
     PROP_OP_UPDATE = 6   /* Update from Hat */
 } protocol_prop_op_t;
 
+/* Port Information Types */
+typedef enum protocol_port_info_e
+{
+    PORT_INFO_VALUE = 0,
+    PORT_INFO_MODE,
+    PORT_INFO_MODE_COMBINATIONS
+} protocol_port_info_t;
+
 
 #endif /* RPI_STRAWBERRY_PROTOCOL_H_INCLUDED */
