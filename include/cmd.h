@@ -27,6 +27,8 @@ typedef struct port_modes_s
 #define CAP_MODE_COMBINABLE     0x04
 #define CAP_MODE_SYNCHRONIZABLE 0x08
 
+typedef uint16_t combi_mode_t[8];
+
 
 /* Initialises the command subsystem, creating the exception used for
  * protocol errors.  Returns 0 for success, -1 for error.
@@ -59,6 +61,14 @@ extern PyObject *cmd_get_firmware_version(void);
  * already be raised).
  */
 extern port_modes_t *cmd_get_port_modes(uint8_t port_id);
+
+/* Sends a Hub Port Info Request command for the combination mode
+ * info of the given port.  Returns the combinations in the
+ * combi_mode_t passed in; up to 8 entries, the list being terminated
+ * by a zero or running out of entries.  Returns 0 on success, -1 on
+ * error (when an exception will already be raised).
+ */
+extern int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi);
 
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

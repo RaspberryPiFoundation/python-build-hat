@@ -256,8 +256,8 @@ port_modes_t *cmd_get_port_modes(uint8_t port_id)
     /* "response" is now our responsibility */
     if (response[1] != 0x00)
     {
-        free(response);
         PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        free(response);
         return NULL;
     }
 
@@ -290,7 +290,73 @@ port_modes_t *cmd_get_port_modes(uint8_t port_id)
     results->count = response[6];
     results->input_mode_mask = response[7] | (response[8] << 8);
     results->output_mode_mask = response[9] | (response[10] << 8);
+    free(response);
 
     return results;
 }
 
+
+int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi)
+{
+    uint8_t *buffer = malloc(5);
+    uint8_t *response;
+    int i;
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    buffer[0] = 5;
+    buffer[1] = 0;
+    buffer[2] = TYPE_PORT_INFO_REQ;
+    buffer[3] = port_id;
+    buffer[4] = PORT_INFO_MODE_COMBINATIONS;
+    if (queue_add_buffer(buffer) != 0)
+    {
+        free(buffer);
+        return -1;
+    }
+    /* "buffer" is now the responsibility of comms */
+
+    if (queue_get(&response) != 0)
+        return -1;
+
+    /* "response" now belongs to this thread */
+    if (response[1] != 0x00)
+    {
+        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        free(response);
+        return -1;
+    }
+
+    if (response[2] == TYPE_GENERIC_ERROR)
+    {
+        handle_generic_error(TYPE_PORT_INFO_REQ, response);
+        free(response);
+        return -1;
+    }
+
+    /* The length of this packet is variable, but should be between
+     * 7 and 21, and an odd number.
+     */
+    if (response[0] < 7 ||
+        response[0] > 21 ||
+        ((response[0] & 1) != 1) ||
+        response[2] != TYPE_PORT_INFO ||
+        response[3] != port_id ||
+        response[4] != PORT_INFO_MODE_COMBINATIONS)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Information Request");
+        return -1;
+    }
+
+    memset(combi, 0, sizeof(combi_mode_t));
+    for (i = 0; 2*i+5 < response[0]; i++)
+        combi[i] = response[2*i+5] | (response[2*i+6] << 8);
+
+    return 0;
+}

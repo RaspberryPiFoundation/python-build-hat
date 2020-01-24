@@ -28,6 +28,7 @@ typedef struct
     uint16_t input_mode_mask;
     uint16_t output_mode_mask;
     uint8_t  flags;
+    combi_mode_t combi_modes;
     /* XXX: etc */
 } PortObject;
 
@@ -134,8 +135,16 @@ Port_info(PyObject *self, PyObject *args)
         port->input_mode_mask = mode->input_mode_mask;
         port->output_mode_mask = mode->output_mode_mask;
         if ((mode->capabilities & CAP_MODE_COMBINABLE) != 0)
+        {
+            combi_mode_t combi_modes;
+
             port->flags |= PO_FLAGS_COMBINABLE;
+            if (cmd_get_combi_modes(port->type_id, combi_modes) < 0)
+                return NULL;
+            memcpy(port->combi_modes, combi_modes, sizeof(combi_mode_t));
+        }
         port->flags |= PO_FLAGS_GOT_MODE_INFO;
+        free(mode);
     }
 
     /* XXX: missing the "modes", "speed" and "combi_modes" keys */
@@ -190,6 +199,69 @@ Port_info(PyObject *self, PyObject *args)
         Py_DECREF(results);
         return NULL;
     }
+
+    if ((port->flags & PO_FLAGS_COMBINABLE) != 0)
+    {
+        /* First count the number of valid entries */
+        int combi_count;
+
+        for (i = 0; i < 8; i++)
+            if (port->combi_modes[i] == 0)
+                break;
+
+        if (i == 0)
+        {
+            port->flags &= ~PO_FLAGS_COMBINABLE;
+            if ((mode_list = PyTuple_New(0)) == NULL)
+            {
+                Py_DECREF(results);
+                return NULL;
+            }
+        }
+        else
+        {
+            combi_count = i;
+            if ((mode_list = PyTuple_New(combi_count)) == NULL)
+            {
+                Py_DECREF(results);
+                return NULL;
+            }
+            for (i = 0; i < combi_count; i++)
+            {
+                PyObject *combination =
+                    PyLong_FromUnsignedLong(port->combi_modes[i]);
+
+                if (combination == NULL)
+                {
+                    Py_DECREF(results);
+                    Py_DECREF(mode_list);
+                    return NULL;
+                }
+                if (PyTuple_SetItem(mode_list, i, combination) < 0)
+                {
+                    Py_DECREF(results);
+                    Py_DECREF(mode_list);
+                    Py_DECREF(combination);
+                    return NULL;
+                }
+            }
+        }
+    }
+    else
+    {
+        if ((mode_list = PyTuple_New(0)) == NULL)
+        {
+            Py_DECREF(results);
+            return NULL;
+        }
+    }
+    if (PyDict_SetItemString(results, "combi_modes", mode_list) < 0)
+    {
+        Py_DECREF(mode_list);
+        Py_DECREF(results);
+        return NULL;
+    }
+
 
     return results;
 }
