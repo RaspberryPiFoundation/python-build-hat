@@ -70,5 +70,13 @@ extern port_modes_t *cmd_get_port_modes(uint8_t port_id);
  */
 extern int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi);
 
+/* Sends a Port Mode Information Request command for the name of a
+ * given mode on a given port.  Return the name as NUL-terminated
+ * string in `name`, which is expected to be a preallocated string
+ * with space for up to 12 characters.  Returns 0 on success, -1 on
+ * error (when an exception will already be raised).
+ */
+extern int cmd_get_mode_name(uint8_t port_id, uint8_t mode_id, char *name);
+
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

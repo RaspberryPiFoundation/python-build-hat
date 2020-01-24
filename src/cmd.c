@@ -360,3 +360,67 @@ int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi)
 
     return 0;
 }
+
+
+int cmd_get_mode_name(uint8_t port_id, uint8_t mode_id, char *name)
+{
+    uint8_t *buffer = malloc(6);
+    uint8_t *response;
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    buffer[0] = 6;
+    buffer[1] = 0;
+    buffer[2] = TYPE_PORT_MODE_REQ;
+    buffer[3] = port_id;
+    buffer[4] = mode_id;
+    buffer[5] = MODE_INFO_NAME;
+    if (queue_add_buffer(buffer) != 0)
+    {
+        free(buffer);
+        return -1;
+    }
+    /* "buffer" has now been given to the comms thread to manage */
+
+    if (queue_get(&response) != 0)
+        return -1;
+
+    /* "response" is now our responsibility */
+    if (response[1] != 0x00)
+    {
+        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        free(response);
+        return -1;
+    }
+
+    if (response[2] == TYPE_GENERIC_ERROR)
+    {
+        handle_generic_error(TYPE_PORT_MODE_REQ, response);
+        free(response);
+        return -1;
+    }
+
+    /* The length of this packet is variable, but should be between
+     * 7 and 17 bytes.
+     */
+    if (response[0] < 7 || response[0] > 17 ||
+        response[2] != TYPE_PORT_MODE ||
+        response[3] != port_id ||
+        response[4] != mode_id ||
+        response[5] != MODE_INFO_NAME)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Mode Name Request");
+        return -1;
+    }
+
+    memcpy(name, response+6, response[0]-6);
+    name[response[0]-6] = '\0';
+
+    return 0;
+}

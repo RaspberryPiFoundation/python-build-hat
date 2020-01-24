@@ -56,5 +56,18 @@ typedef enum protocol_port_info_e
     PORT_INFO_MODE_COMBINATIONS
 } protocol_port_info_t;
 
+/* Mode Information Types */
+typedef enum protocol_mode_info_e
+{
+    MODE_INFO_NAME = 0,
+    MODE_INFO_RAW,
+    MODE_INFO_PCT,
+    MODE_INFO_SI,
+    MODE_INFO_SYMBOL,
+    MODE_INFO_MAPPING,
+    MODE_INFO_CAPABILITY = 8,
+    MODE_INFO_FORMAT = 0x80
+} protocol_mode_info_t;
+
 
 #endif /* RPI_STRAWBERRY_PROTOCOL_H_INCLUDED */

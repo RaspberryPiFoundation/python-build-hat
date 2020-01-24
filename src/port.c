@@ -16,6 +16,10 @@
 
 
 /* The actual Port type */
+typedef struct mode_info_s
+{
+    char name[12];
+} mode_info_t;
 
 typedef struct
 {
@@ -24,11 +28,14 @@ typedef struct
     PyObject *callback_fn;
     PyObject *hw_revision;
     PyObject *fw_revision;
+    uint8_t  port_id;
+    uint8_t  flags;
+    uint8_t  num_modes;
     uint16_t type_id;
     uint16_t input_mode_mask;
     uint16_t output_mode_mask;
-    uint8_t  flags;
     combi_mode_t combi_modes;
+    mode_info_t modes[16];
     /* XXX: etc */
 } PortObject;
 
@@ -128,26 +135,34 @@ Port_info(PyObject *self, PyObject *args)
     /* It is attached, build the desired dictionary */
     if ((port->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
     {
-        port_modes_t *mode = cmd_get_port_modes(port->type_id);
+        port_modes_t *mode = cmd_get_port_modes(port->port_id);
 
         if (mode == NULL)
             return NULL;
         port->input_mode_mask = mode->input_mode_mask;
         port->output_mode_mask = mode->output_mode_mask;
+        port->num_modes = mode->count;
         if ((mode->capabilities & CAP_MODE_COMBINABLE) != 0)
         {
             combi_mode_t combi_modes;
 
             port->flags |= PO_FLAGS_COMBINABLE;
-            if (cmd_get_combi_modes(port->type_id, combi_modes) < 0)
+            if (cmd_get_combi_modes(port->port_id, combi_modes) < 0)
                 return NULL;
             memcpy(port->combi_modes, combi_modes, sizeof(combi_mode_t));
         }
-        port->flags |= PO_FLAGS_GOT_MODE_INFO;
         free(mode);
+
+        for (i = 0; i < port->num_modes; i++)
+        {
+            mode_info_t *mode = &port->modes[i];
+            if (cmd_get_mode_name(port->port_id, i, mode->name) < 0)
+                return NULL;
+        }
+        port->flags |= PO_FLAGS_GOT_MODE_INFO;
     }
 
-    /* XXX: missing the "modes", "speed" and "combi_modes" keys */
+    /* XXX: missing the "speed" and key */
     results = Py_BuildValue("{sisOsO}",
                             "type", port->type_id,
                             "fw_version", port->fw_revision,
@@ -161,10 +176,9 @@ Port_info(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    for (i = 0; i < 16; i++)
+    for (i = 0; i < port->num_modes; i++)
     {
         PyObject *mode_entry;
-        char mode_name[10];
 
         /* Taking a wild guess here, but the only thing I can see
          * the mode number corresponding to is the position in the
@@ -172,13 +186,7 @@ Port_info(PyObject *self, PyObject *args)
          * is either input or output but not both.  XXX: ask Lego
          * the truth of this matter.
          */
-        if ((port->input_mode_mask & (1 << i)) != 0)
-            sprintf(mode_name, "input%d", i);
-        else if ((port->output_mode_mask & (1 << i)) != 0)
-            sprintf(mode_name, "output%d", i);
-        else
-            break;
-        mode_entry = Py_BuildValue("{ss}", "name", mode_name);
+        mode_entry = Py_BuildValue("{ss}", "name", port->modes[i].name);
         if (mode_entry == NULL)
         {
             Py_DECREF(mode_list);
@@ -345,6 +353,7 @@ PortSet_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     {
         for (i = 0; i < NUM_HUB_PORTS; i++)
         {
+            /* TODO: pass the port ID to the constructor */
             if ((self->ports[i] = PyObject_CallObject((PyObject *)&PortType,
                                                       NULL)) == NULL)
             {
@@ -355,6 +364,7 @@ PortSet_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
                 Py_XDECREF(self);
                 return NULL;
             }
+            ((PortObject *)self->ports[i])->port_id = i;
         }
     }
     return (PyObject *)self;
