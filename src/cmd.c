@@ -100,49 +100,71 @@ PyObject *cmd_version_as_unicode(uint8_t *buffer)
 }
 
 
-PyObject *cmd_get_hardware_version(void)
+static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
 {
-    uint8_t *buffer = malloc(5);
+    va_list args;
+    uint8_t *buffer = malloc(nbytes);
+    int i;
     uint8_t *response;
-    PyObject *version;
 
     if (buffer == NULL)
-        return PyErr_NoMemory();
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
 
-    buffer[0] = 5; /* Length */
-    buffer[1] = 0; /* Hub ID (reserved) */
-    buffer[2] = TYPE_HUB_PROPERTY;
-    buffer[3] = PROP_HW_VERSION;
-    buffer[4] = PROP_OP_REQUEST;
+    buffer[0] = nbytes;
+    buffer[1] = 0x00; /* Hub ID, must be zero */
+    buffer[2] = type;
+
+    va_start(args, type);
+    for (i = 3; i < nbytes; i++)
+        buffer[i] = va_arg(args, int);
+    va_end(args);
+
     if (queue_add_buffer(buffer) != 0)
     {
-        /* Python exception already raised. */
+        /* Exception already raised */
         free(buffer);
         return NULL;
     }
-    /* At this point, responsibility for `buffer` has been handed
-     * over to the comms thread.
+
+    /* `buffer` now belongs to the comms thread, which will free it when
+     * it is done with it.
      */
 
     if (queue_get(&response) != 0)
-        /* Python exception already raised */
-        return NULL;
+        return NULL; /* Python exception already raised */
 
-    /* Response is dynamically allocated and our responsibility */
+    /* `response` is dynamically allocated and now our responsibility */
     if (response[1] != 0x00)
     {
+        PyErr_Format(hub_protocol_error, "Buad hub ID 0x%02x", response[1]);
         free(response);
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
         return NULL;
     }
 
     /* Check for an error return */
     if (response[2] == TYPE_GENERIC_ERROR)
     {
-        handle_generic_error(TYPE_HUB_PROPERTY, response);
+        handle_generic_error(type, response);
         free(response);
         return NULL;
     }
+
+    return response;
+}
+
+
+PyObject *cmd_get_hardware_version(void)
+{
+    PyObject *version;
+    uint8_t *response = make_request(5, TYPE_HUB_PROPERTY,
+                                     PROP_HW_VERSION,
+                                     PROP_OP_REQUEST);
+
+    if (response == NULL)
+        return NULL;
 
     if (response[0] != 9 ||
         response[2] != TYPE_HUB_PROPERTY ||
@@ -164,47 +186,13 @@ PyObject *cmd_get_hardware_version(void)
 
 PyObject *cmd_get_firmware_version(void)
 {
-    uint8_t *buffer = malloc(5);
-    uint8_t *response;
     PyObject *version;
+    uint8_t *response = make_request(5, TYPE_HUB_PROPERTY,
+                                     PROP_FW_VERSION,
+                                     PROP_OP_REQUEST);
 
-    if (buffer == NULL)
-        return PyErr_NoMemory();
-
-    buffer[0] = 5; /* Length */
-    buffer[1] = 0; /* Hub ID (reserved) */
-    buffer[2] = TYPE_HUB_PROPERTY;
-    buffer[3] = PROP_FW_VERSION;
-    buffer[4] = PROP_OP_REQUEST;
-    if (queue_add_buffer(buffer) != 0)
-    {
-        /* Python exception already raised. */
-        free(buffer);
+    if (response == NULL)
         return NULL;
-    }
-    /* At this point, responsibility for `buffer` has been handed
-     * over to the comms thread.
-     */
-
-    if (queue_get(&response) != 0)
-        /* Python exception already raised */
-        return NULL;
-
-    /* Response is dynamically allocated and our responsibility */
-    if (response[1] != 0x00)
-    {
-        free(response);
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
-        return NULL;
-    }
-
-    /* Check for an error return */
-    if (response[2] == TYPE_GENERIC_ERROR)
-    {
-        handle_generic_error(TYPE_HUB_PROPERTY, response);
-        free(response);
-        return NULL;
-    }
 
     if (response[0] != 9 ||
         response[2] != TYPE_HUB_PROPERTY ||
@@ -224,50 +212,14 @@ PyObject *cmd_get_firmware_version(void)
 }
 
 
-port_modes_t *cmd_get_port_modes(uint8_t port_id)
+int cmd_get_port_modes(uint8_t port_id, port_modes_t *results)
 {
-    uint8_t *buffer = malloc(5);
-    uint8_t *response;
-    port_modes_t *results;
+    uint8_t *response = make_request(5, TYPE_PORT_INFO_REQ,
+                                     port_id,
+                                     PORT_INFO_MODE);
 
-    if (buffer == NULL)
-    {
-        PyErr_NoMemory();
-        return NULL;
-    }
-
-    buffer[0] = 5; /* Length */
-    buffer[1] = 0; /* Hub ID (reserved) */
-    buffer[2] = TYPE_PORT_INFO_REQ;
-    buffer[3] = port_id;
-    buffer[4] = PORT_INFO_MODE;
-    if (queue_add_buffer(buffer) != 0)
-    {
-        /* Python exception already reaised */
-        free(buffer);
-        return NULL;
-    }
-    /* "buffer" now belongs to the comms system */
-
-    if (queue_get(&response) != 0)
-        /* Python exception already raised */
-        return NULL;
-
-    /* "response" is now our responsibility */
-    if (response[1] != 0x00)
-    {
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
-        free(response);
-        return NULL;
-    }
-
-    /* Check for an error return */
-    if (response[2] == TYPE_GENERIC_ERROR)
-    {
-        handle_generic_error(TYPE_PORT_INFO_REQ, response);
-        free(response);
-        return NULL;
-    }
+    if (response == NULL)
+        return -1;
 
     if (response[0] != 11 ||
         response[2] != TYPE_PORT_INFO ||
@@ -277,66 +229,28 @@ port_modes_t *cmd_get_port_modes(uint8_t port_id)
         free(response);
         PyErr_SetString(hub_protocol_error,
                         "Unexpected reply to Port Information Request");
-        return NULL;
+        return -1;
     }
 
-    if ((results = malloc(sizeof(port_modes_t))) == NULL)
-    {
-        free(response);
-        PyErr_NoMemory();
-        return NULL;
-    }
     results->capabilities = response[5];
     results->count = response[6];
     results->input_mode_mask = response[7] | (response[8] << 8);
     results->output_mode_mask = response[9] | (response[10] << 8);
     free(response);
 
-    return results;
+    return 0;
 }
 
 
 int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi)
 {
-    uint8_t *buffer = malloc(5);
-    uint8_t *response;
     int i;
+    uint8_t *response = make_request(5, TYPE_PORT_INFO_REQ,
+                                     port_id,
+                                     PORT_INFO_MODE_COMBINATIONS);
 
-    if (buffer == NULL)
-    {
-        PyErr_NoMemory();
+    if (response == NULL)
         return -1;
-    }
-
-    buffer[0] = 5;
-    buffer[1] = 0;
-    buffer[2] = TYPE_PORT_INFO_REQ;
-    buffer[3] = port_id;
-    buffer[4] = PORT_INFO_MODE_COMBINATIONS;
-    if (queue_add_buffer(buffer) != 0)
-    {
-        free(buffer);
-        return -1;
-    }
-    /* "buffer" is now the responsibility of comms */
-
-    if (queue_get(&response) != 0)
-        return -1;
-
-    /* "response" now belongs to this thread */
-    if (response[1] != 0x00)
-    {
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
-        free(response);
-        return -1;
-    }
-
-    if (response[2] == TYPE_GENERIC_ERROR)
-    {
-        handle_generic_error(TYPE_PORT_INFO_REQ, response);
-        free(response);
-        return -1;
-    }
 
     /* The length of this packet is variable, but should be between
      * 7 and 21, and an odd number.
@@ -364,45 +278,13 @@ int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi)
 
 int cmd_get_mode_name(uint8_t port_id, uint8_t mode_id, char *name)
 {
-    uint8_t *buffer = malloc(6);
-    uint8_t *response;
+    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+                                     port_id,
+                                     mode_id,
+                                     MODE_INFO_NAME);
 
-    if (buffer == NULL)
-    {
-        PyErr_NoMemory();
+    if (response == NULL)
         return -1;
-    }
-
-    buffer[0] = 6;
-    buffer[1] = 0;
-    buffer[2] = TYPE_PORT_MODE_REQ;
-    buffer[3] = port_id;
-    buffer[4] = mode_id;
-    buffer[5] = MODE_INFO_NAME;
-    if (queue_add_buffer(buffer) != 0)
-    {
-        free(buffer);
-        return -1;
-    }
-    /* "buffer" has now been given to the comms thread to manage */
-
-    if (queue_get(&response) != 0)
-        return -1;
-
-    /* "response" is now our responsibility */
-    if (response[1] != 0x00)
-    {
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
-        free(response);
-        return -1;
-    }
-
-    if (response[2] == TYPE_GENERIC_ERROR)
-    {
-        handle_generic_error(TYPE_PORT_MODE_REQ, response);
-        free(response);
-        return -1;
-    }
 
     /* The length of this packet is variable, but should be between
      * 7 and 17 bytes.

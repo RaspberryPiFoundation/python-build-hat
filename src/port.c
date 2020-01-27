@@ -135,14 +135,14 @@ Port_info(PyObject *self, PyObject *args)
     /* It is attached, build the desired dictionary */
     if ((port->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
     {
-        port_modes_t *mode = cmd_get_port_modes(port->port_id);
+        port_modes_t mode;
 
-        if (mode == NULL)
+        if (cmd_get_port_modes(port->port_id, &mode) < 0)
             return NULL;
-        port->input_mode_mask = mode->input_mode_mask;
-        port->output_mode_mask = mode->output_mode_mask;
-        port->num_modes = mode->count;
-        if ((mode->capabilities & CAP_MODE_COMBINABLE) != 0)
+        port->input_mode_mask = mode.input_mode_mask;
+        port->output_mode_mask = mode.output_mode_mask;
+        port->num_modes = mode.count;
+        if ((mode.capabilities & CAP_MODE_COMBINABLE) != 0)
         {
             combi_mode_t combi_modes;
 
@@ -151,7 +151,6 @@ Port_info(PyObject *self, PyObject *args)
                 return NULL;
             memcpy(port->combi_modes, combi_modes, sizeof(combi_mode_t));
         }
-        free(mode);
 
         for (i = 0; i < port->num_modes; i++)
         {
@@ -162,7 +161,7 @@ Port_info(PyObject *self, PyObject *args)
         port->flags |= PO_FLAGS_GOT_MODE_INFO;
     }
 
-    /* XXX: missing the "speed" and key */
+    /* XXX: missing the "speed" key */
     results = Py_BuildValue("{sisOsO}",
                             "type", port->type_id,
                             "fw_version", port->fw_revision,

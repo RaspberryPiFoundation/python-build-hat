@@ -56,11 +56,11 @@ extern PyObject *cmd_get_hardware_version(void);
 extern PyObject *cmd_get_firmware_version(void);
 
 /* Sends a Hub Port Info Request command for the mode info of the
- * given port.  Returns a port_modes_t structure containing the
- * returned information, or NULL on error (when an exception will
- * already be raised).
+ * given port.  Fills in the port_modes_t structure with the returned
+ * information, returning 0 on success or -1 on error (when an
+ * exception will already be raised).
  */
-extern port_modes_t *cmd_get_port_modes(uint8_t port_id);
+extern int cmd_get_port_modes(uint8_t port_id, port_modes_t *results);
 
 /* Sends a Hub Port Info Request command for the combination mode
  * info of the given port.  Returns the combinations in the
