@@ -338,12 +338,22 @@ Port_info(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Port_mode(PyObject *self, PyObject *args)
+{
+    PyErr_SetString(PyExc_NotImplementedError,
+                    "Port.mode() not implemented: see Port.device.mode()");
+    return NULL;
+}
+
+
 static PyMethodDef Port_methods[] = {
     {
         "callback", Port_callback, METH_VARARGS,
         "Set a callback for plugging or unplugging devices in this port"
     },
     { "info", Port_info, METH_VARARGS, "Information on the attached device" },
+    { "mode", Port_mode, METH_VARARGS, "Set the mode for the port" },
     { NULL, NULL, 0, NULL }
 };
 
