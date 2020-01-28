@@ -16,9 +16,23 @@
 
 
 /* The actual Port type */
+typedef struct min_max_s
+{
+    float min;
+    float max;
+} min_max_t;
+
 typedef struct mode_info_s
 {
     char name[12];
+    char symbol[5];
+    uint8_t capability[6];
+    uint8_t input_mapping;
+    uint8_t output_mapping;
+    min_max_t raw;
+    min_max_t percent;
+    min_max_t si;
+    value_format_t format;
 } mode_info_t;
 
 typedef struct
@@ -36,7 +50,6 @@ typedef struct
     uint16_t output_mode_mask;
     combi_mode_t combi_modes;
     mode_info_t modes[16];
-    /* XXX: etc */
 } PortObject;
 
 #define PO_FLAGS_GOT_MODE_INFO 0x01
@@ -155,8 +168,27 @@ Port_info(PyObject *self, PyObject *args)
         for (i = 0; i < port->num_modes; i++)
         {
             mode_info_t *mode = &port->modes[i];
-            if (cmd_get_mode_name(port->port_id, i, mode->name) < 0)
+
+            if (cmd_get_mode_name(port->port_id, i, mode->name) < 0 ||
+                cmd_get_mode_raw(port->port_id, i,
+                                 &mode->raw.min,
+                                 &mode->raw.max) < 0 ||
+                cmd_get_mode_percent(port->port_id, i,
+                                     &mode->percent.min,
+                                     &mode->percent.max) < 0 ||
+                cmd_get_mode_si(port->port_id, i,
+                                &mode->si.min,
+                                &mode->si.max) < 0 ||
+                cmd_get_mode_symbol(port->port_id, i, mode->symbol) < 0 ||
+                cmd_get_mode_mapping(port->port_id, i,
+                                     &mode->input_mapping,
+                                     &mode->output_mapping) ||
+                cmd_get_mode_capability(port->port_id, i,
+                                        mode->capability) ||
+                cmd_get_mode_format(port->port_id, i, &mode->format))
+            {
                 return NULL;
+            }
         }
         port->flags |= PO_FLAGS_GOT_MODE_INFO;
     }
@@ -185,7 +217,36 @@ Port_info(PyObject *self, PyObject *args)
          * is either input or output but not both.  XXX: ask Lego
          * the truth of this matter.
          */
-        mode_entry = Py_BuildValue("{ss}", "name", port->modes[i].name);
+        mode_entry = Py_BuildValue(
+            "{sss(ff)s(ff)s(ff)sssBsBsy#s{sBsBsBsB}}",
+            "name",
+            port->modes[i].name,
+            "raw",
+            port->modes[i].raw.min,
+            port->modes[i].raw.max,
+            "pct",
+            port->modes[i].percent.min,
+            port->modes[i].percent.max,
+            "si",
+            port->modes[i].si.min,
+            port->modes[i].si.max,
+            "symbol",
+            port->modes[i].symbol,
+            "map_out",
+            port->modes[i].output_mapping,
+            "map_in",
+            port->modes[i].input_mapping,
+            "capability",
+            port->modes[i].capability, 6,
+            "format",
+            "datasets",
+            port->modes[i].format.datasets,
+            "figures",
+            port->modes[i].format.figures,
+            "decimals",
+            port->modes[i].format.decimals,
+            "type",
+            port->modes[i].format.type);
         if (mode_entry == NULL)
         {
             Py_DECREF(mode_list);

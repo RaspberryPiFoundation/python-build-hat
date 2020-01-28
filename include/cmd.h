@@ -29,6 +29,19 @@ typedef struct port_modes_s
 
 typedef uint16_t combi_mode_t[8];
 
+typedef struct value_format_s
+{
+    uint8_t datasets;
+    uint8_t type;
+    uint8_t figures;
+    uint8_t decimals;
+} value_format_t;
+
+#define FORMAT_8BIT  0x00
+#define FORMAT_16BIT 0x01
+#define FORMAT_32BIT 0x02
+#define FORMAT_FLOAT 0x03
+
 
 /* Initialises the command subsystem, creating the exception used for
  * protocol errors.  Returns 0 for success, -1 for error.
@@ -73,10 +86,77 @@ extern int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi);
 /* Sends a Port Mode Information Request command for the name of a
  * given mode on a given port.  Return the name as NUL-terminated
  * string in `name`, which is expected to be a preallocated string
- * with space for up to 12 characters.  Returns 0 on success, -1 on
- * error (when an exception will already be raised).
+ * with space for up to 11 characters plus the NUL.  Returns 0 on
+ * success, -1 on error (when an exception will already be raised).
  */
 extern int cmd_get_mode_name(uint8_t port_id, uint8_t mode_id, char *name);
+
+/* Sends a Port Mode Information Request command for the minimum and
+ * maximum values of the raw data.  Values are returned through the
+ * float pointers passed in.  Return 0 on success, -1 on error (when
+ * a Python exception will have been raised).
+ */
+extern int cmd_get_mode_raw(uint8_t port_id,
+                            uint8_t mode_id,
+                            float *pmin,
+                            float *pmax);
+
+/* Sends a Port Mode Information Request command for the minimum and
+ * maximum percentage values of the data.  Values are returned through
+ * the float pointers passed in.  Return 0 on success, -1 on error
+ * (when a Python exception will have been raised).
+ */
+extern int cmd_get_mode_percent(uint8_t port_id,
+                                uint8_t mode_id,
+                                float *pmin,
+                                float *pmax);
+
+/* Sends a Port Mode Information Request command for the minimum and
+ * maximum SI values of the data.  Values are returned through the
+ * float pointers passed in.  Return 0 on success, -1 on error (when a
+ * Python exception will have been raised).
+ */
+extern int cmd_get_mode_si(uint8_t port_id,
+                           uint8_t mode_id,
+                           float *pmin,
+                           float *pmax);
+
+/* Sends a Port Mode Information Request command for the name of the
+ * units symbol of the data.  Returns the symbol as NUL-terminated
+ * string in `symbol`, which is expected to be a preallocated string
+ * with space for up to 5 characters plus the NUL.  Returns 0 on
+ * success, -1 on error (when an exception will already be raised).
+ */
+extern int cmd_get_mode_symbol(uint8_t port_id, uint8_t mode_id, char *symbol);
+
+/* Sends a Port Mode Information Request command for the input and
+ * output mappings of modes.  Returns the values through the byte
+ * pointers passed in.  Return 0 on success, -1 on error (when a
+ * Python exception will have been raised).
+ */
+extern int cmd_get_mode_mapping(uint8_t port_id,
+                                uint8_t mode_id,
+                                uint8_t *pinput_mapping,
+                                uint8_t *poutput_mapping);
+
+/* Sends a Port Mode Information Request command for the capability
+ * bytes of a mode.  Returns the value in the six byte buffer
+ * provided.  Returns 0 on success, -1 on error (when a Python
+ * exception will have been raised).
+ */
+extern int cmd_get_mode_capability(uint8_t port_id,
+                                   uint8_t mode_id,
+                                   uint8_t capability[6]);
+
+
+/* Sends a Port Mode Information Request command for the format of the
+ * data presented in this mode.  Returns the value in the `format`
+ * parameter.  Returns 0 on success, -1 on error(when a Python
+ * exception will have been raised).
+ */
+extern int cmd_get_mode_format(uint8_t port_id,
+                               uint8_t mode_id,
+                               value_format_t *format);
 
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

@@ -306,3 +306,203 @@ int cmd_get_mode_name(uint8_t port_id, uint8_t mode_id, char *name)
 
     return 0;
 }
+
+
+static int get_mode_min_max(uint8_t port_id,
+                            uint8_t mode_id,
+                            float *pmin,
+                            float *pmax,
+                            uint8_t info_type,
+                            const char *info_name)
+{
+    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+                                     port_id,
+                                     mode_id,
+                                     info_type);
+    uint32_t temp;
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 14 ||
+        response[2] != TYPE_PORT_MODE ||
+        response[3] != port_id ||
+        response[4] != mode_id ||
+        response[5] != info_type)
+    {
+        free(response);
+        PyErr_Format(hub_protocol_error,
+                     "Unexpected reposy to Mode %s Request");
+        return -1;
+    }
+
+    /* Bytes 6-9 and 10-13 should be the bit patterns of floats */
+    /* Make sure our values have the right endianness first */
+    temp = response[6] |
+        (response[7] << 8) |
+        (response[8] << 16) |
+        (response[9] << 24);
+    memcpy(pmin, &temp, 4);
+
+    temp = response[10] |
+        (response[11] << 8) |
+        (response[12] << 16) |
+        (response[13] << 24);
+    memcpy(pmax, &temp, 4);
+
+    return 0;
+}
+
+
+int cmd_get_mode_raw(uint8_t port_id,
+                     uint8_t mode_id,
+                     float *pmin,
+                     float *pmax)
+{
+    return get_mode_min_max(port_id, mode_id, pmin, pmax,
+                            MODE_INFO_RAW, "Raw");
+}
+
+int cmd_get_mode_percent(uint8_t port_id,
+                         uint8_t mode_id,
+                         float *pmin,
+                         float *pmax)
+{
+    return get_mode_min_max(port_id, mode_id, pmin, pmax,
+                            MODE_INFO_PCT, "Percent");
+}
+
+
+int cmd_get_mode_si(uint8_t port_id,
+                    uint8_t mode_id,
+                    float *pmin,
+                    float *pmax)
+{
+    return get_mode_min_max(port_id, mode_id, pmin, pmax,
+                            MODE_INFO_SI, "SI");
+}
+
+
+int cmd_get_mode_symbol(uint8_t port_id, uint8_t mode_id, char *symbol)
+{
+    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+                                     port_id,
+                                     mode_id,
+                                     MODE_INFO_SYMBOL);
+
+    if (response == NULL)
+        return -1;
+
+    /* The length of this packet is variable, but should be between
+     * 7 and 11 bytes.
+     */
+    if (response[0] < 7 || response[0] > 11 ||
+        response[2] != TYPE_PORT_MODE ||
+        response[3] != port_id ||
+        response[4] != mode_id ||
+        response[5] != MODE_INFO_SYMBOL)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Mode Symbol Request");
+        return -1;
+    }
+
+    memcpy(symbol, response+6, response[0]-6);
+    symbol[response[0]-6] = '\0';
+
+    return 0;
+}
+
+
+int cmd_get_mode_mapping(uint8_t port_id,
+                         uint8_t mode_id,
+                         uint8_t *pinput_mapping,
+                         uint8_t *poutput_mapping)
+{
+    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+                                     port_id,
+                                     mode_id,
+                                     MODE_INFO_MAPPING);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 8 ||
+        response[2] != TYPE_PORT_MODE ||
+        response[3] != port_id ||
+        response[4] != mode_id ||
+        response[5] != MODE_INFO_MAPPING)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Mode Mapping Request");
+        return -1;
+    }
+
+    *poutput_mapping = response[6];
+    *pinput_mapping = response[7];
+
+    return 0;
+}
+
+
+int cmd_get_mode_capability(uint8_t port_id,
+                            uint8_t mode_id,
+                            uint8_t capability[6])
+{
+    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+                                     port_id,
+                                     mode_id,
+                                     MODE_INFO_CAPABILITY);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 12 ||
+        response[2] != TYPE_PORT_MODE ||
+        response[3] != port_id ||
+        response[4] != mode_id ||
+        response[5] != MODE_INFO_CAPABILITY)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Mode Capability Request");
+        return -1;
+    }
+
+    memcpy(capability, response+6, 6);
+
+    return 0;
+}
+
+
+int cmd_get_mode_format(uint8_t port_id,
+                        uint8_t mode_id,
+                        value_format_t *format)
+{
+    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+                                     port_id,
+                                     mode_id,
+                                     MODE_INFO_FORMAT);
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 10 ||
+        response[2] != TYPE_PORT_MODE ||
+        response[3] != port_id ||
+        response[4] != mode_id ||
+        response[5] != MODE_INFO_FORMAT)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Mode Format Request");
+        return -1;
+    }
+
+    format->datasets = response[6];
+    format->type = response[7];
+    format->figures = response[8];
+    format->decimals = response[9];
+
+    return 0;
+}
