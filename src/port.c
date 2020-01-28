@@ -141,6 +141,9 @@ Port_info(PyObject *self, PyObject *args)
     PyObject *mode_list;
     int i;
 
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
     /* Is the port attached to anything */
     if (port->type_id == 0)
         return Py_BuildValue("{sO}", "type", Py_None);
