@@ -372,6 +372,15 @@ Port_pwm(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Port_repr(PyObject *self)
+{
+    PortObject *port = (PortObject *)self;
+
+    return PyUnicode_FromFormat("Port(%c)", 'A' + port->port_id);
+}
+
+
 static PyMethodDef Port_methods[] = {
     {
         "callback", Port_callback, METH_VARARGS,
@@ -397,7 +406,8 @@ static PyTypeObject PortType =
     .tp_traverse = (traverseproc)Port_traverse,
     .tp_clear = (inquiry)Port_clear,
     .tp_members = Port_members,
-    .tp_methods = Port_methods
+    .tp_methods = Port_methods,
+    .tp_repr = Port_repr
 };
 
 
@@ -486,6 +496,13 @@ PortSet_get_port(PortSetObject *self, void *closure)
 }
 
 
+static PyObject *
+PortSet_get_constant(PortSetObject *self, void *closure)
+{
+    return PyLong_FromVoidPtr(closure);
+}
+
+
 static PyGetSetDef PortSet_getsetters[] =
 {
     { "A", (getter)PortSet_get_port, NULL, "Port A", (void *)0 },
@@ -494,6 +511,20 @@ static PyGetSetDef PortSet_getsetters[] =
     { "D", (getter)PortSet_get_port, NULL, "Port D", (void *)3 },
     { "E", (getter)PortSet_get_port, NULL, "Port E", (void *)4 },
     { "F", (getter)PortSet_get_port, NULL, "Port F", (void *)5 },
+    {
+        "ATTACHED",
+        (getter)PortSet_get_constant,
+        NULL,
+        "Value passed to callback when port is attached",
+        (void *)1
+    },
+    {
+        "DETACHED",
+        (getter)PortSet_get_constant,
+        NULL,
+        "Value passed to callback when port is detached",
+        (void *)0
+    },
     { NULL }
 };
 
