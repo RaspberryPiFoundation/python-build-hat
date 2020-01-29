@@ -69,5 +69,35 @@ typedef enum protocol_mode_info_e
     MODE_INFO_FORMAT = 0x80
 } protocol_mode_info_t;
 
+typedef enum protocol_output_start_e
+{
+    OUTPUT_STARTUP_BUFFER = 0x00,
+    OUTPUT_STARTUP_IMMEDIATE = 0x10
+} protocol_output_start_t;
+
+typedef enum protocol_output_complete_e
+{
+    OUTPUT_COMPLETE_QUIET = 0x00,
+    OUTPUT_COMPLETE_STATUS = 0x01
+} protocol_output_complete_t;
+
+typedef enum protocol_output_cmd_e
+{
+    OUTPUT_CMD_START_POWER = 0x01,
+    OUTPUT_CMD_START_POWER_2 = 0x02,
+    OUTPUT_CMD_SET_ACC_TIME = 0x05,
+    OUTPUT_CMD_SET_DEC_TIME = 0x06,
+    OUTPUT_CMD_START_SPEED = 0x07,
+    OUTPUT_CMD_START_SPEED_2 = 0x08,
+    OUTPUT_CMD_START_SPEED_FOR_TIME = 0x09,
+    OUTPUT_CMD_START_SPEED_2_FOR_TIME = 0x0a,
+    OUTPUT_CMD_START_SPEED_FOR_DEGREES = 0x0b,
+    OUTPUT_CMD_START_SPEED_2_FOR_DEGREES = 0x0c,
+    OUTPUT_CMD_GOTO_ABS_POSITION = 0x0d,
+    OUTPUT_CMD_GOTO_ABS_POSITION_2 = 0x0e,
+    OUTPUT_CMD_PRESET_ENCODER = 0x13,
+    OUTPUT_CMD_PRESET_ENCODER_2 = 0x14
+} protocol_output_cmd_t;
+
 
 #endif /* RPI_STRAWBERRY_PROTOCOL_H_INCLUDED */

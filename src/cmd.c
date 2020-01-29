@@ -139,7 +139,7 @@ static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
     /* `response` is dynamically allocated and now our responsibility */
     if (response[1] != 0x00)
     {
-        PyErr_Format(hub_protocol_error, "Buad hub ID 0x%02x", response[1]);
+        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
         free(response);
         return NULL;
     }
@@ -503,6 +503,37 @@ int cmd_get_mode_format(uint8_t port_id,
     format->type = response[7];
     format->figures = response[8];
     format->decimals = response[9];
+
+    return 0;
+}
+
+
+int cmd_set_pwm(uint8_t port_id, int8_t pwm)
+{
+    uint8_t *response = make_request(7, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_START_POWER,
+                                     (uint8_t)pwm);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Start Power");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
 
     return 0;
 }

@@ -347,6 +347,31 @@ Port_mode(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Port_pwm(PyObject *self, PyObject *args)
+{
+    PortObject *port = (PortObject *)self;
+    int pwm_level;
+
+    if (!PyArg_ParseTuple(args, "i:pwm", &pwm_level))
+        return NULL;
+
+    /* Check the pwm value is within range */
+    if (pwm_level < -100 || (pwm_level > 100 && pwm_level != 127))
+    {
+        PyErr_Format(PyExc_ValueError,
+                     "PWM value %d out of range",
+                     pwm_level);
+        return NULL;
+    }
+
+    if (cmd_set_pwm(port->port_id, pwm_level) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef Port_methods[] = {
     {
         "callback", Port_callback, METH_VARARGS,
@@ -354,6 +379,7 @@ static PyMethodDef Port_methods[] = {
     },
     { "info", Port_info, METH_VARARGS, "Information on the attached device" },
     { "mode", Port_mode, METH_VARARGS, "Set the mode for the port" },
+    { "pwm", Port_pwm, METH_VARARGS, "Set the PWM level for the port" },
     { NULL, NULL, 0, NULL }
 };
 

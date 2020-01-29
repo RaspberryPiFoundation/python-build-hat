@@ -151,12 +151,18 @@ extern int cmd_get_mode_capability(uint8_t port_id,
 
 /* Sends a Port Mode Information Request command for the format of the
  * data presented in this mode.  Returns the value in the `format`
- * parameter.  Returns 0 on success, -1 on error(when a Python
+ * parameter.  Returns 0 on success, -1 on error (when a Python
  * exception will have been raised).
  */
 extern int cmd_get_mode_format(uint8_t port_id,
                                uint8_t mode_id,
                                value_format_t *format);
+
+/* Sends a Port Output command to set the start power of the given
+ * port.  Returns 0 on success, -1 on error (when a Python exception
+ * will have been raised).
+ */
+extern int cmd_set_pwm(uint8_t port_id, int8_t pwm);
 
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */
