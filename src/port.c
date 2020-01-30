@@ -13,6 +13,7 @@
 
 #include "port.h"
 #include "cmd.h"
+#include "device.h"
 
 
 /* The actual Port type */
@@ -97,11 +98,20 @@ Port_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 
-static PyMemberDef Port_members[] =
+/* Make Port.device read-only from Python */
+static PyObject *
+Port_get_device(PortObject *self, void *closure)
+{
+    Py_INCREF(self->device);
+    return self->device;
+}
+
+
+static PyGetSetDef Port_getsetters[] =
 {
     {
-        "device", T_OBJECT_EX, offsetof(PortObject, device), 0,
-        "Generic device handler"
+        "device", (getter)Port_get_device, NULL,
+        "Generic device handler", NULL
     },
     { NULL }
 };
@@ -405,7 +415,7 @@ static PyTypeObject PortType =
     .tp_dealloc = (destructor)Port_dealloc,
     .tp_traverse = (traverseproc)Port_traverse,
     .tp_clear = (inquiry)Port_clear,
-    .tp_members = Port_members,
+    .tp_getset = Port_getsetters,
     .tp_methods = Port_methods,
     .tp_repr = Port_repr
 };
@@ -592,8 +602,13 @@ int port_attach_port(uint8_t port_id,
     PortObject *port = (PortObject *)port_set->ports[port_id];
     PyObject *version;
     PyObject *arg_list;
+    PyObject *device = device_new_device((PyObject *)port);
     int rv = 0;
 
+    if (device == NULL)
+        return -1;
+    Py_DECREF(port->device);
+    port->device = device;
     port->type_id = type_id;
     port->flags = 0; /* Got nothing useful yet */
     version = cmd_version_as_unicode(hw_revision);
@@ -631,6 +646,9 @@ int port_detach_port(uint8_t port_id)
     port->hw_revision = NULL;
     Py_XDECREF(port->fw_revision);
     port->fw_revision = NULL;
+    Py_XDECREF(port->device);
+    port->device = Py_None;
+    Py_INCREF(Py_None);
 
     if (port->callback_fn != Py_None)
     {

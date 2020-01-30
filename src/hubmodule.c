@@ -14,6 +14,7 @@
 #include "i2c.h"
 #include "cmd.h"
 #include "port.h"
+#include "device.h"
 
 
 static PyObject *
@@ -71,8 +72,15 @@ PyInit_hub(void)
     if ((hub = PyModule_Create(&hubmodule)) == NULL)
         return NULL;
 
+    if (device_init() < 0)
+    {
+        Py_DECREF(hub);
+        return NULL;
+    }
+
     if (port_init(hub) < 0)
     {
+        device_deinit();
         Py_DECREF(hub);
         return NULL;
     }
@@ -80,14 +88,16 @@ PyInit_hub(void)
     if (cmd_init(hub) < 0)
     {
         port_deinit();
+        device_deinit();
         Py_DECREF(hub);
         return NULL;
     }
 
     if (i2c_open_hat() < 0)
     {
-        port_deinit();
         cmd_deinit();
+        port_deinit();
+        device_deinit();
         Py_DECREF(hub);
         return NULL;
     }
