@@ -53,6 +53,12 @@ extern int cmd_init(PyObject *hub);
 extern void cmd_deinit(void);
 
 
+/* Return the hub_protocol_error exception object, as an alternative
+ * to having a global running around.
+ */
+extern PyObject *cmd_get_exception(void);
+
+
 /* Convert version data encoded in a buffer into a Python string */
 extern PyObject *cmd_version_as_unicode(uint8_t *buffer);
 

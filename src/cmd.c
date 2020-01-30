@@ -90,6 +90,12 @@ void cmd_deinit(void)
 }
 
 
+PyObject *cmd_get_exception(void)
+{
+    return hub_protocol_error;
+}
+
+
 PyObject *cmd_version_as_unicode(uint8_t *buffer)
 {
     return PyUnicode_FromFormat("%d.%d.%d.%d",

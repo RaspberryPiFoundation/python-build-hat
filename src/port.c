@@ -17,25 +17,6 @@
 
 
 /* The actual Port type */
-typedef struct min_max_s
-{
-    float min;
-    float max;
-} min_max_t;
-
-typedef struct mode_info_s
-{
-    char name[12];
-    char symbol[5];
-    uint8_t capability[6];
-    uint8_t input_mapping;
-    uint8_t output_mapping;
-    min_max_t raw;
-    min_max_t percent;
-    min_max_t si;
-    value_format_t format;
-} mode_info_t;
-
 typedef struct
 {
     PyObject_HEAD
@@ -143,6 +124,57 @@ Port_callback(PyObject *self, PyObject *args)
 }
 
 
+static int get_mode_info(PortObject *port)
+{
+    port_modes_t mode;
+    int i;
+
+    if (cmd_get_port_modes(port->port_id, &mode) < 0)
+        return -1;
+    port->input_mode_mask = mode.input_mode_mask;
+    port->output_mode_mask = mode.output_mode_mask;
+    port->num_modes = mode.count;
+    if ((mode.capabilities & CAP_MODE_COMBINABLE) != 0)
+    {
+        combi_mode_t combi_modes;
+
+        port->flags |= PO_FLAGS_COMBINABLE;
+        if (cmd_get_combi_modes(port->port_id, combi_modes) < 0)
+            return -1;
+        memcpy(port->combi_modes, combi_modes, sizeof(combi_mode_t));
+    }
+
+    for (i = 0; i < port->num_modes; i++)
+    {
+        mode_info_t *mode = &port->modes[i];
+
+        if (cmd_get_mode_name(port->port_id, i, mode->name) < 0 ||
+            cmd_get_mode_raw(port->port_id, i,
+                             &mode->raw.min,
+                             &mode->raw.max) < 0 ||
+            cmd_get_mode_percent(port->port_id, i,
+                                 &mode->percent.min,
+                                 &mode->percent.max) < 0 ||
+            cmd_get_mode_si(port->port_id, i,
+                            &mode->si.min,
+                            &mode->si.max) < 0 ||
+            cmd_get_mode_symbol(port->port_id, i, mode->symbol) < 0 ||
+            cmd_get_mode_mapping(port->port_id, i,
+                                 &mode->input_mapping,
+                                 &mode->output_mapping) < 0 ||
+            cmd_get_mode_capability(port->port_id, i,
+                                    mode->capability) < 0 ||
+            cmd_get_mode_format(port->port_id, i, &mode->format) < 0)
+        {
+            return -1;
+        }
+    }
+
+    port->flags |= PO_FLAGS_GOT_MODE_INFO;
+    return 0;
+}
+
+
 static PyObject *
 Port_info(PyObject *self, PyObject *args)
 {
@@ -161,49 +193,8 @@ Port_info(PyObject *self, PyObject *args)
     /* It is attached, build the desired dictionary */
     if ((port->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
     {
-        port_modes_t mode;
-
-        if (cmd_get_port_modes(port->port_id, &mode) < 0)
+        if (get_mode_info(port) < 0)
             return NULL;
-        port->input_mode_mask = mode.input_mode_mask;
-        port->output_mode_mask = mode.output_mode_mask;
-        port->num_modes = mode.count;
-        if ((mode.capabilities & CAP_MODE_COMBINABLE) != 0)
-        {
-            combi_mode_t combi_modes;
-
-            port->flags |= PO_FLAGS_COMBINABLE;
-            if (cmd_get_combi_modes(port->port_id, combi_modes) < 0)
-                return NULL;
-            memcpy(port->combi_modes, combi_modes, sizeof(combi_mode_t));
-        }
-
-        for (i = 0; i < port->num_modes; i++)
-        {
-            mode_info_t *mode = &port->modes[i];
-
-            if (cmd_get_mode_name(port->port_id, i, mode->name) < 0 ||
-                cmd_get_mode_raw(port->port_id, i,
-                                 &mode->raw.min,
-                                 &mode->raw.max) < 0 ||
-                cmd_get_mode_percent(port->port_id, i,
-                                     &mode->percent.min,
-                                     &mode->percent.max) < 0 ||
-                cmd_get_mode_si(port->port_id, i,
-                                &mode->si.min,
-                                &mode->si.max) < 0 ||
-                cmd_get_mode_symbol(port->port_id, i, mode->symbol) < 0 ||
-                cmd_get_mode_mapping(port->port_id, i,
-                                     &mode->input_mapping,
-                                     &mode->output_mapping) ||
-                cmd_get_mode_capability(port->port_id, i,
-                                        mode->capability) ||
-                cmd_get_mode_format(port->port_id, i, &mode->format))
-            {
-                return NULL;
-            }
-        }
-        port->flags |= PO_FLAGS_GOT_MODE_INFO;
     }
 
     /* XXX: missing the "speed" key */
@@ -667,4 +658,26 @@ int port_detach_port(uint8_t port_id)
 int port_get_id(PyObject *port)
 {
     return ((PortObject *)port)->port_id;
+}
+
+
+mode_info_t *
+port_get_mode(PyObject *port, int mode)
+{
+    PortObject *self = (PortObject *)port;
+
+    if (self->type_id == 0)
+        return NULL;
+
+    if ((self->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
+        if (get_mode_info(self) < 0)
+            return NULL;
+
+    if (mode >= self->num_modes)
+    {
+        PyErr_Format(PyExc_ValueError, "Bad mode number %d", mode);
+        return NULL;
+    }
+
+    return &self->modes[mode];
 }
