@@ -663,3 +663,8 @@ int port_detach_port(uint8_t port_id)
     return rv;
 }
 
+
+int port_get_id(PyObject *port)
+{
+    return ((PortObject *)port)->port_id;
+}

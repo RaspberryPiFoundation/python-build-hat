@@ -80,6 +80,16 @@ Device_init(DeviceObject *self, PyObject *args, PyObject *kwds)
 }
 
 
+static PyObject *
+Device_repr(PyObject *self)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    int port_id = port_get_id(device->port);
+
+    return PyUnicode_FromFormat("Device(%c)", 'A' + port_id);
+}
+
+
 static PyTypeObject DeviceType =
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -93,6 +103,7 @@ static PyTypeObject DeviceType =
     .tp_dealloc = (destructor)Device_dealloc,
     .tp_traverse = (traverseproc)Device_traverse,
     .tp_clear = (inquiry)Device_clear,
+    .tp_repr = Device_repr
 };
 
 

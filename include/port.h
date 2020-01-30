@@ -25,5 +25,7 @@ extern int port_attach_port(uint8_t port_id,
                             uint8_t *fw_revision);
 extern int port_detach_port(uint8_t port_id);
 
+extern int port_get_id(PyObject *port);
+
 
 #endif /* RPI_STRAWBERRY_PORT_H_INCLUDED */
