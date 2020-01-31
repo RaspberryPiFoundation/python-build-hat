@@ -543,3 +543,87 @@ int cmd_set_pwm(uint8_t port_id, int8_t pwm)
 
     return 0;
 }
+
+
+int cmd_write_mode_data(uint8_t port_id,
+                        uint8_t mode,
+                        ssize_t nbytes,
+                        const char *bytes)
+{
+    ssize_t len = 7 + nbytes;
+    uint8_t *buffer;
+    uint8_t *response;
+    int offset = 0;
+
+    if (len > 0x7f)
+        offset = 1;
+
+    if ((buffer = malloc(len + offset)) == NULL)
+    {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    if (offset)
+    {
+        buffer[0] = ((len+1) & 0x7f) | 0x80;
+        buffer[1] = (len+1) >> 7;
+    }
+    else
+    {
+        buffer[0] = len;
+    }
+    buffer[1+offset] = 0x00; /* Hub ID */
+    buffer[2+offset] = TYPE_PORT_OUTPUT;
+    buffer[3+offset] = port_id;
+    buffer[4+offset] = OUTPUT_STARTUP_IMMEDIATE | OUTPUT_COMPLETE_STATUS;
+    buffer[5+offset] = OUTPUT_CMD_WRITE_DIRECT_MODE_DATA;
+    buffer[6+offset] = mode;
+    memcpy(buffer + 7 + offset, bytes, nbytes);
+
+    if (queue_add_buffer(buffer) != 0)
+    {
+        /* Exception already raised */
+        free(buffer);
+        return -1;
+    }
+
+    /* 'buffer' is now the responsibility of the comms thread */
+
+    if (queue_get(&response) != 0)
+        return -1;
+
+    /* 'response' is now ours, and must be freed when done with */
+    if (response[1] != 0x00)
+    {
+        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        free(response);
+        return -1;
+    }
+
+    /* Check for an error return */
+    if (response[2] == TYPE_GENERIC_ERROR)
+    {
+        handle_generic_error(TYPE_PORT_OUTPUT, response);
+        free(response);
+        return -1;
+    }
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Write Direct Mode Data");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}

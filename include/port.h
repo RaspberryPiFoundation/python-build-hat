@@ -48,7 +48,9 @@ extern int port_attach_port(uint8_t port_id,
 extern int port_detach_port(uint8_t port_id);
 
 extern int port_get_id(PyObject *port);
+/* NB: can return NULL without setting an exception if detached */
 extern mode_info_t *port_get_mode(PyObject *port, int mode);
+extern int port_check_mode(PyObject *port, int mode);
 
 
 #endif /* RPI_STRAWBERRY_PORT_H_INCLUDED */

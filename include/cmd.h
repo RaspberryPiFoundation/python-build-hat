@@ -170,5 +170,14 @@ extern int cmd_get_mode_format(uint8_t port_id,
  */
 extern int cmd_set_pwm(uint8_t port_id, int8_t pwm);
 
+/* Sends a Port Write Direct Mode Data command, writing a byte stream
+ * directly to the target device.  Returns 0 on success, -1 on error
+ * (when a Python exception will have been raised).
+ */
+extern int cmd_write_mode_data(uint8_t port_id,
+                               uint8_t mode,
+                               ssize_t nbytes,
+                               const char *bytes);
+
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

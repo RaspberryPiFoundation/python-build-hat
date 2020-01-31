@@ -673,7 +673,7 @@ port_get_mode(PyObject *port, int mode)
         if (get_mode_info(self) < 0)
             return NULL;
 
-    if (mode >= self->num_modes)
+    if (mode < 0 || mode >= self->num_modes)
     {
         PyErr_Format(PyExc_ValueError, "Bad mode number %d", mode);
         return NULL;
@@ -681,3 +681,23 @@ port_get_mode(PyObject *port, int mode)
 
     return &self->modes[mode];
 }
+
+
+int
+port_check_mode(PyObject *port, int mode)
+{
+    PortObject *self = (PortObject *)port;
+
+    if (self->type_id == 0)
+    {
+        PyErr_SetString(cmd_get_exception(), "Unexpectedly detached");
+        return -1;
+    }
+
+    if ((self->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
+        if (get_mode_info(self) < 0)
+            return -1;
+
+    return (mode >= 0) && (mode < self->num_modes);
+}
+

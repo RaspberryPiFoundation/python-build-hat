@@ -141,9 +141,65 @@ Device_mode(PyObject *self, PyObject *args)
         }
         return results;
     }
+    else if (PyLong_Check(arg1))
+    {
+        int mode = PyLong_AsLong(arg1);
+        int check;
+
+        /* Check the type conversion worked */
+        if (PyErr_Occurred() != NULL)
+            return NULL;
+
+        check = port_check_mode(device->port, mode);
+        if (check == 0)
+        {
+            PyErr_SetString(PyExc_ValueError, "Invalid mode number");
+            return NULL;
+        }
+        else if (check < 0)
+            return NULL; /* Exception already set */
+
+        device->current_mode = mode;
+
+        if (arg2 == NULL)
+        {
+            /* This is just setting the mode */
+            Py_RETURN_NONE;
+        }
+
+        /* If we have a second parameter, it must be a byte string
+         * that will be sent to the device as Mode Data.
+         */
+        if (PyBytes_Check(arg2))
+        {
+            char *buffer;
+            Py_ssize_t nbytes;
+
+            if (PyBytes_AsStringAndSize(arg2, &buffer, &nbytes) < 0)
+                return NULL;
+            if (cmd_write_mode_data(port_get_id(device->port),
+                                    device->current_mode,
+                                    nbytes,
+                                    buffer) < 0)
+                return NULL;
+            Py_RETURN_NONE;
+        }
+        else if (PyByteArray_Check(arg2))
+        {
+            if (cmd_write_mode_data(port_get_id(device->port),
+                                    device->current_mode,
+                                    PyByteArray_Size(arg2),
+                                    PyByteArray_AsString(arg2)) < 0)
+                return NULL;
+            Py_RETURN_NONE;
+        }
+        PyErr_SetString(PyExc_TypeError,
+                        "Second arg to mode() must be a bytes or bytearray object");
+        return NULL;
+    }
     /* TODO: write the rest of this */
     PyErr_SetString(PyExc_NotImplementedError,
-                    "mode() with parameters not yet implemented");
+                    "mode() with non-int parameters not yet implemented");
     return NULL;
 }
 
