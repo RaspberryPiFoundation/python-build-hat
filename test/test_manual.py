@@ -35,7 +35,7 @@ class PortAttachedTestCase(unittest.TestCase):
 		assert isinstance(hub.port.A.info(), dict)
 		assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(hub.port.A.info().keys())
 		assert isinstance(hub.port.A.info()['modes'], list)
-		assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(hub.port.A.info().keys()['modes'][1])
+		assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(hhub.port.A.info()['modes'][1].keys())
 
 	def test_port_device_mode(self):
 		assert {'mode'}.issubset(dir(hub.port.A.device))
