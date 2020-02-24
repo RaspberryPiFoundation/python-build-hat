@@ -59,6 +59,15 @@ class HubFunctionalityTestCase(unittest.TestCase):
 		{'BT_VCP', 'Image', 'USB_VCP', 'battery', 'ble', 'bluetooth', 'button', 'display', 'firmware', 'info', 'led', 'motion', 'port', 'power_off', 'sound', 'status', 'supervision', 'temperature', 'text'}.issubset(dir(hub))
 		assert {'hardware_revision', 'device_uuid'}.issubset(hub.info().keys())
 
+	def test_battery_functionality(self):
+		assert {'BATTERY_BAD_BATTERY', 'BATTERY_HUB_TEMPERATURE_CRITICAL_OUT_OF_RANGE', 'BATTERY_NO_ERROR', 'BATTERY_TEMPERATURE_OUT_OF_RANGE', 'BATTERY_TEMPERATURE_SENSOR_FAIL', 'BATTERY_VOLTAGE_TOO_LOW', 'CHARGER_STATE_CHARGING_COMPLETED', 'CHARGER_STATE_CHARGING_ONGOING', 'CHARGER_STATE_DISCHARGING', 'CHARGER_STATE_FAIL', 'USB_CH_PORT_CDP', 'USB_CH_PORT_DCP', 'USB_CH_PORT_NONE', 'USB_CH_PORT_SDP', 'capacity_left', 'charger_detect', 'current', 'info', 'temperature', 'voltage'}.issubset(dir(P)) 
+		assert 0 <= hub.battery.capacity_left() <= 100
+		assert 0 <= hub.battery.charger_detect() <= 4 # Number says what kind of charger
+		assert 0 <= hub.battery.current() < 100 # In milliamps Assumes nothing is plugged in, goes up when motor is running
+		assert 10<= hub.battery.temperature() <= 40 # In C. Assuming we're indoors
+		assert 6 <= hub.battery.voltage() <= 10 # Voltage in milivolts
+		assert {'temperature', 'charge_voltage', 'charge_current', 'charge_voltage_filtered', 'error_state', 'charger_state', 'battery_capacity_left'}.issubset(hub.battery.info().keys())
+
 	def test_port_functionality(self):
 		ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.F]
 		random.shuffle(ports)
