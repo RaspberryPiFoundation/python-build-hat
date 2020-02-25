@@ -1,19 +1,29 @@
 import random
 import resource
+import subprocess
+import time
 import unittest
 
-# Start fakeHat manually before this line
-import hub
+# Fake Hat for testing purposes
+fakeHat = subprocess.Popen('/home/max//kynesim/322/FakeHat/bin/FakeHat', stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+time.sleep(1)
+import hub # isort:skip
+time.sleep(1)
+# Attaching a dummy to port A
+fakeHat.stdin.write(b'attach a $dummy\n')
+time.sleep(1)
+fakeHat.stdin.flush()
 
 
 # These tests should pass regardless of the state of the hat
 class GeneralTestCase(unittest.TestCase):
 	def test_hub_type(self):
-		{'BT_VCP', 'Image', 'USB_VCP', 'battery', 'ble', 'bluetooth', 'button', 'display', 'firmware', 'info', 'led', 'motion', 'port', 'power_off', 'sound', 'status', 'supervision', 'temperature', 'text'}.issubset(dir(hub))
+		assert {'BT_VCP', 'Image', 'USB_VCP', 'battery', 'ble', 'bluetooth', 'button', 'display', 'firmware', 'info', 'led', 'motion', 'port', 'power_off', 'sound', 'status', 'supervision', 'temperature', 'text'}.issubset(dir(hub))
 
 	def test_hub_info_type(self):
 		assert isinstance(hub.info(), dict)
-		assert len(hub.info())>=2
+
+	def test_hub_info_keys(self):
 		assert {'hardware_revision', 'device_uuid'}.issubset(hub.info().keys()) # From real hub
 
 	def test_battery_type(self):
@@ -50,7 +60,7 @@ class DummyAttachedATestCase(unittest.TestCase):
 		assert isinstance(hub.port.A.info(), dict)
 		assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(hub.port.A.info().keys())
 		assert isinstance(hub.port.A.info()['modes'], list)
-		assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(hhub.port.A.info()['modes'][1].keys())
+		assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(hub.port.A.info()['modes'][1].keys())
 
 	def test_port_device_mode(self):
 		assert {'mode'}.issubset(dir(hub.port.A.device))
@@ -69,8 +79,9 @@ class PortDetachedBTestCase(unittest.TestCase):
 		assert hub.port.F.device is None
 
 # These tests must be done with a motor attached to port A
-class MotorAttachedATestCase(self):
- 	def test_port_A_type_with_motor_connected(self):
+@unittest.skip("Using FakeHat")
+class MotorAttachedATestCase(unittest.TestCase):
+	def test_port_A_type_with_motor_connected(self):
 		P = hub.port.A
 		assert {'callback', 'device', 'info', 'mode', 'motor', 'pwm'}.issubset(dir(P)) 
 		assert isinstance(P.info(), dict)
@@ -88,7 +99,8 @@ class MotorAttachedATestCase(self):
 		hub.port.A.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
 
 # Touch sensor must be connected to port B
-class TouchSensorBTestCase(self):
+@unittest.skip("Using FakeHat")
+class TouchSensorBTestCase(unittest.TestCase):
 	def test_touch_sensor_B_type(self):
 		assert {'FORMAT_PCT', 'FORMAT_RAW', 'FORMAT_SI', 'get', 'mode', 'pwm'}.issubset(dir(hub.port.B.device))
 
@@ -98,4 +110,4 @@ class TouchSensorBTestCase(self):
 		assert hub.port.B.device.get() <= 9 # At all times
 
 if __name__ == '__main__':
-    unittest.main()
+	unittest.main()
