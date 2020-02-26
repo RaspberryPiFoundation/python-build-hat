@@ -22,9 +22,11 @@ class GeneralTestCase(unittest.TestCase):
 	def test_hub_info_keys(self):
 		assert {'hardware_revision', 'device_uuid'}.issubset(hub.info().keys()) # From real hub
 
+	@unittest.skip("Battery support is not planned")
 	def test_battery_type(self):
 		assert {'BATTERY_BAD_BATTERY', 'BATTERY_HUB_TEMPERATURE_CRITICAL_OUT_OF_RANGE', 'BATTERY_NO_ERROR', 'BATTERY_TEMPERATURE_OUT_OF_RANGE', 'BATTERY_TEMPERATURE_SENSOR_FAIL', 'BATTERY_VOLTAGE_TOO_LOW', 'CHARGER_STATE_CHARGING_COMPLETED', 'CHARGER_STATE_CHARGING_ONGOING', 'CHARGER_STATE_DISCHARGING', 'CHARGER_STATE_FAIL', 'USB_CH_PORT_CDP', 'USB_CH_PORT_DCP', 'USB_CH_PORT_NONE', 'USB_CH_PORT_SDP', 'capacity_left', 'charger_detect', 'current', 'info', 'temperature', 'voltage'}.issubset(dir(hub.battery)) 
 
+	@unittest.skip("Battery support is not planned")
 	def test_battery_info_type(self):
 		assert {'temperature', 'charge_voltage', 'charge_current', 'charge_voltage_filtered', 'error_state', 'charger_state', 'battery_capacity_left'}.issubset(hub.battery.info().keys())
 
