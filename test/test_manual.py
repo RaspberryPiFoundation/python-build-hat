@@ -1,17 +1,13 @@
 import random
 import resource
 import subprocess
-import time
 import unittest
 
 # Fake Hat for testing purposes
 fakeHat = subprocess.Popen('/home/max//kynesim/322/FakeHat/bin/FakeHat', stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-time.sleep(1)
 import hub # isort:skip
-time.sleep(1)
 # Attaching a dummy to port A
 fakeHat.stdin.write(b'attach a $dummy\n')
-time.sleep(1)
 fakeHat.stdin.flush()
 
 
