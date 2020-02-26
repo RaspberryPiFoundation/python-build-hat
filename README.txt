@@ -2,6 +2,7 @@ Usage
 -----
 
 To control a motor attached to port A:
+
 ```python
 import hub
 
@@ -14,6 +15,7 @@ hub.port.A.motor.run_to_position(180, 127) # Move to 180 degrees forward of top 
 ```
 
 To rotate motor attached to port once clockwise when a button attached to port B is pressed:
+
 ```python
 import hub
 import time
