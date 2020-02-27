@@ -288,6 +288,8 @@ int i2c_open_hat(void)
         close(i2c_fd);
         return -1;
     }
+    if (!PyEval_ThreadsInitialized())
+        PyEval_InitThreads();
     if ((rv = pthread_create(&comms_thread, NULL, run_comms, NULL)) != 0)
     {
         errno = rv;
