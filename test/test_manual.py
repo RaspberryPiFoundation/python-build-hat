@@ -3,6 +3,7 @@
 import random
 import resource
 import subprocess
+import time
 import unittest
 
 fake_hat_binary = '/home/max//kynesim/322/FakeHat/bin/FakeHat'
@@ -15,6 +16,7 @@ if __name__ == "__main__":
 
 # Fake Hat for testing purposes
 fakeHat = subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+time.sleep(0.5) # Sometimes FakeHat taks a little while to initialise
 import hub # isort:skip
 
 # Attaching a dummy to port A
