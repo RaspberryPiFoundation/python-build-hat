@@ -159,6 +159,8 @@ Device_mode(PyObject *self, PyObject *args)
         else if (check < 0)
             return NULL; /* Exception already set */
 
+        if (cmd_set_mode(port_get_id(device->port), mode) < 0)
+            return NULL;
         device->current_mode = mode;
 
         if (arg2 == NULL)
@@ -203,6 +205,60 @@ Device_mode(PyObject *self, PyObject *args)
     return NULL;
 }
 
+
+#if 0
+static PyObject *
+Device_get(PyObject *self, PyObject *args)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    PyObject *arg1 = NULL;
+    PyObject *results;
+    int format = DEVICE_FORMAT_SI;
+
+    if (!PyArg_ParseTuple(args, "|O:get", &arg1))
+        return NULL;
+
+    if (arg1 != NULL)
+    {
+        if (PyLong_Check(arg1))
+        {
+            format = PyLong_AsLong(arg1);
+            if (PyErr_Occurred() != NULL)
+                return NULL;
+            if (format < DEVICE_FORMAT_min || format > DEVICE_FORMAT_max)
+            {
+                PyErr_SetString(PyExc_ValueError, "Invalid format number");
+                return NULL;
+            }
+        }
+    }
+
+    /* "format" now contains the format code to use: Raw (0), Pct (1) or
+     * SI (2).
+     */
+
+    /* Get the current mode */
+    mode_info_t *mode = port_get_mode(device->port,
+                                      device->current_mode);
+    if (mode == NULL)
+    {
+        if (PyErr_Occurred() == NULL)
+        {
+            /* This shouldn't be possible unless the device detaches
+             * in mid call.
+             */
+            PyErr_SetString(cmd_get_exception(),
+                            "Unpexpectedly detached device");
+        }
+        return NULL;
+    }
+
+    /* We wish to return a list with "mode->format->datasets" data
+     * values.  Make that list ahead of time.
+     */
+    if ((results = PyList_New(mode->format.datasets)) == NULL)
+        return NULL;
+#endif
 
 static PyMethodDef Device_methods[] = {
     { "mode", Device_mode, METH_VARARGS, "Get or set the current mode" },

@@ -69,6 +69,15 @@ typedef enum protocol_mode_info_e
     MODE_INFO_FORMAT = 0x80
 } protocol_mode_info_t;
 
+typedef enum protocol_info_format_cmd_e
+{
+    INFO_FORMAT_SET_MODE_AND_DATASET = 1,
+    INFO_FORMAT_LOCK,
+    INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_ENABLED,
+    INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_DISABLED,
+    INFO_FORMAT_RESET = 6
+} protocol_info_format_cmd_e;
+
 typedef enum protocol_output_start_e
 {
     OUTPUT_STARTUP_BUFFER = 0x00,

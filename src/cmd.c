@@ -627,3 +627,93 @@ int cmd_write_mode_data(uint8_t port_id,
 
     return 0;
 }
+
+
+int cmd_set_mode(uint8_t port_id, uint8_t mode)
+{
+    uint8_t *response;
+
+    /* Mode zero appears to be a legacy */
+    response = make_request(10, TYPE_PORT_FORMAT_SETUP_SINGLE,
+                            port_id,
+                            mode,
+                            1, 0, 0, 0, /* Delta = 1 */
+                            0); /* Notification disabled */
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 10 ||
+        response[2] != TYPE_PORT_FORMAT_SINGLE ||
+        response[3] != port_id ||
+        response[4] != mode ||
+        response[5] != 1 ||
+        response[6] != 0 ||
+        response[7] != 0 ||
+        response[8] != 0 ||
+        response[9] != 0)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Format Setup");
+        return -1;
+    }
+
+    free(response);
+    if (mode == 0)
+        return 0;
+
+    /* Non-legacy modes go through an unexplained dance to change
+     * mode.  First the mode is set as for mode 0 above, then
+     * issue a device reset, then set the mode again.
+     */
+    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+                            port_id,
+                            INFO_FORMAT_RESET);
+    if (response == NULL)
+        return -1;
+
+    /* The documentation is unclear as to what response to expect.  I
+     * think it's a TYPE_PORT_FORMAT_COMBINED with zero bit
+     * combinations, but what the subsequent data (if any) is not well
+     * documented, nor does the code offer much clue.
+     */
+    if (response[0] < 5 ||
+        response[2] != TYPE_PORT_FORMAT_COMBINED ||
+        response[3] != port_id ||
+        response[4] != 0)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port CFormat (Reset)");
+        return -1;
+    }
+    free(response);
+
+    /* Now set the mode again */
+    response = make_request(10, TYPE_PORT_FORMAT_SETUP_SINGLE,
+                            port_id,
+                            mode,
+                            1, 0, 0, 0, /* Delta = 1 */
+                            0); /* Notification disabled */
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 10 ||
+        response[2] != TYPE_PORT_FORMAT_SINGLE ||
+        response[3] != port_id ||
+        response[4] != mode ||
+        response[5] != 1 ||
+        response[6] != 0 ||
+        response[7] != 0 ||
+        response[8] != 0 ||
+        response[9] != 0)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Format Setup");
+        return -1;
+    }
+
+    free(response);
+    return 0;
+}
