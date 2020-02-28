@@ -7,4 +7,5 @@ RUN apt-get update && \
 COPY .git /data/.git
 RUN git -C /data/ reset --hard
 
-RUN cd /data/ && ./build.sh
+WORKDIR /data/
+RUN ./build.sh
