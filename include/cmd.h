@@ -179,5 +179,10 @@ extern int cmd_write_mode_data(uint8_t port_id,
                                ssize_t nbytes,
                                const char *bytes);
 
+/* Sends a Port Input Format Setup command (possibly more, depending)
+ * to set the mode used on the given port.  Returns 0 on success, -1
+ * on error (when a Python exception will have been raised already).
+ */
+extern int cmd_set_mode(uint8_t port_id, uint8_t mode);
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */
