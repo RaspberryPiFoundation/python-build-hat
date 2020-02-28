@@ -20,6 +20,7 @@ try:
 	# Attaching a dummy to port A
 	fakeHat.stdin.write(b'attach a $dummy\n')
 	fakeHat.stdin.flush()
+	time.sleep(1)
 
 
 	# These tests should pass regardless of the state of the hat

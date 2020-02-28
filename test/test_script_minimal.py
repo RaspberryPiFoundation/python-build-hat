@@ -12,17 +12,11 @@ if __name__ == "__main__":
         args = parser.parse_args()
         fake_hat_binary = args.fake_hat
 
-try:
 # Fake Hat for testing purposes
-	fakeHat = subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+with subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as fakeHat:
 	time.sleep(0.5) # Sometimes FakeHat taks a little while to initialise
 	import hub # isort:skip
 	# Attaching a dummy to port A
 	fakeHat.stdin.write(b'attach a $dummy\n')
 	fakeHat.stdin.flush()
-
-	assert {'info'}.issubset(dir(hub))
-
-finally:
-	fakeHat.terminate()
-	fakeHat.kill()
+	# time.sleep(0.5)
