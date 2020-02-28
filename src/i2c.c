@@ -36,6 +36,7 @@
 
 static int i2c_fd = -1;
 static pthread_t comms_thread;
+static int shutdown = 0;
 
 #ifdef USE_DUMMY_I2C
 #include "dummy-i2c.h"
@@ -231,7 +232,7 @@ static void *run_comms(void *args __attribute__((unused)))
     int rv;
     int running = 1;
 
-    while (running)
+    while (running && !shutdown)
     {
         if ((rv = queue_check(&buffer)) != 0)
         {
@@ -306,7 +307,10 @@ int i2c_open_hat(void)
  */
 int i2c_close_hat(void)
 {
-    /* TODO: Kill comms thread */
+    /* Kill comms thread */
+    shutdown = 1;
+    pthread_join(comms_thread, NULL);
+
     if (close(i2c_fd) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
