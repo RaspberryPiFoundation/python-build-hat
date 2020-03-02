@@ -17,10 +17,6 @@ try:
 	fakeHat = subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	time.sleep(0.5) # Sometimes FakeHat taks a little while to initialise
 	import hub # isort:skip
-	# Attaching a dummy to port A
-	fakeHat.stdin.write(b'attach a $dummy\n')
-	fakeHat.stdin.flush()
-	time.sleep(1)
 
 	assert isinstance(hub.info(), dict)
 
@@ -34,6 +30,24 @@ try:
 		assert isinstance(P.info(), dict)
 		assert {'type'}.issubset(P.info().keys())
 
+	# These tests must be done with nothing attached to port A
+	assert isinstance(hub.port.A.info(), dict)
+	assert hub.port.A.info() == {'type': None}
+
+	# Attaching a dummy to port A
+	fakeHat.stdin.write(b'attach a $dummy\n')
+	fakeHat.stdin.flush()
+	time.sleep(1)
+
+	# Testing that hub is still the same
+	assert isinstance(hub.info(), dict)
+	assert {'hardware_revision'}.issubset(hub.info().keys()) # From real hub
+	ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.F]
+	random.shuffle(ports)
+	for P in ports:
+		assert {'callback', 'device', 'info', 'mode', 'pwm'}.issubset(dir(P))
+		assert isinstance(P.info(), dict)
+		assert {'type'}.issubset(P.info().keys())
 
 	# These tests must be done with a dummy attached to port A
 	assert isinstance(hub.port.A.info(), dict)
