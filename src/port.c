@@ -400,7 +400,7 @@ static PyTypeObject PortType =
     .tp_name = "Port",
     .tp_doc = "An individual port",
     .tp_basicsize = sizeof(PortObject),
-    .tp_itemsize= 0,
+    .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_new = Port_new,
     .tp_dealloc = (destructor)Port_dealloc,
@@ -549,7 +549,7 @@ static PyTypeObject PortSetType =
 /* The hub's (one and only) collection of ports */
 static PortSetObject *port_set;
 
-int port_init(PyObject *hub)
+int port_modinit(void)
 {
     if (PyType_Ready(&PortSetType) < 0)
         return -1;
@@ -561,24 +561,23 @@ int port_init(PyObject *hub)
         return -1;
     }
     Py_INCREF(&PortType);
-
-    port_set =
-        (PortSetObject *)PyObject_CallObject((PyObject *)&PortSetType, NULL);
-    Py_DECREF(&PortType);
-    Py_DECREF(&PortSetType);
-    if (port_set == NULL)
-        return -1;
-    if (PyModule_AddObject(hub, "port", (PyObject *)port_set) < 0)
-    {
-        Py_DECREF(port_set);
-        return -1;
-    }
     return 0;
 }
 
 
-void port_deinit(void)
+void port_demodinit(void)
 {
+    Py_DECREF(&PortType);
+    Py_DECREF(&PortSetType);
+}
+
+
+PyObject *port_init(void)
+{
+    port_set =
+        (PortSetObject *)PyObject_CallObject((PyObject *)&PortSetType, NULL);
+    Py_INCREF(port_set);
+    return (PyObject *)port_set;
 }
 
 

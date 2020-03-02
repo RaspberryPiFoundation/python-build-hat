@@ -37,8 +37,10 @@ typedef struct mode_info_s
 /* Total number of physical ports connected to the hat */
 #define NUM_HUB_PORTS 6
 
-extern int port_init(PyObject *hub);
-extern void port_deinit(void);
+extern int port_modinit(void);
+extern void port_demodinit(void);
+
+extern PyObject *port_init(void);
 
 /* The following are called only from the background comms thread */
 extern int port_attach_port(uint8_t port_id,

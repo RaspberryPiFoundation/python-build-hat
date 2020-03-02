@@ -441,7 +441,7 @@ static PyTypeObject DeviceType =
 };
 
 
-int device_init(void)
+int device_modinit(void)
 {
     if (PyType_Ready(&DeviceType) < 0)
         return -1;
@@ -450,8 +450,9 @@ int device_init(void)
 }
 
 
-void device_deinit(void)
+void device_demodinit(void)
 {
+    Py_DECREF(&DeviceType);
 }
 
 

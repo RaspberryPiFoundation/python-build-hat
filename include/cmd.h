@@ -46,11 +46,11 @@ typedef struct value_format_s
 /* Initialises the command subsystem, creating the exception used for
  * protocol errors.  Returns 0 for success, -1 for error.
  */
-extern int cmd_init(PyObject *hub);
+extern int cmd_modinit(PyObject *hub);
 
 
 /* Finalise the command subsystem */
-extern void cmd_deinit(void);
+extern void cmd_demodinit(void);
 
 
 /* Return the hub_protocol_error exception object, as an alternative

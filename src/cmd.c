@@ -65,7 +65,7 @@ static void handle_generic_error(uint8_t expected_type, uint8_t *buffer)
 }
 
 
-int cmd_init(PyObject *hub)
+int cmd_modinit(PyObject *hub)
 {
     hub_protocol_error = PyErr_NewException("hub.HubProtocolError", NULL, NULL);
     Py_XINCREF(hub_protocol_error);
@@ -80,7 +80,7 @@ int cmd_init(PyObject *hub)
 }
 
 
-void cmd_deinit(void)
+void cmd_demodinit(void)
 {
     if (hub_protocol_error == NULL)
         return;

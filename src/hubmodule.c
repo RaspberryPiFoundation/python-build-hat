@@ -17,6 +17,90 @@
 #include "device.h"
 
 
+/* The Hub object, an instance of which we make available */
+typedef struct
+{
+    PyObject_HEAD
+    PyObject *ports;
+} HubObject;
+
+
+static int
+Hub_traverse(HubObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->ports);
+    return 0;
+}
+
+
+static int
+Hub_clear(HubObject *self)
+{
+    Py_CLEAR(self->ports);
+    return 0;
+}
+
+
+static void
+Hub_dealloc(HubObject *self)
+{
+    PyObject_GC_UnTrack(self);
+    Hub_clear(self);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+
+static PyObject *
+Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    HubObject *self = (HubObject *)type->tp_alloc(type, 0);
+
+    if (self == NULL)
+        return NULL;
+
+    self->ports = port_init();
+    if (self->ports == NULL)
+    {
+        Py_DECREF(self);
+        return NULL;
+    }
+    if (i2c_open_hat() < 0)
+    {
+        Py_DECREF(self);
+        return NULL;
+    }
+
+    return (PyObject *)self;
+}
+
+
+static void
+Hub_finalize(PyObject *self)
+{
+    PyObject *etype, *evalue, *etraceback;
+
+    PyErr_Fetch(&etype, &evalue, &etraceback);
+    i2c_close_hat();
+    PyErr_Restore(etype, evalue, etraceback);
+}
+
+
+/* Make the hub.port object read-only */
+static PyObject *
+Hub_get_port(HubObject *self, void *closure)
+{
+    Py_INCREF(self->ports);
+    return self->ports;
+}
+
+
+static PyGetSetDef Hub_getsetters[] =
+{
+    { "port", (getter)Hub_get_port, NULL, "Ports connected to the hub", NULL },
+    { NULL }
+};
+
+
 static PyObject *
 hub_info(PyObject *self, PyObject *args)
 {
@@ -49,9 +133,29 @@ hub_info(PyObject *self, PyObject *args)
 }
 
 
-static PyMethodDef hub_methods[] = {
+static PyMethodDef Hub_methods[] = {
     { "info", hub_info, METH_VARARGS, "Information about the Hub" },
     { NULL, NULL, 0, NULL }
+};
+
+
+static PyTypeObject HubType =
+{
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "Hub",
+    .tp_doc = "Object encapsulating a Shortcake Hat",
+    .tp_basicsize = sizeof(HubObject),
+    .tp_itemsize = 0,
+    .tp_flags = (Py_TPFLAGS_DEFAULT |
+                 Py_TPFLAGS_HAVE_GC |
+                 Py_TPFLAGS_HAVE_FINALIZE),
+    .tp_new = Hub_new,
+    .tp_dealloc = (destructor)Hub_dealloc,
+    .tp_traverse = (traverseproc)Hub_traverse,
+    .tp_clear = (inquiry)Hub_clear,
+    .tp_getset = Hub_getsetters,
+    .tp_methods = Hub_methods,
+    .tp_finalize = Hub_finalize
 };
 
 
@@ -60,7 +164,6 @@ static struct PyModuleDef hubmodule = {
     "hub",
     NULL, /* Documentation */
     -1,   /* module state is in globals */
-    hub_methods, /* Methods */
 };
 
 
@@ -68,39 +171,53 @@ PyMODINIT_FUNC
 PyInit_hub(void)
 {
     PyObject *hub;
+    PyObject *hub_obj;
 
     if ((hub = PyModule_Create(&hubmodule)) == NULL)
         return NULL;
-
-    if (device_init() < 0)
+    if (PyType_Ready(&HubType) < 0)
     {
         Py_DECREF(hub);
         return NULL;
     }
+    Py_INCREF(&HubType);
 
-    if (port_init(hub) < 0)
+    if (device_modinit() < 0)
     {
-        device_deinit();
+        Py_DECREF(&HubType);
         Py_DECREF(hub);
         return NULL;
     }
 
-    if (cmd_init(hub) < 0)
+    if (port_modinit() < 0)
     {
-        port_deinit();
-        device_deinit();
+        device_demodinit();
+        Py_DECREF(&HubType);
         Py_DECREF(hub);
         return NULL;
     }
 
-    if (i2c_open_hat() < 0)
+    if (cmd_modinit(hub) < 0)
     {
-        cmd_deinit();
-        port_deinit();
-        device_deinit();
+        port_demodinit();
+        device_demodinit();
+        Py_DECREF(&HubType);
         Py_DECREF(hub);
         return NULL;
     }
 
+    hub_obj = PyObject_CallObject((PyObject *)&HubType, NULL);
+    Py_XINCREF(hub_obj);
+    if (PyModule_AddObject(hub, "hub", hub_obj) < 0)
+    {
+        Py_XDECREF(hub_obj);
+        Py_CLEAR(hub_obj);
+        cmd_demodinit();
+        port_demodinit();
+        device_demodinit();
+        Py_DECREF(&HubType);
+        Py_DECREF(hub);
+        return NULL;
+    }
     return hub;
 }

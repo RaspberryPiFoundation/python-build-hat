@@ -11,8 +11,8 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
-extern int device_init(void);
-extern void device_deinit(void);
+extern int device_modinit(void);
+extern void device_demodinit(void);
 
 /* Create a new Device class object for attaching to a port */
 extern PyObject *device_new_device(PyObject *port);
