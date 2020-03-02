@@ -22,6 +22,7 @@ import hub # isort:skip
 # Attaching a dummy to port A
 fakeHat.stdin.write(b'attach a $dummy\n')
 fakeHat.stdin.flush()
+time.sleep(1)
 
 
 # These tests should pass regardless of the state of the hat
@@ -43,6 +44,7 @@ class GeneralTestCase(unittest.TestCase):
 	def test_battery_info_type(self):
 		assert {'temperature', 'charge_voltage', 'charge_current', 'charge_voltage_filtered', 'error_state', 'charger_state', 'battery_capacity_left'}.issubset(hub.battery.info().keys())
 
+	@unittest.skip("Battery support is not planned")
 	def test_battery_functionality(self):
 		assert 0 <= hub.battery.capacity_left() <= 100
 		assert 0 <= hub.battery.charger_detect() <= 4 # Number says what kind of charger
@@ -58,12 +60,14 @@ class GeneralTestCase(unittest.TestCase):
 			assert isinstance(P.info(), dict)
 			assert {'type'}.issubset(P.info().keys())
 
-	@unittest.skip("Not implemented")
 	def test_port_mode_implemented(self):
 		ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.F]
 		random.shuffle(ports)
 		for P in ports:
-			P.mode()
+			try:
+				P.mode()
+			except NotImplementedError:
+				self.fail("Mode not implemented yet")
 
 # These tests must be done with a dummy attached to port A
 class DummyAttachedATestCase(unittest.TestCase):
@@ -76,8 +80,8 @@ class DummyAttachedATestCase(unittest.TestCase):
 	def test_port_device_mode(self):
 		assert {'mode'}.issubset(dir(hub.port.A.device))
 		try:
-			isinstance(hub.port.A.device.mode())
-		except NotImpelementedError:
+			isinstance(hub.port.A.device.mode(), dict)
+		except NotImplementedError:
 			self.skipTest('Mode not implemented')
 
 # These tests must be done with nothing attached to port F
