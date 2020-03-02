@@ -81,7 +81,7 @@ class DummyAttachedATestCase(unittest.TestCase):
 		assert {'mode'}.issubset(dir(hub.port.A.device))
 		try:
 			isinstance(hub.port.A.device.mode(), dict)
-		except NotImpelementedError:
+		except NotImplementedError:
 			self.skipTest('Mode not implemented')
 
 # These tests must be done with nothing attached to port F
