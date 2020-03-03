@@ -218,6 +218,31 @@ PyObject *cmd_get_firmware_version(void)
 }
 
 
+int cmd_get_port_value(uint8_t port_id)
+{
+    uint8_t *response = make_request(5, TYPE_PORT_INFO_REQ,
+                                     port_id,
+                                     PORT_INFO_VALUE);
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] < 4 ||
+        response[2] != TYPE_PORT_VALUE_SINGLE || /* TODO: could be Combi */
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Info (Value) request");
+        return -1;
+    }
+
+    /* The values will already have been put in place */
+    free(response);
+    return 0;
+}
+
+
 int cmd_get_port_modes(uint8_t port_id, port_modes_t *results)
 {
     uint8_t *response = make_request(5, TYPE_PORT_INFO_REQ,

@@ -48,9 +48,11 @@ extern int port_attach_port(uint8_t port_id,
                             uint8_t *hw_revision,
                             uint8_t *fw_revision);
 extern int port_detach_port(uint8_t port_id);
+extern int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes);
 
 extern int port_get_id(PyObject *port);
-/* NB: can return NULL without setting an exception if detached */
+
+extern int port_ensure_mode_info(PyObject *port);
 extern mode_info_t *port_get_mode(PyObject *port, int mode);
 extern int port_check_mode(PyObject *port, int mode);
 

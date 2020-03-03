@@ -249,12 +249,12 @@ Device_mode(PyObject *self, PyObject *args)
 }
 
 
-static double rescale_double(double value,
-                             min_max_t *inrange,
-                             min_max_t *outrange)
+static float rescale_float(float value,
+                           min_max_t *inrange,
+                           min_max_t *outrange)
 {
-    double in_interval = inrange->max - inrange->min;
-    double out_interval = outrange->max - outrange->min;
+    float in_interval = inrange->max - inrange->min;
+    float out_interval = outrange->max - outrange->min;
 
     return  ((value - inrange->min) *
              out_interval / in_interval) + outrange->min;
@@ -263,7 +263,7 @@ static double rescale_double(double value,
 
 static long rescale_long(long value, min_max_t *inrange, min_max_t *outrange)
 {
-    return (long)(rescale_double((double)value, inrange, outrange) + 0.5);
+    return (long)(rescale_float((float)value, inrange, outrange) + 0.5);
 }
 
 
@@ -292,6 +292,15 @@ Device_get(PyObject *self, PyObject *args)
                 PyErr_SetString(PyExc_ValueError, "Invalid format number");
                 return NULL;
             }
+        }
+    }
+
+    if (!device->is_unreported)
+    {
+        if (port_ensure_mode_info(device->port) < 0 ||
+            cmd_get_port_value(port_get_id(device->port)) < 0)
+        {
+            return NULL;
         }
     }
 
@@ -366,9 +375,9 @@ Device_get(PyObject *self, PyObject *args)
         }
         else if (PyFloat_Check(value))
         {
-            double dvalue = PyFloat_AsDouble(value);
+            float fvalue = (float)PyFloat_AsDouble(value);
 
-            if (dvalue == -1.0 && PyErr_Occurred() == NULL)
+            if (fvalue == -1.0 && PyErr_Occurred() == NULL)
             {
                 Py_DECREF(results);
                 return NULL;
@@ -376,21 +385,21 @@ Device_get(PyObject *self, PyObject *args)
             switch (format)
             {
                 case DEVICE_FORMAT_PERCENT:
-                    dvalue = rescale_double(dvalue,
-                                            &mode->raw,
-                                            &mode->percent);
+                    fvalue = rescale_float(fvalue,
+                                           &mode->raw,
+                                           &mode->percent);
                     break;
 
                 case DEVICE_FORMAT_SI:
-                    dvalue = rescale_double(dvalue,
-                                            &mode->raw,
-                                            &mode->si);
+                    fvalue = rescale_float(fvalue,
+                                           &mode->raw,
+                                           &mode->si);
                     break;
 
                 default:
                     break;
             }
-            value = PyFloat_FromDouble(dvalue);
+            value = PyFloat_FromDouble((double)fvalue);
             if (value == NULL)
             {
                 Py_DECREF(results);
@@ -411,6 +420,7 @@ Device_get(PyObject *self, PyObject *args)
         }
     }
 
+    device->is_unreported = 0;
     return results;
 }
 
@@ -463,4 +473,118 @@ PyObject *device_new_device(PyObject *port)
     if (args == NULL)
         return NULL;
     return PyObject_CallObject((PyObject *)&DeviceType, args);
+}
+
+
+int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    PyObject *values;
+    PyObject *value;
+    mode_info_t *mode;
+    int i;
+    uint16_t bytes_consumed = 1;
+
+    if ((mode = port_get_mode(device->port, device->current_mode)) == NULL)
+        /* Can't get the mode info */
+        return -1;
+
+    /* Construct the list to contain these results */
+    if ((values = PyList_New(mode->format.datasets)) == NULL)
+        return -1;
+
+    for (i = 0; i < mode->format.datasets; i++)
+    {
+        value = NULL;
+        switch (mode->format.type)
+        {
+            case FORMAT_8BIT:
+                if (nbytes < 1)
+                {
+                    Py_DECREF(values);
+                    return -1;
+                }
+                if ((value = PyLong_FromLong(buffer[0])) == NULL)
+                {
+                    Py_DECREF(values);
+                    return -1;
+                }
+                buffer++;
+                nbytes--;
+                bytes_consumed++;
+                break;
+
+            case FORMAT_16BIT:
+                if (nbytes < 2)
+                {
+                    Py_DECREF(values);
+                    return -1;
+                }
+                if ((value = PyLong_FromLong(buffer[0] |
+                                             (buffer[1] << 8))) == NULL)
+                {
+                    Py_DECREF(values);
+                    return -1;
+                }
+                buffer += 2;
+                nbytes -= 2;
+                bytes_consumed += 2;
+                break;
+
+            case FORMAT_32BIT:
+                if (nbytes < 4)
+                {
+                    Py_DECREF(values);
+                    return -1;
+                }
+                if ((value = PyLong_FromLong(buffer[0] |
+                                             (buffer[1] << 8) |
+                                             (buffer[2] << 16) |
+                                             (buffer[3] << 24))) == NULL)
+                {
+                    Py_DECREF(values);
+                    return -1;
+                }
+                buffer += 4;
+                nbytes -= 4;
+                bytes_consumed += 4;
+                break;
+
+            case FORMAT_FLOAT:
+            {
+                uint32_t bytes;
+                float fvalue;
+
+                if (nbytes < 4)
+                {
+                    Py_DECREF(values);
+                    return -1;
+                }
+                bytes = (buffer[0] |
+                         (buffer[1] << 8) |
+                         (buffer[2] << 16) |
+                         (buffer[3] << 24));
+                memcpy(&fvalue, &bytes, 4);
+                if ((value = PyFloat_FromDouble((double)fvalue)) == NULL)
+                {
+                    Py_DECREF(values);
+                    return -1;
+                }
+                buffer += 4;
+                nbytes -= 4;
+                bytes_consumed += 4;
+                break;
+            }
+        }
+
+        PyList_SET_ITEM(values, i, value);
+    }
+
+    /* Swap the new data into place */
+    PyObject *old_values = device->values;
+    device->values = values;
+    Py_XDECREF(old_values);
+    device->is_unreported = 1;
+
+    return bytes_consumed;
 }

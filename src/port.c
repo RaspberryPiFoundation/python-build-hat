@@ -654,9 +654,63 @@ int port_detach_port(uint8_t port_id)
 }
 
 
+/* Called from the background context */
+int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
+{
+    /* Some or all of the buffer will be the values we crave */
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    PortObject *port = (PortObject *)port_set->ports[port_id];
+    int rv;
+
+    if (port->device == Py_None)
+    {
+        /* We don't think we have anything attached.  Unfortunately
+         * this means we cannot tell how much of the buffer was the
+         * value for this port.  Options are:
+         *
+         * a) Assume this was a simple case, consume the whole buffer
+         * and return success, since this is most likely something
+         * happening in an unhelpful order, or
+         *
+         * b) Report an error and get the lower levels to abandon
+         * processing.
+         *
+         * We'll go with the error for safety.
+         */
+        rv = -1;
+    }
+    else
+    {
+        rv = device_new_value(port->device, buffer, nbytes);
+    }
+
+    PyGILState_Release(gstate);
+    return rv;
+}
+
+
 int port_get_id(PyObject *port)
 {
     return ((PortObject *)port)->port_id;
+}
+
+
+int
+port_ensure_mode_info(PyObject *port)
+{
+    PortObject *self = (PortObject *)port;
+
+    if (self->type_id == 0)
+    {
+        PyErr_SetString(cmd_get_exception(), "Unexpectedly detached");
+        return -1;
+    }
+
+    if ((self->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
+        if (get_mode_info(self) < 0)
+            return -1;
+
+    return 0;
 }
 
 
@@ -665,12 +719,8 @@ port_get_mode(PyObject *port, int mode)
 {
     PortObject *self = (PortObject *)port;
 
-    if (self->type_id == 0)
+    if (port_ensure_mode_info(port) < 0)
         return NULL;
-
-    if ((self->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
-        if (get_mode_info(self) < 0)
-            return NULL;
 
     if (mode < 0 || mode >= self->num_modes)
     {
@@ -687,16 +737,8 @@ port_check_mode(PyObject *port, int mode)
 {
     PortObject *self = (PortObject *)port;
 
-    if (self->type_id == 0)
-    {
-        PyErr_SetString(cmd_get_exception(), "Unexpectedly detached");
+    if (port_ensure_mode_info(port) < 0)
         return -1;
-    }
-
-    if ((self->flags & PO_FLAGS_GOT_MODE_INFO) == 0)
-        if (get_mode_info(self) < 0)
-            return -1;
 
     return (mode >= 0) && (mode < self->num_modes);
 }
-

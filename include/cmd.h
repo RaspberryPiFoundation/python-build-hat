@@ -74,6 +74,14 @@ extern PyObject *cmd_get_hardware_version(void);
  */
 extern PyObject *cmd_get_firmware_version(void);
 
+/* Sends a Port Information Request command for the value and waits
+ * for the Port Value (Single or Combination) response.  The values
+ * will be inserted into the device structure.  Returns 0 on success
+ * (and the device->values entry will be updated) or -1 on error (when
+ * an exception will already be raised).
+ */
+extern int cmd_get_port_value(uint8_t port_id);
+
 /* Sends a Hub Port Info Request command for the mode info of the
  * given port.  Fills in the port_modes_t structure with the returned
  * information, returning 0 on success or -1 on error (when an

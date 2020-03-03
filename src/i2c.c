@@ -44,6 +44,24 @@ static int shutdown = 0;
 #define write(f,b,n) dummy_i2c_write(f,b,n)
 #endif
 
+/* Bit manipulation macros for multi-word bitmaps */
+#define BITS_PER_WORD 32
+#define BITMAP_INDEX(b) ((b) / BITS_PER_WORD)
+#define BITMAP_SHIFT(b) ((b) % BITS_PER_WORD)
+#define DEFINE_BITMAP(name, len) \
+    uint32_t name[BITMAP_INDEX(len-1) + 1]
+#define BITMAP_SET(name, bit) do { \
+        name[BITMAP_INDEX(bit)] |= 1 << BITMAP_SHIFT(bit);      \
+    } while (0)
+#define BITMAP_CLEAR(name, bit) do { \
+        name[BITMAP_INDEX(bit)] &= ~(1 << BITMAP_SHIFT(bit));   \
+    } while (0)
+#define BITMAP_IS_SET(name, bit) \
+    (name[BITMAP_INDEX(bit)] & (1 << BITMAP_SHIFT(bit)))
+
+/* Bitmap indicating that the given port is expecting a value response */
+DEFINE_BITMAP(expecting_value_on_port, 256);
+
 
 static inline uint16_t extract_uint16(uint8_t *buffer)
 {
@@ -79,6 +97,13 @@ static int send_command(uint8_t *buffer)
     if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
         return 0;
 #endif
+
+    /* Is this a Port Info request asking for the value? */
+    if (buffer[2] == TYPE_PORT_INFO_REQ &&
+        buffer[4] == PORT_INFO_VALUE)
+    {
+        BITMAP_SET(expecting_value_on_port, buffer[3]);
+    }
 
     /* Construct the buffer length */
     nbytes = buffer[0];
@@ -193,11 +218,74 @@ static int handle_attached_io_message(uint8_t *buffer)
     return 1;
 }
 
+
+static int handle_port_value_single(uint8_t *buffer, int *ppassback)
+{
+    uint16_t nbytes = buffer[0];
+
+    if (nbytes >= 0x80)
+    {
+        buffer++;
+        nbytes = (nbytes & 0x7f) | (buffer[0] << 7);
+    }
+
+    /* Assume nothing was waiting for these values */
+    *ppassback = 0;
+
+    /* PV(S) messages are at least 5 bytes long */
+    if (nbytes < 5 || buffer[2] != TYPE_PORT_VALUE_SINGLE)
+        return 0; /* Not for us */
+    if (buffer[1] != 0)
+    {
+        errno = EPROTO; /* Protocol error */
+        return -1;
+    }
+
+    /* Because life is never easy, the message can contain a sequence
+     * of ports and values.  Further, decoding the values out of the
+     * buffer requires knowing what the data format is, which is a
+     * feature of the device mode.  We have to loop through until we
+     * run out of buffer.
+     */
+    buffer += 3;
+    nbytes -= 3;
+    while (nbytes > 0)
+    {
+        int rv;
+
+        if (nbytes < 2)
+        {
+            /* Less than the minimum possible, bomb out */
+            errno = EPROTO;
+            return -1;
+        }
+
+        /* Check if the foreground will be waiting for this */
+        if (BITMAP_IS_SET(expecting_value_on_port, buffer[0]))
+        {
+            BITMAP_CLEAR(expecting_value_on_port, buffer[0]);
+            *ppassback = 1;
+        }
+        if ((rv = port_new_value(buffer[0], buffer+1, nbytes-1)) < 0)
+        {
+            errno = EPROTO;
+            return -1;
+        }
+        nbytes -= rv;
+        buffer += rv;
+    }
+
+    /* Packet has been handled */
+    return 1;
+}
+
+
 /* Returns 1 on success, 0 on failure */
 static int poll_i2c(void)
 {
     uint8_t *buffer;
     int rv;
+    int passback;
 
     if ((rv = read_message(&buffer)) < 0)
     {
@@ -209,7 +297,13 @@ static int poll_i2c(void)
         return 1;
 
     /* Is this something to deal with immediately? */
-    if ((rv =  handle_attached_io_message(buffer)) != 0)
+    if ((rv = handle_attached_io_message(buffer)) != 0)
+    {
+        free(buffer);
+        return (rv < 0) ? 0 : 1;
+    }
+    if ((rv = handle_port_value_single(buffer, &passback)) < 0 ||
+        (rv > 0 && !passback))
     {
         free(buffer);
         return (rv < 0) ? 0 : 1;
