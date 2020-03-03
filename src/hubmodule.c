@@ -16,6 +16,9 @@
 #include "port.h"
 #include "device.h"
 
+#ifdef DEBUG_I2C
+#include "debug-i2c.h"
+#endif
 
 /* The Hub object, an instance of which we make available */
 typedef struct
@@ -132,9 +135,25 @@ hub_info(PyObject *self, PyObject *args)
     return dict;
 }
 
+#ifdef DEBUG_I2C
+static PyObject *
+hub_debug_i2c(PyObject *self, PyObject *args)
+{
+    if (!PyArg_ParseTuple(args, "")) /* No args here either */
+        return NULL;
+
+    log_i2c_dump();
+
+    Py_RETURN_NONE;
+}
+#endif /* DEBUG_I2C */
+
 
 static PyMethodDef Hub_methods[] = {
     { "info", hub_info, METH_VARARGS, "Information about the Hub" },
+#ifdef DEBUG_I2C
+    { "debug_i2c", hub_debug_i2c, METH_VARARGS, "Dump recorded I2C traffic" },
+#endif
     { NULL, NULL, 0, NULL }
 };
 

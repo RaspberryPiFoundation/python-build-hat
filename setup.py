@@ -18,6 +18,12 @@ if getenv("USE_DUMMY_I2C") == "1":
     hub_module.sources.append('src/dummy-i2c.c')
     hub_module.define_macros.append(('USE_DUMMY_I2C', '1'))
 
+# Similarly if DEBUG_I2C is set, extra commands are added to the hub
+# module to facilite debugging.
+if getenv("DEBUG_I2C") == "1":
+    hub_module.sources.append('src/debug-i2c.c')
+    hub_module.define_macros.append(('DEBUG_I2C', '1'))
+
 setup(name='hub',
       version='0.1',
       description='Strawberry library for accessing Shortcake',

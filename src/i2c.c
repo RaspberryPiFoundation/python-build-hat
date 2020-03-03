@@ -29,6 +29,10 @@
 #include "port.h"
 #include "protocol.h"
 
+#ifdef DEBUG_I2C
+#include "debug-i2c.h"
+#endif
+
 
 #define I2C_DEVICE_NAME "/dev/i2c-1"
 #define HAT_ADDRESS 0x10 /* TODO: replace with the right number */
@@ -37,6 +41,7 @@
 static int i2c_fd = -1;
 static pthread_t comms_thread;
 static int shutdown = 0;
+
 
 #ifdef USE_DUMMY_I2C
 #include "dummy-i2c.h"
@@ -296,6 +301,10 @@ static int poll_i2c(void)
     if (buffer == NULL)
         return 1;
 
+#ifdef DEBUG_I2C
+    log_i2c(buffer, 0);
+#endif
+
     /* Is this something to deal with immediately? */
     if ((rv = handle_attached_io_message(buffer)) != 0)
     {
@@ -337,6 +346,9 @@ static void *run_comms(void *args __attribute__((unused)))
         {
             if (buffer != NULL)
             {
+#ifdef DEBUG_I2C
+                log_i2c(buffer, 1);
+#endif
                 running = send_command(buffer);
                 free(buffer);
                 /* XXX: wait for response? */
@@ -374,6 +386,14 @@ int i2c_open_hat(void)
         return -1;
     }
 #endif /* USE_DUMMY_I2C */
+
+#ifdef DEBUG_I2C
+    if (log_i2c_init() < 0)
+    {
+        PyErr_SetString(PyExc_IOError, "I2C log init failed");
+        return -1;
+    }
+#endif /* DEBUG_I2C */
 
     /* Initialise thread work queue */
     if ((rv = queue_init()) != 0)
