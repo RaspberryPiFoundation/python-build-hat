@@ -14,6 +14,7 @@
 #include "port.h"
 #include "cmd.h"
 #include "device.h"
+#include "motor.h"
 
 
 /* The actual Port type */
@@ -21,6 +22,7 @@ typedef struct
 {
     PyObject_HEAD
     PyObject *device;
+    PyObject *motor;
     PyObject *callback_fn;
     PyObject *hw_revision;
     PyObject *fw_revision;
@@ -72,6 +74,8 @@ Port_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     {
         self->device = Py_None;
         Py_INCREF(Py_None);
+        self->motor = Py_None;
+        Py_INCREF(Py_None);
         self->callback_fn = Py_None;
         Py_INCREF(Py_None);
     }
@@ -87,12 +91,24 @@ Port_get_device(PortObject *self, void *closure)
     return self->device;
 }
 
+/* Ditto Port.motor */
+static PyObject *
+Port_get_motor(PortObject *self, void *closure)
+{
+    Py_INCREF(self->motor);
+    return self->motor;
+}
+
 
 static PyGetSetDef Port_getsetters[] =
 {
     {
         "device", (getter)Port_get_device, NULL,
         "Generic device handler", NULL
+    },
+    {
+        "motor", (getter)Port_get_motor, NULL,
+        "Handler for motor devices", NULL
     },
     { NULL }
 };
@@ -597,6 +613,26 @@ int port_attach_port(uint8_t port_id,
 
     if (device == NULL)
         return -1;
+    if (motor_is_motor(type_id))
+    {
+        PyObject *motor = motor_new_motor((PyObject *)port);
+
+        if (motor == NULL)
+        {
+            Py_DECREF(device);
+            return -1;
+        }
+
+        Py_DECREF(port->motor);
+        port->motor = motor;
+    }
+    else
+    {
+        Py_XDECREF(port->motor);
+        port->motor = Py_None;
+        Py_INCREF(Py_None);
+    }
+
     Py_DECREF(port->device);
     port->device = device;
     port->type_id = type_id;
@@ -638,6 +674,9 @@ int port_detach_port(uint8_t port_id)
     port->fw_revision = NULL;
     Py_XDECREF(port->device);
     port->device = Py_None;
+    Py_INCREF(Py_None);
+    Py_XDECREF(port->motor);
+    port->motor = Py_None;
     Py_INCREF(Py_None);
 
     if (port->callback_fn != Py_None)
