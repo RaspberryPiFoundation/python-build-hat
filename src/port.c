@@ -234,8 +234,7 @@ Port_info(PyObject *self, PyObject *args)
         /* Taking a wild guess here, but the only thing I can see
          * the mode number corresponding to is the position in the
          * mode list.  Assume that that is the case, and each mode
-         * is either input or output but not both.  XXX: ask Lego
-         * the truth of this matter.
+         * is either input or output but not both.
          */
         mode_entry = Py_BuildValue(
             "{sss(ff)s(ff)s(ff)sssBsBsy#s{sBsBsBsB}}",
