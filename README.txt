@@ -4,7 +4,7 @@ Usage
 To control a motor attached to port A:
 
 ```python
-import hub
+from hub import hub
 
 hub.port.A.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
 hub.port.A.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
@@ -17,7 +17,7 @@ hub.port.A.motor.run_to_position(180, 127) # Move to 180 degrees forward of top 
 To rotate motor attached to port once clockwise when a button attached to port B is pressed:
 
 ```python
-import hub
+from hub import hub
 import time
 
 while True:
@@ -51,3 +51,6 @@ Now use the setup.py script to build and install the module:
 
 You should now be able to "import hub" in a Python3 script and have
 the module available to you.
+
+Optionally the code may be compiled with "DEBUG_I2C=1" to enable logging
+of the I2C traffic on the hub.
