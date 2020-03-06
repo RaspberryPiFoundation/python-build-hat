@@ -105,15 +105,34 @@ Motor_get(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
     PyObject *get_fn = PyObject_GetAttrString(motor->device, "get");
+    PyObject *result;
 
     if (get_fn == NULL)
         return NULL;
-    return PyObject_CallObject(get_fn, args);
+    result = PyObject_CallObject(get_fn, args);
+    Py_DECREF(get_fn);
+    return result;
+}
+
+
+static PyObject *
+Motor_mode(PyObject *self, PyObject *args)
+{
+    MotorObject *motor = (MotorObject *)self;
+    PyObject *mode_fn = PyObject_GetAttrString(motor->device, "mode");
+    PyObject *result;
+
+    if (mode_fn == NULL)
+        return NULL;
+    result = PyObject_CallObject(mode_fn, args);
+    Py_DECREF(mode_fn);
+    return result;
 }
 
 
 static PyMethodDef Motor_methods[] = {
-    { "get", Motor_get, METH_VARARGS, "Get as set of readings from the motor" },
+    { "mode", Motor_mode, METH_VARARGS, "Get or set the current mode" },
+    { "get", Motor_get, METH_VARARGS, "Get a set of readings from the motor" },
     { NULL, NULL, 0, NULL }
 };
 
