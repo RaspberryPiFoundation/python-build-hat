@@ -145,10 +145,46 @@ Motor_pwm(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Motor_float(PyObject *self, PyObject *args)
+{
+    MotorObject *motor = (MotorObject *)self;
+
+    /* float() is equivalent to pwm(0) */
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    return PyObject_CallMethod(motor->port, "pwm", "i", 0);
+}
+
+
+static PyObject *
+Motor_brake(PyObject *self, PyObject *args)
+{
+    MotorObject *motor = (MotorObject *)self;
+
+    /* brake() is equivalent to pwm(127) */
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    return PyObject_CallMethod(motor->port, "pwm", "i", 127);
+}
+
+
 static PyMethodDef Motor_methods[] = {
     { "mode", Motor_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Motor_get, METH_VARARGS, "Get a set of readings from the motor" },
     { "pwm", Motor_pwm, METH_VARARGS, "Set the PWM level for the motor" },
+    {
+        "float", Motor_float, METH_VARARGS,
+        "Force the motor driver to floating state"
+    },
+    {
+        "brake", Motor_brake, METH_VARARGS,
+        "Force the motor driver to brake state"
+    },
     { NULL, NULL, 0, NULL }
 };
 
