@@ -18,12 +18,15 @@ extern void motor_demodinit(void);
 extern PyObject *motor_new_motor(PyObject *port);
 
 /* Check for the device type being Motor (0001), System Train Motor (0002),
- * External Motor With Tacho (0026) or Internal Motor With Tacho (0027)
+ * External Motor With Tacho (0026) or Internal Motor With Tacho (0027),
+ * or the unlisted devices on my desk (0030 and 0031).
  */
 #define motor_is_motor(dt) \
     ((dt) == 0x0001 ||     \
      (dt) == 0x0002 ||     \
      (dt) == 0x0026 ||     \
-     (dt) == 0x0027)
+     (dt) == 0x0027 ||     \
+     (dt) == 0x0030 ||     \
+     (dt) == 0x0031)
 
 #endif /* RPI_STRAWBERRY_MOTOR_H_INCLUDED */
