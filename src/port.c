@@ -615,7 +615,7 @@ int port_attach_port(uint8_t port_id,
         return -1;
     if (motor_is_motor(type_id))
     {
-        PyObject *motor = motor_new_motor((PyObject *)port);
+        PyObject *motor = motor_new_motor((PyObject *)port, device);
 
         if (motor == NULL)
         {
@@ -728,9 +728,20 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
 }
 
 
-int port_get_id(PyObject *port)
+int
+port_get_id(PyObject *port)
 {
     return ((PortObject *)port)->port_id;
+}
+
+
+PyObject *
+port_get_device(PyObject *port)
+{
+    PortObject *self = (PortObject *)port;
+
+    Py_INCREF(self->device);
+    return self->device;
 }
 
 
