@@ -130,9 +130,25 @@ Motor_mode(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Motor_pwm(PyObject *self, PyObject *args)
+{
+    MotorObject *motor = (MotorObject *)self;
+    PyObject *pwm_fn = PyObject_GetAttrString(motor->port, "pwm");
+    PyObject *result;
+
+    if (pwm_fn == NULL)
+        return NULL;
+    result = PyObject_CallObject(pwm_fn, args);
+    Py_DECREF(pwm_fn);
+    return result;
+}
+
+
 static PyMethodDef Motor_methods[] = {
     { "mode", Motor_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Motor_get, METH_VARARGS, "Get a set of readings from the motor" },
+    { "pwm", Motor_pwm, METH_VARARGS, "Set the PWM level for the motor" },
     { NULL, NULL, 0, NULL }
 };
 
