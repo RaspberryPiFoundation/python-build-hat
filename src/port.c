@@ -744,6 +744,24 @@ int port_new_format(uint8_t port_id)
 }
 
 
+/* Called from the background context */
+int port_feedback_status(uint8_t port_id, uint8_t status)
+{
+    PortObject *port = (PortObject *)port_set->ports[port_id];
+
+    if (port->device == Py_None)
+    {
+        /* We don't think anything is attached.  How odd. */
+        return -1;
+    }
+    /* The status byte is not very clearly documented.  The
+     * corresponding code insists that bit zero is the Busy bit, so
+     * filter that through.
+     */
+    return device_set_port_busy(port->device, status & 0x01);
+}
+
+
 int
 port_get_id(PyObject *port)
 {

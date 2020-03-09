@@ -24,6 +24,7 @@ typedef struct
     int current_mode;
     uint8_t is_unreported;
     uint8_t is_mode_busy;
+    uint8_t is_motor_busy;
 } DeviceObject;
 
 
@@ -608,6 +609,15 @@ int device_new_format(PyObject *self)
 }
 
 
+int device_set_port_busy(PyObject *self, uint8_t is_busy)
+{
+    DeviceObject *device = (DeviceObject *)self;
+
+    device->is_motor_busy = is_busy ? 1 : 0;
+    return 0;
+}
+
+
 PyObject *device_is_busy(PyObject *self, int type)
 {
     DeviceObject *device = (DeviceObject *)self;
@@ -617,7 +627,8 @@ PyObject *device_is_busy(PyObject *self, int type)
         case 0:
             return PyBool_FromLong(device->is_mode_busy);
 
-            /* TODO: case 1: device->is_motor_busy */
+        case 1:
+            return PyBool_FromLong(device->is_motor_busy);
 
         default:
             break;

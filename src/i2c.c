@@ -296,6 +296,47 @@ static int handle_port_value_single(uint8_t *buffer,
 }
 
 
+static int handle_output_feedback(uint8_t *buffer, uint16_t nbytes)
+{
+    /* The Port Output Command Feedback message must be at least 5 bytes */
+    if (nbytes < 5 || buffer[2] != TYPE_PORT_OUTPUT_FEEDBACK)
+        return 0; /* Not for us */
+    if (buffer[1] != 0)
+    {
+        errno = EPROTO; /* Protocol error */
+        return -1;
+    }
+
+    /* Life still isn't easy: this time the feedback message can be
+     * for many ports.  We process the message two bytes at a time
+     * (port number and status, in that order), starting at byte 3.
+     */
+    buffer += 3;
+    nbytes -= 3;
+    while (nbytes > 0)
+    {
+        int rv;
+
+        if (nbytes < 2)
+        {
+            /* Less than the minimum possible, bomb out */
+            errno = EPROTO;
+            return -1;
+        }
+
+        if ((rv = port_feedback_status(buffer[0], buffer[1])) < 0)
+        {
+            errno = EPROTO;
+            return -1;
+        }
+        nbytes -= rv;
+        buffer += rv;
+    }
+
+    return 0;
+}
+
+
 /* Returns 1 on success, 0 on failure */
 static int poll_i2c(void)
 {
@@ -340,6 +381,11 @@ static int poll_i2c(void)
     {
         free(buffer);
         return (rv < 0) ? 0 : 1;
+    }
+    if ((rv = handle_output_feedback(buffer, nbytes)) < 0)
+    {
+        free(buffer);
+        return 1;
     }
 
     if (queue_return_buffer(buffer) < 0)
