@@ -49,6 +49,7 @@ extern int port_attach_port(uint8_t port_id,
                             uint8_t *fw_revision);
 extern int port_detach_port(uint8_t port_id);
 extern int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes);
+extern int port_new_format(uint8_t port_id);
 
 extern int port_get_id(PyObject *port);
 extern PyObject *port_get_device(PyObject *port);

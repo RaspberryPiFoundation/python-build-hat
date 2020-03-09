@@ -22,4 +22,11 @@ extern PyObject *device_new_device(PyObject *port);
  */
 extern int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes);
 
+/* Update internal state from the format information */
+extern int device_new_format(PyObject *self);
+
+/* Check if the device is busy as a motor or with mode changes */
+extern PyObject *device_is_busy(PyObject *self, int type);
+
+
 #endif /* RPI_STRAWBERRY_DEVICE_H_INCLUDED */

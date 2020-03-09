@@ -14,6 +14,7 @@
 
 #include "motor.h"
 #include "port.h"
+#include "device.h"
 
 
 /* The actual Motor type */
@@ -22,7 +23,17 @@ typedef struct
     PyObject_HEAD
     PyObject *port;
     PyObject *device;
+    int default_acceleration;
+    int default_deceleration;
+    int is_default_acceleration_set;
+    int is_default_deceleration_set;
 } MotorObject;
+
+#define DEFAULT_ACCELERATION 100
+#define DEFAULT_DECELERATION 150
+
+#define USE_PROFILE_ACCELERATE 0x01
+#define USE_PROFILE_DECELERATE 0x02
 
 
 static int
@@ -86,6 +97,13 @@ Motor_init(MotorObject *self, PyObject *args, PyObject *kwds)
     tmp = self->device;
     self->device = device;
     Py_XDECREF(tmp);
+
+    self->default_acceleration = DEFAULT_ACCELERATION;
+    self->default_deceleration = DEFAULT_DECELERATION;
+
+    self->is_default_acceleration_set = 0;
+    self->is_default_deceleration_set = 0;
+
     return 0;
 }
 
@@ -173,6 +191,48 @@ Motor_brake(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Motor_hold(PyObject *self, PyObject *args)
+{
+    MotorObject *motor = (MotorObject *)self;
+    int max_power = 100;
+    uint8_t use_profile = 0;
+
+    if (!PyArg_ParseTuple(args, "|i", &max_power))
+        return NULL;
+
+    if (max_power > 100 || max_power < 0)
+    {
+        PyErr_Format(PyExc_ValueError,
+                     "Max power %d out of range",
+                     max_power);
+        return NULL;
+    }
+    if (motor->default_acceleration != 0)
+        use_profile |= USE_PROFILE_ACCELERATE;
+    if (motor->default_deceleration != 0)
+        use_profile |= USE_PROFILE_DECELERATE;
+
+    if (cmd_start_speed(port_get_id(motor->port), 0,
+                        max_power, use_profile) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+Motor_busy(PyObject *self, PyObject *args)
+{
+    MotorObject *motor = (MotorObject *)self;
+    int type;
+
+    if (!PyArg_ParseTuple(args, "i", &type))
+        return NULL;
+
+    return device_is_busy(motor->device, type);
+}
+
+
 static PyMethodDef Motor_methods[] = {
     { "mode", Motor_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Motor_get, METH_VARARGS, "Get a set of readings from the motor" },
@@ -185,6 +245,11 @@ static PyMethodDef Motor_methods[] = {
         "brake", Motor_brake, METH_VARARGS,
         "Force the motor driver to brake state"
     },
+    {
+        "hold", Motor_hold, METH_VARARGS,
+        "Force the motor driver to hold position"
+    },
+    { "busy", Motor_busy, METH_VARARGS, "Check if the motor is busy" },
     { NULL, NULL, 0, NULL }
 };
 

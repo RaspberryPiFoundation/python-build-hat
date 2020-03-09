@@ -22,7 +22,8 @@ typedef struct
     PyObject *port;
     PyObject *values;
     int current_mode;
-    int is_unreported;
+    uint8_t is_unreported;
+    uint8_t is_mode_busy;
 } DeviceObject;
 
 
@@ -78,6 +79,7 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_INCREF(Py_None);
         self->current_mode = 0;
         self->is_unreported = 0;
+        self->is_mode_busy = 0;
     }
     return (PyObject *)self;
 }
@@ -485,6 +487,8 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
     int i;
     uint16_t bytes_consumed = 1;
 
+    device->is_mode_busy = 0;
+
     if ((mode = port_get_mode(device->port, device->current_mode)) == NULL)
         /* Can't get the mode info */
         return -1;
@@ -587,4 +591,38 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
     device->is_unreported = 1;
 
     return bytes_consumed;
+}
+
+
+int device_new_format(PyObject *self)
+{
+    DeviceObject *device = (DeviceObject *)self;
+
+    /* A device is considered busy with its mode inbetween sending
+     * the Port Input Format message confirming a mode/format change
+     * and the next Port Value message.  This may supercede the
+     * device->is_unreported flag.
+     */
+    device->is_mode_busy = 1;
+    return 0;
+}
+
+
+PyObject *device_is_busy(PyObject *self, int type)
+{
+    DeviceObject *device = (DeviceObject *)self;
+
+    switch (type)
+    {
+        case 0:
+            return PyBool_FromLong(device->is_mode_busy);
+
+            /* TODO: case 1: device->is_motor_busy */
+
+        default:
+            break;
+    }
+
+    PyErr_Format(PyExc_ValueError, "Invalid busy type %d\n", type);
+    return NULL;
 }

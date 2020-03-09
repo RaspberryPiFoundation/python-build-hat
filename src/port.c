@@ -727,6 +727,23 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
 }
 
 
+/* Called from the background context */
+int port_new_format(uint8_t port_id)
+{
+    /* Don't need to call any Python functions off this */
+    PortObject *port = (PortObject *)port_set->ports[port_id];
+
+    if (port->device == Py_None)
+    {
+        /* We don't think anything is attached.  See port_new_value()
+         * for why this is more of a problem than you would hope.
+         */
+        return -1;
+    }
+    return device_new_format(port->device);
+}
+
+
 int
 port_get_id(PyObject *port)
 {

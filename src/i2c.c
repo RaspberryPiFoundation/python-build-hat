@@ -170,15 +170,8 @@ static int read_message(uint8_t **pbuffer)
 /* NB: returns -1 on error (with errno set), 1 if the message has
  * been handled, and 0 if another handler should look at it.
  */
-static int handle_attached_io_message(uint8_t *buffer)
+static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
 {
-    uint16_t nbytes = buffer[0];
-
-    if (nbytes >= 0x80)
-    {
-        buffer++;
-        nbytes = (nbytes & 0x7f) | (buffer[0] << 7);
-    }
     /* Hab Attacked I/O messages are at least 5 bytes long */
     if (nbytes < 5 || buffer[2] != TYPE_HUB_ATTACHED_IO)
         return 0; /* Not for us */
@@ -224,16 +217,34 @@ static int handle_attached_io_message(uint8_t *buffer)
 }
 
 
-static int handle_port_value_single(uint8_t *buffer, int *ppassback)
+static int handle_port_format_single(uint8_t *buffer, uint16_t nbytes)
 {
-    uint16_t nbytes = buffer[0];
+    int rv;
 
-    if (nbytes >= 0x80)
+    /* PF(S) messages are 10 bytes long */
+    if (nbytes < 10 || buffer[2] != TYPE_PORT_FORMAT_SINGLE)
+        return 0; /* NOt for us */
+
+    if (buffer[1] != 0)
     {
-        buffer++;
-        nbytes = (nbytes & 0x7f) | (buffer[0] << 7);
+        errno = EPROTO; /* Protocol error */
+        return -1;
     }
 
+    if ((rv = port_new_format(buffer[3])) < 0)
+    {
+        errno = EPROTO;
+        return -1;
+    }
+    /* We still want to pass this on */
+    return 0;
+}
+
+
+static int handle_port_value_single(uint8_t *buffer,
+                                    uint16_t nbytes,
+                                    int *ppassback)
+{
     /* Assume nothing was waiting for these values */
     *ppassback = 0;
 
@@ -291,6 +302,7 @@ static int poll_i2c(void)
     uint8_t *buffer;
     int rv;
     int passback;
+    uint16_t nbytes;
 
     if ((rv = read_message(&buffer)) < 0)
     {
@@ -305,13 +317,25 @@ static int poll_i2c(void)
     log_i2c(buffer, 0);
 #endif
 
+    nbytes = buffer[0];
+    if (nbytes >= 0x80)
+    {
+        buffer++;
+        nbytes = (nbytes & 0x7f) | (buffer[0] << 7);
+    }
+
     /* Is this something to deal with immediately? */
-    if ((rv = handle_attached_io_message(buffer)) != 0)
+    if ((rv = handle_attached_io_message(buffer, nbytes)) != 0)
     {
         free(buffer);
         return (rv < 0) ? 0 : 1;
     }
-    if ((rv = handle_port_value_single(buffer, &passback)) < 0 ||
+    if ((rv = handle_port_format_single(buffer, nbytes)) < 0)
+    {
+        free(buffer);
+        return 1;
+    }
+    if ((rv = handle_port_value_single(buffer, nbytes, &passback)) < 0 ||
         (rv > 0 && !passback))
     {
         free(buffer);
