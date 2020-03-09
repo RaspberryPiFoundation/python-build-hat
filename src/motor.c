@@ -254,6 +254,109 @@ static PyMethodDef Motor_methods[] = {
 };
 
 
+static PyObject *
+Motor_get_constant(MotorObject *motor, void *closure)
+{
+    return PyLong_FromVoidPtr(closure);
+}
+
+
+static PyGetSetDef Motor_getsetters[] =
+{
+    {
+        "BUSY_MODE",
+        (getter)Motor_get_constant,
+        NULL,
+        "Parameter to Motor.busy() to check mode status",
+        (void *)0
+    },
+    {
+        "BUSY_MOTOR",
+        (getter)Motor_get_constant,
+        NULL,
+        "Parameter to Motor.busy() to check motor status",
+        (void *)1
+    },
+    {
+        "EVENT_COMPLETED",
+        (getter)Motor_get_constant,
+        NULL,
+        "Callback reason code: event completed normally",
+        (void *)0
+    },
+    {
+        "EVENT_INTERRUPTED",
+        (getter)Motor_get_constant,
+        NULL,
+        "Callback reason code: event was interrupted",
+        (void *)1
+    },
+    {
+        "EVENT_STALL",
+        (getter)Motor_get_constant,
+        NULL,
+        "Callback reason code: event has stalled",
+        (void *)2
+    },
+    {
+        "FORMAT_RAW",
+        (getter)Motor_get_constant,
+        NULL,
+        "Format giving raw values from the device",
+        (void *)0
+    },
+    {
+        "FORMAT_PCT",
+        (getter)Motor_get_constant,
+        NULL,
+        "Format giving percentage values from the device",
+        (void *)1
+    },
+    {
+        "FORMAT_SI",
+        (getter)Motor_get_constant,
+        NULL,
+        "Format giving SI unit values from the device",
+        (void *)2
+    },
+    {
+        "PID_SPEED",
+        (getter)Motor_get_constant,
+        NULL,
+        "???",
+        (void *)0
+    },
+    {
+        "PID_POSITION",
+        (getter)Motor_get_constant,
+        NULL,
+        "???",
+        (void *)1
+    },
+    {
+        "STOP_FLOAT",
+        (getter)Motor_get_constant,
+        NULL,
+        "Stop mode: float the motor output on stopping",
+        (void *)0
+    },
+    {
+        "STOP_BRAKE",
+        (getter)Motor_get_constant,
+        NULL,
+        "Stop mode: brake the motor on stopping",
+        (void *)1
+    },
+    {
+        "STOP_HOLD",
+        (getter)Motor_get_constant,
+        NULL,
+        "Stop mode: actively hold position on stopping",
+        (void *)2
+    },
+};
+
+
 static PyTypeObject MotorType =
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -268,6 +371,7 @@ static PyTypeObject MotorType =
     .tp_traverse = (traverseproc)Motor_traverse,
     .tp_clear = (inquiry)Motor_clear,
     .tp_methods = Motor_methods,
+    .tp_getset = Motor_getsetters,
     .tp_repr = Motor_repr
 };
 
