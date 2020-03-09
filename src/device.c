@@ -436,6 +436,39 @@ static PyMethodDef Device_methods[] = {
 };
 
 
+static PyObject *
+Device_get_constant(DeviceObject *self, void *closure)
+{
+    return PyLong_FromVoidPtr(closure);
+}
+
+
+static PyGetSetDef Device_getsetters[] =
+{
+    {
+        "FORMAT_RAW",
+        (getter)Device_get_constant,
+        NULL,
+        "Format giving raw values from the device",
+        (void *)DEVICE_FORMAT_RAW
+    },
+    {
+        "FORMAT_PCT",
+        (getter)Device_get_constant,
+        NULL,
+        "Format giving percentage values from the device",
+        (void *)DEVICE_FORMAT_PERCENT
+    },
+    {
+        "FORMAT_SI",
+        (getter)Device_get_constant,
+        NULL,
+        "Format giving SI unit values from the device",
+        (void *)DEVICE_FORMAT_SI
+    }
+};
+
+
 static PyTypeObject DeviceType =
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -450,6 +483,7 @@ static PyTypeObject DeviceType =
     .tp_traverse = (traverseproc)Device_traverse,
     .tp_clear = (inquiry)Device_clear,
     .tp_methods = Device_methods,
+    .tp_getset = Device_getsetters,
     .tp_repr = Device_repr
 };
 
