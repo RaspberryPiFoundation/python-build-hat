@@ -39,13 +39,19 @@ pipeline {
             script {
                 if (env.BRANCH_NAME in ['master']) {
                     slackSend (color: '#00FF00', channel: "#jenkins",  message: "FIXED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.RUN_DISPLAY_URL})")
-                    }
                 }
+            }
         }
         regression{
             script {
                 if (env.BRANCH_NAME in ['master']) {
                     slackSend (color: '#FF0000', channel: "#jenkins", message: "REGRESSED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.RUN_DISPLAY_URL})")
+                    emailext (
+                      subject: "REGRESSED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+                      body: """<p>REGRESSED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+                      <p>Check console output at &QUOT;<a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>&QUOT;</p>""",
+                      recipientProviders: [[$class: 'CulpritsRecipientProvider']]
+                      )
                 }
             }
         }
