@@ -8,4 +8,3 @@ COPY .git /data/.git
 RUN git -C /data/ reset --hard
 
 WORKDIR /data/
-RUN ./build.sh
