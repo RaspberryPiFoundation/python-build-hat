@@ -329,8 +329,8 @@ static int handle_output_feedback(uint8_t *buffer, uint16_t nbytes)
             errno = EPROTO;
             return -1;
         }
-        nbytes -= rv;
-        buffer += rv;
+        nbytes -= 2;
+        buffer += 2;
     }
 
     return 0;

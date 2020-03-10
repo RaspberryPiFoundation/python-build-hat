@@ -178,6 +178,18 @@ extern int cmd_get_mode_format(uint8_t port_id,
  */
 extern int cmd_set_pwm(uint8_t port_id, int8_t pwm);
 
+/* Set the default acceleration profile */
+extern int cmd_set_acceleration(uint8_t port_id, uint32_t accel);
+
+/* Set the default deceleration profile */
+extern int cmd_set_deceleration(uint8_t port_id, uint32_t accel);
+
+/* Set the default position PID */
+extern int cmd_set_pid(uint8_t port_id, uint32_t pid[3]);
+
+/* Set the stall detection */
+extern int cmd_set_stall(uint8_t port_id, int stall);
+
 /* Sends a Port Output command to set start or hold a motor.  Returns
  * 0 on success, -1 on error (when a Python exception will have been
  * raised).

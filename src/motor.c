@@ -23,10 +23,17 @@ typedef struct
     PyObject_HEAD
     PyObject *port;
     PyObject *device;
-    int default_acceleration;
-    int default_deceleration;
-    int is_default_acceleration_set;
-    int is_default_deceleration_set;
+    uint32_t default_speed;
+    uint32_t default_max_power;
+    uint32_t default_acceleration;
+    uint32_t default_deceleration;
+    int default_stall;
+    uint32_t default_stop;
+    uint32_t default_position_pid[3];
+    int want_default_acceleration_set;
+    int want_default_deceleration_set;
+    int want_default_stall_set;
+    PyObject *callback;
 } MotorObject;
 
 #define DEFAULT_ACCELERATION 100
@@ -34,6 +41,10 @@ typedef struct
 
 #define USE_PROFILE_ACCELERATE 0x01
 #define USE_PROFILE_DECELERATE 0x02
+
+#define MOTOR_STOP_FLOAT 0
+#define MOTOR_STOP_BRAKE 1
+#define MOTOR_STOP_HOLD  2
 
 
 static int
@@ -73,6 +84,8 @@ Motor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_INCREF(Py_None);
         self->device = Py_None;
         Py_INCREF(Py_None);
+        self->callback = Py_None;
+        Py_INCREF(Py_None);
     }
     return (PyObject *)self;
 }
@@ -81,7 +94,7 @@ Motor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 Motor_init(MotorObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = { "port", "device" };
+    static char *kwlist[] = { "port", "device", NULL };
     PyObject *port = NULL;
     PyObject *device = NULL;
     PyObject *tmp;
@@ -95,14 +108,22 @@ Motor_init(MotorObject *self, PyObject *args, PyObject *kwds)
     Py_XDECREF(tmp);
 
     tmp = self->device;
+    Py_INCREF(device);
     self->device = device;
     Py_XDECREF(tmp);
 
+    self->default_speed = 0;
+    self->default_max_power = 0;
     self->default_acceleration = DEFAULT_ACCELERATION;
     self->default_deceleration = DEFAULT_DECELERATION;
+    self->default_stall = 1;
+    self->default_stop = MOTOR_STOP_BRAKE;
+    self->default_position_pid[0] = 0;
+    self->default_position_pid[0] = 1;
+    self->default_position_pid[0] = 2;
 
-    self->is_default_acceleration_set = 0;
-    self->is_default_deceleration_set = 0;
+    self->want_default_acceleration_set = 1;
+    self->want_default_deceleration_set = 1;
 
     return 0;
 }
@@ -220,6 +241,7 @@ Motor_hold(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+
 static PyObject *
 Motor_busy(PyObject *self, PyObject *args)
 {
@@ -230,6 +252,126 @@ Motor_busy(PyObject *self, PyObject *args)
         return NULL;
 
     return device_is_busy(motor->device, type);
+}
+
+
+static PyObject *
+Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    MotorObject *motor = (MotorObject *)self;
+    static char *kwlist[] =
+        {
+            "speed", "max_power", "acceleration", "deceleration",
+            "stop", "pid", "stall", "callback",
+            NULL
+        };
+    uint32_t speed = motor->default_speed; /* Use the right defaults */
+    uint32_t power = motor->default_max_power;
+    uint32_t acceleration = motor->default_acceleration;
+    uint32_t deceleration = motor->default_deceleration;
+    uint32_t stop = motor->default_stop;
+    uint32_t pid[3];
+    int stall = motor->default_stall;
+    PyObject *callback = NULL;
+
+    /* If we have no parameters, return a dictionary of defaults.
+     * To determine that, we need to inspect the tuple `args` and
+     * the dictionary `kwds` to see if they contain anything.
+     */
+    if (PyTuple_Size(args) != 0)
+    {
+        PyErr_SetString(PyExc_TypeError,
+                        "Function takes at most 0 positional arguments");
+        return NULL;
+    }
+    if (kwds == NULL || PyDict_Size(kwds) == 0)
+    {
+        /* No args, return the dictionary */
+        return Py_BuildValue("{sI sI sI sI sN sI sO s(III)}",
+                             "speed", motor->default_speed,
+                             "max_power", motor->default_max_power,
+                             "acceleration", motor->default_acceleration,
+                             "deceleration", motor->default_deceleration,
+                             "stall", PyBool_FromLong(motor->default_stall),
+                             "stop", motor->default_stop,
+                             "callback", motor->callback,
+                             "pid",
+                             motor->default_position_pid[0],
+                             motor->default_position_pid[1],
+                             motor->default_position_pid[2]);
+    }
+
+    memcpy(pid, motor->default_position_pid, sizeof(pid));
+    if (PyArg_ParseTupleAndKeywords(args, kwds,
+                                    "|$IIIII(III)pO:default", kwlist,
+                                    &speed, &power,
+                                    &acceleration,
+                                    &deceleration,
+                                    &stop,
+                                    &pid[0], &pid[1], &pid[2],
+                                    &stall,
+                                    &callback) == 0)
+        return NULL;
+
+    motor->default_speed = speed;
+    motor->default_max_power = power;
+    if (acceleration != motor->default_acceleration)
+    {
+        motor->default_acceleration = acceleration;
+        if (cmd_set_acceleration(port_get_id(motor->port), acceleration) < 0)
+        {
+            motor->want_default_acceleration_set = 1;
+            return NULL;
+        }
+        motor->want_default_acceleration_set = 0;
+    }
+    if (deceleration != motor->default_deceleration)
+    {
+        motor->default_deceleration = deceleration;
+        if (cmd_set_deceleration(port_get_id(motor->port), deceleration) < 0)
+        {
+            motor->want_default_deceleration_set = 1;
+            return NULL;
+        }
+        motor->want_default_deceleration_set = 0;
+    }
+    if (stop != MOTOR_STOP_FLOAT &&
+        stop != MOTOR_STOP_BRAKE &&
+        stop != MOTOR_STOP_HOLD)
+    {
+        PyErr_SetString(PyExc_ValueError, "Invalid stop mode setting\n");
+        return NULL;
+    }
+    motor->default_stop = stop;
+    if (pid[0] != motor->default_position_pid[0] ||
+        pid[1] != motor->default_position_pid[1] ||
+        pid[2] != motor->default_position_pid[2])
+    {
+        if (cmd_set_pid(port_get_id(motor->port), pid) < 0)
+            return NULL;
+        memcpy(motor->default_position_pid, pid, sizeof(pid));
+    }
+
+    if (stall != motor->default_stall)
+    {
+        motor->default_stall = stall;
+        if (cmd_set_stall(port_get_id(motor->port), stall) < 0)
+        {
+            motor->want_default_stall_set = 1;
+            return NULL;
+        }
+        motor->want_default_stall_set = 0;
+    }
+    if (callback != NULL)
+    {
+        PyObject *cb = motor->callback;
+
+        Py_INCREF(callback);
+        motor->callback = callback;
+        Py_DECREF(cb);
+    }
+
+    Py_RETURN_NONE;
 }
 
 
@@ -250,6 +392,11 @@ static PyMethodDef Motor_methods[] = {
         "Force the motor driver to hold position"
     },
     { "busy", Motor_busy, METH_VARARGS, "Check if the motor is busy" },
+    {
+        "default", (PyCFunction)Motor_default,
+        METH_VARARGS | METH_KEYWORDS,
+        "View or set the default values used in motor functions"
+    },
     { NULL, NULL, 0, NULL }
 };
 
@@ -354,6 +501,7 @@ static PyGetSetDef Motor_getsetters[] =
         "Stop mode: actively hold position on stopping",
         (void *)2
     },
+    { NULL }
 };
 
 
@@ -393,9 +541,6 @@ void motor_demodinit(void)
 
 PyObject *motor_new_motor(PyObject *port, PyObject *device)
 {
-    PyObject *args = Py_BuildValue("(OO)", port, device);
-
-    if (args == NULL)
-        return NULL;
-    return PyObject_CallObject((PyObject *)&MotorType, args);
+    return PyObject_CallFunctionObjArgs((PyObject *)&MotorType,
+                                        port, device, NULL);
 }

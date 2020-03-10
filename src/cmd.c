@@ -14,6 +14,15 @@
 #include "cmd.h"
 #include "protocol.h"
 
+/* Macro to split a uint32_t into bytes for an argument list,
+ * intended for making make_request() calls a little easier
+ * to write.  Use with care.
+ */
+#define U32_TO_BYTE_ARG(n) (n) & 0xff, \
+        ((n) >> 8) & 0xff,             \
+        ((n) >> 16) & 0xff,            \
+        ((n) >> 24) & 0xff
+
 
 PyObject *hub_protocol_error;
 
@@ -568,6 +577,138 @@ int cmd_set_pwm(uint8_t port_id, int8_t pwm)
 
     return 0;
 }
+
+
+int cmd_set_acceleration(uint8_t port_id, uint32_t accel)
+{
+    uint8_t *response = make_request(9, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_SET_ACC_TIME,
+                                     accel & 0xff,
+                                     (accel >> 8) & 0xff,
+                                     0);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Set Accel");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int cmd_set_deceleration(uint8_t port_id, uint32_t decel)
+{
+    uint8_t *response = make_request(9, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_SET_DEC_TIME,
+                                     decel & 0xff,
+                                     (decel >> 8) & 0xff,
+                                     0);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Set Decel");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int cmd_set_pid(uint8_t port_id, uint32_t pid[3])
+{
+    uint8_t *response = make_request(22, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_WRITE_PID,
+                                     U32_TO_BYTE_ARG(pid[0]),
+                                     U32_TO_BYTE_ARG(pid[1]),
+                                     U32_TO_BYTE_ARG(pid[2]),
+                                     U32_TO_BYTE_ARG(10000));
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Write PID");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int cmd_set_stall(uint8_t port_id, int stall)
+{
+    uint8_t *response = make_request(7, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_STALL_CONTROL,
+                                     stall ? 1 : 0);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Stall Control");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}
+
 
 
 int cmd_start_speed(uint8_t port_id,

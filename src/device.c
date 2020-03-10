@@ -75,12 +75,12 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             type->tp_free((PyObject *)self);
             return NULL;
         }
-        Py_INCREF(Py_None);
         self->port = Py_None;
         Py_INCREF(Py_None);
         self->current_mode = 0;
         self->is_unreported = 0;
         self->is_mode_busy = 0;
+        self->is_motor_busy = 0;
     }
     return (PyObject *)self;
 }
@@ -89,7 +89,7 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 Device_init(DeviceObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = { "port" };
+    static char *kwlist[] = { "port", NULL };
     PyObject *port = NULL;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|O", kwlist, &port))
@@ -465,7 +465,8 @@ static PyGetSetDef Device_getsetters[] =
         NULL,
         "Format giving SI unit values from the device",
         (void *)DEVICE_FORMAT_SI
-    }
+    },
+    { NULL }
 };
 
 
@@ -505,11 +506,7 @@ void device_demodinit(void)
 
 PyObject *device_new_device(PyObject *port)
 {
-    PyObject *args = Py_BuildValue("(O)", port);
-
-    if (args == NULL)
-        return NULL;
-    return PyObject_CallObject((PyObject *)&DeviceType, args);
+    return PyObject_CallFunctionObjArgs((PyObject *)&DeviceType, port, NULL);
 }
 
 
