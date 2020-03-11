@@ -22,6 +22,9 @@ from hub import hub # isort:skip
 # Attaching a dummy to port A
 fakeHat.stdin.write(b'attach a $dummy\n')
 fakeHat.stdin.flush()
+fakeHat.stdin.write(b'attach c $motor\n')
+fakeHat.stdin.flush()
+time.sleep(0.1)
 time.sleep(1)
 
 
@@ -95,25 +98,31 @@ class PortDetachedBTestCase(unittest.TestCase):
 	def test_port_device(self):
 		assert hub.port.F.device is None
 
-# These tests must be done with a motor attached to port A
-@unittest.skip("Using FakeHat")
-class MotorAttachedATestCase(unittest.TestCase):
-	def test_port_A_type_with_motor_connected(self):
-		P = hub.port.A
+# These tests must be done with a motor attached to port C
+class MotorAttachedCTestCase(unittest.TestCase):
+	def test_port_B_type_with_motor_connected(self):
+		P = hub.port.C
 		assert {'callback', 'device', 'info', 'mode', 'motor', 'pwm'}.issubset(dir(P)) 
 		assert isinstance(P.info(), dict)
 		assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(P.info().keys())
 
-	def test_motor_A_type_with_motor_connected(self):
-		assert {'BUSY_MODE', 'BUSY_MOTOR', 'EVENT_COMPLETED', 'EVENT_INTERRUPTED', 'FORMAT_PCT', 'FORMAT_RAW', 'FORMAT_SI', 'PID_POSITION', 'PID_SPEED', 'STOP_BRAKE', 'STOP_FLOAT', 'STOP_HOLD', 'brake', 'busy', 'callback', 'default', 'float', 'get', 'hold', 'mode', 'pair', 'pid', 'preset', 'pwm', 'run_at_speed', 'run_for_degrees', 'run_for_time', 'run_to_position'}.issubset(dir(hub.motor.A))
+	def test_motor_C_type_with_motor_connected(self):
+		assert {'BUSY_MODE', 'BUSY_MOTOR', 'EVENT_COMPLETED', 'EVENT_INTERRUPTED', 'FORMAT_PCT', 'FORMAT_RAW', 'FORMAT_SI', 'PID_POSITION', 'PID_SPEED', 'STOP_BRAKE', 'STOP_FLOAT', 'STOP_HOLD', 'brake', 'busy', 'callback', 'default', 'float', 'get', 'hold', 'mode', 'pair', 'pid', 'preset', 'pwm', 'run_at_speed', 'run_for_degrees', 'run_for_time', 'run_to_position'}.issubset(dir(hub.motor.C))
 
-	def test_motor_A_functionality_with_motor_connected(self):
-		hub.port.A.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
-		hub.port.A.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
-		hub.port.A.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
-		hub.port.A.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
-		hub.port.A.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
-		hub.port.A.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
+	def test_motor_C_default_type(self):
+		assert {'speed', 'max_power', 'acceleration', 'deceleration', 'stop', 'pid', 'stall', 'callback'}.issubset(dir(hub.motor.C.default()))
+
+	def test_motor_C_functionality_with_motor_connected(self):
+		hub.port.C.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
+		hub.port.C.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
+		hub.port.C.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
+		hub.port.C.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
+		hub.port.C.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
+		hub.port.C.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
+		hub.port.C.motor.brake()
+		hub.port.C.motor.float()
+		hub.port.C.motor.get()
+		hub.port.C.motor.pid()
 
 # Touch sensor must be connected to port B
 @unittest.skip("Using FakeHat")
