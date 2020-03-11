@@ -46,6 +46,19 @@ typedef struct
 #define MOTOR_STOP_BRAKE 1
 #define MOTOR_STOP_HOLD  2
 
+/* Limits for various motor settings */
+#define SPEED_MIN -100
+#define SPEED_MAX 100
+#define POWER_MIN 0
+#define POWER_MAX 100
+#define ACCEL_MIN 0
+#define ACCEL_MAX 10000
+#define DECEL_MIN 0
+#define DECEL_MAX 10000
+
+#define CLIP(value,min,max) (((value) > (max)) ? (max) :                \
+                             (((value) < (min)) ? (min) : (value)))
+
 
 static int
 Motor_traverse(MotorObject *self, visitproc visit, void *arg)
@@ -259,12 +272,11 @@ static PyObject *
 Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
 {
     MotorObject *motor = (MotorObject *)self;
-    static char *kwlist[] =
-        {
-            "speed", "max_power", "acceleration", "deceleration",
-            "stop", "pid", "stall", "callback",
-            NULL
-        };
+    static char *kwlist[] = {
+        "speed", "max_power", "acceleration", "deceleration",
+        "stop", "pid", "stall", "callback",
+        NULL
+    };
     uint32_t speed = motor->default_speed; /* Use the right defaults */
     uint32_t power = motor->default_max_power;
     uint32_t acceleration = motor->default_acceleration;
@@ -375,6 +387,88 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 
+static PyObject *
+Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    MotorObject *motor = (MotorObject *)self;
+    static char *kwlist[] = {
+        "speed", "max_power", "acceleration", "deceleration", "stall",
+        NULL
+    };
+    int32_t speed = motor->default_speed;
+    uint32_t power = motor->default_max_power;
+    uint32_t accel = motor->default_acceleration;
+    uint32_t decel = motor->default_deceleration;
+    int stall = motor->default_stall;
+    int use_profile = 0;
+
+    if (PyArg_ParseTupleAndKeywords(args, kwds,
+                                    "i|IIIp:run_at_speed", kwlist,
+                                    &speed, &power,
+                                    &accel, &decel, &stall) == 0)
+        return NULL;
+
+    speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
+    power = CLIP(power, POWER_MIN, POWER_MAX);
+    accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
+    decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
+
+    if (accel != motor->default_acceleration)
+    {
+        motor->want_default_acceleration_set = 1;
+        use_profile |= USE_PROFILE_ACCELERATE;
+        if (cmd_set_acceleration(port_get_id(motor->port), accel) < 0)
+            return NULL;
+    }
+    else if (motor->want_default_acceleration_set)
+    {
+        if (cmd_set_acceleration(port_get_id(motor->port),
+                                 motor->default_acceleration) < 0)
+            return NULL;
+        motor->want_default_acceleration_set = 0;
+    }
+    /* Else the right acceleration value has already been set */
+
+    if (decel != motor->default_deceleration)
+    {
+        motor->want_default_deceleration_set = 1;
+        use_profile |= USE_PROFILE_DECELERATE;
+        if (cmd_set_deceleration(port_get_id(motor->port), decel) < 0)
+            return NULL;
+    }
+    else if (motor->want_default_deceleration_set)
+    {
+        if (cmd_set_deceleration(port_get_id(motor->port),
+                                 motor->default_deceleration) < 0)
+            return NULL;
+        motor->want_default_deceleration_set = 0;
+    }
+    /* Else the right deceleration value has already been set */
+
+    stall = stall ? 1 : 0;
+    if (stall != motor->default_stall)
+    {
+        motor->want_default_stall_set = 1;
+        if (cmd_set_stall(port_get_id(motor->port), stall) < 0)
+            return NULL;
+    }
+    else if (motor->want_default_stall_set)
+    {
+        if (cmd_set_stall(port_get_id(motor->port),
+                          motor->default_stall) < 0)
+            return NULL;
+        motor->want_default_stall_set = 0;
+    }
+    /* Else the right stall detection is already set */
+
+    if (cmd_start_speed(port_get_id(motor->port),
+                        speed, power, use_profile) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef Motor_methods[] = {
     { "mode", Motor_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Motor_get, METH_VARARGS, "Get a set of readings from the motor" },
@@ -396,6 +490,11 @@ static PyMethodDef Motor_methods[] = {
         "default", (PyCFunction)Motor_default,
         METH_VARARGS | METH_KEYWORDS,
         "View or set the default values used in motor functions"
+    },
+    {
+        "run_at_speed", (PyCFunction)Motor_run_at_speed,
+        METH_VARARGS | METH_KEYWORDS,
+        "Run the motor at the given speed"
     },
     { NULL, NULL, 0, NULL }
 };
