@@ -210,6 +210,17 @@ extern int cmd_start_speed_for_degrees(uint8_t port_id,
                                        uint8_t stop,
                                        uint8_t use_profile);
 
+/* Sends a Port Output command to run a motor to a specified
+ * position.  Returns 0 on success, -1 on error (when a Python
+ * exception will have been raised).
+ */
+extern int cmd_goto_abs_position(uint8_t port_id,
+                                 int32_t position,
+                                 int8_t speed,
+                                 uint8_t max_power,
+                                 uint8_t stop,
+                                 uint8_t use_profile);
+
 /* Sends a Port Write Direct Mode Data command, writing a byte stream
  * directly to the target device.  Returns 0 on success, -1 on error
  * (when a Python exception will have been raised).

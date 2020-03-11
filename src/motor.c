@@ -575,6 +575,55 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 
+static PyObject *
+Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    MotorObject *motor = (MotorObject *)self;
+    static char *kwlist[] = {
+        "position", "speed", "max_power", "stop",
+        "acceleration", "deceleration", "stall",
+        NULL
+    };
+    int32_t position;
+    int32_t speed;
+    uint32_t power = motor->default_max_power;
+    uint32_t accel = motor->default_acceleration;
+    uint32_t decel = motor->default_deceleration;
+    int stall = motor->default_stall;
+    uint32_t stop = MOTOR_STOP_USE_DEFAULT;
+    uint8_t use_profile = 0;
+    int parsed_stop;
+
+    if (PyArg_ParseTupleAndKeywords(args, kwds,
+                                    "ii|IIIIp:run_to_position", kwlist,
+                                    &position, &speed, &power, &stop,
+                                    &accel, &decel, &stall) == 0)
+        return NULL;
+
+    speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
+    power = CLIP(power, POWER_MIN, POWER_MAX);
+    accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
+    decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
+    if ((parsed_stop = parse_stop(motor, stop)) < 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Invalid stop state");
+        return NULL;
+    }
+
+    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+        set_deceleration(motor, decel, &use_profile) < 0 ||
+        set_stall(motor, stall) < 0)
+        return NULL;
+
+    if (cmd_goto_abs_position(port_get_id(motor->port),
+                              position, speed, power,
+                              (uint8_t)parsed_stop, use_profile) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef Motor_methods[] = {
     { "mode", Motor_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Motor_get, METH_VARARGS, "Get a set of readings from the motor" },
@@ -606,6 +655,11 @@ static PyMethodDef Motor_methods[] = {
         "run_for_degrees", (PyCFunction)Motor_run_for_degrees,
         METH_VARARGS | METH_KEYWORDS,
         "Run the motor for the given angle"
+    },
+    {
+        "run_to_position", (PyCFunction)Motor_run_to_position,
+        METH_VARARGS | METH_KEYWORDS,
+        "Run the motor to the given position"
     },
     { NULL, NULL, 0, NULL }
 };
