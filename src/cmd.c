@@ -710,7 +710,6 @@ int cmd_set_stall(uint8_t port_id, int stall)
 }
 
 
-
 int cmd_start_speed(uint8_t port_id,
                     int8_t speed,
                     uint8_t max_power,
@@ -734,6 +733,46 @@ int cmd_start_speed(uint8_t port_id,
         free(response);
         PyErr_SetString(hub_protocol_error,
                         "Unexpected reply to Output Start Speed");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int cmd_start_speed_for_degrees(uint8_t port_id,
+                                int32_t degrees,
+                                int8_t speed,
+                                uint8_t max_power,
+                                uint8_t stop,
+                                uint8_t use_profile)
+{
+    uint8_t *response = make_request(14, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_START_SPEED_FOR_DEGREES,
+                                     U32_TO_BYTE_ARG((uint32_t)degrees),
+                                     (uint8_t)speed,
+                                     max_power,
+                                     stop,
+                                     use_profile);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Start Speed For Degrees");
         return -1;
     }
     if ((response[4] & 0x04) != 0)

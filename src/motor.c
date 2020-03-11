@@ -42,9 +42,16 @@ typedef struct
 #define USE_PROFILE_ACCELERATE 0x01
 #define USE_PROFILE_DECELERATE 0x02
 
+/* Values passed into Python methods */
 #define MOTOR_STOP_FLOAT 0
 #define MOTOR_STOP_BRAKE 1
 #define MOTOR_STOP_HOLD  2
+#define MOTOR_STOP_USE_DEFAULT 3
+
+/* Values passed to the cmd functions */
+#define STOP_FLOAT 0
+#define STOP_HOLD 126
+#define STOP_BRAKE 127
 
 /* Limits for various motor settings */
 #define SPEED_MIN -100
@@ -58,6 +65,95 @@ typedef struct
 
 #define CLIP(value,min,max) (((value) > (max)) ? (max) :                \
                              (((value) < (min)) ? (min) : (value)))
+
+
+/* Utility functions for dealing with common parameters */
+static int parse_stop(MotorObject *motor, uint32_t stop)
+{
+    switch (stop)
+    {
+        case MOTOR_STOP_FLOAT:
+            return STOP_FLOAT;
+
+        case MOTOR_STOP_BRAKE:
+            return STOP_BRAKE;
+
+        case MOTOR_STOP_HOLD:
+            return STOP_HOLD;
+
+        case MOTOR_STOP_USE_DEFAULT:
+            return motor->default_stop;
+
+        default:
+            break;
+    }
+    return -1;
+}
+
+
+static int set_acceleration(MotorObject *motor,
+                            uint32_t accel,
+                            uint8_t *p_use_profile)
+{
+    if (accel != motor->default_acceleration)
+    {
+        motor->want_default_acceleration_set = 1;
+        *p_use_profile |= USE_PROFILE_ACCELERATE;
+        return cmd_set_acceleration(port_get_id(motor->port), accel);
+    }
+    if (motor->want_default_acceleration_set)
+    {
+        if (cmd_set_acceleration(port_get_id(motor->port),
+                                 motor->default_acceleration) < 0)
+            return -1;
+        motor->want_default_acceleration_set = 0;
+    }
+    /* Else the right acceleration value has already been set */
+    return 0;
+}
+
+
+static int set_deceleration(MotorObject *motor,
+                            uint32_t decel,
+                            uint8_t *p_use_profile)
+{
+    if (decel != motor->default_deceleration)
+    {
+        motor->want_default_deceleration_set = 1;
+        *p_use_profile |= USE_PROFILE_DECELERATE;
+        return cmd_set_deceleration(port_get_id(motor->port), decel);
+    }
+    if (motor->want_default_deceleration_set)
+    {
+        if (cmd_set_deceleration(port_get_id(motor->port),
+                                 motor->default_deceleration) < 0)
+            return -1;
+        motor->want_default_deceleration_set = 0;
+    }
+    /* Else the right deceleration value has already been set */
+    return 0;
+}
+
+
+static int set_stall(MotorObject *motor, int stall)
+{
+    stall = stall ? 1 : 0;
+    if (stall != motor->default_stall)
+    {
+        motor->want_default_stall_set = 1;
+        return cmd_set_stall(port_get_id(motor->port), stall);
+    }
+    if (motor->want_default_stall_set)
+    {
+        if (cmd_set_stall(port_get_id(motor->port),
+                          motor->default_stall) < 0)
+            return -1;
+        motor->want_default_stall_set = 0;
+    }
+    /* Else the right stall detection is already set */
+    return 0;
+}
+
 
 
 static int
@@ -130,7 +226,7 @@ Motor_init(MotorObject *self, PyObject *args, PyObject *kwds)
     self->default_acceleration = DEFAULT_ACCELERATION;
     self->default_deceleration = DEFAULT_DECELERATION;
     self->default_stall = 1;
-    self->default_stop = MOTOR_STOP_BRAKE;
+    self->default_stop = STOP_BRAKE;
     self->default_position_pid[0] = 0;
     self->default_position_pid[0] = 1;
     self->default_position_pid[0] = 2;
@@ -281,7 +377,8 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
     uint32_t power = motor->default_max_power;
     uint32_t acceleration = motor->default_acceleration;
     uint32_t deceleration = motor->default_deceleration;
-    uint32_t stop = motor->default_stop;
+    uint32_t stop = MOTOR_STOP_USE_DEFAULT;
+    int parsed_stop;
     uint32_t pid[3];
     int stall = motor->default_stall;
     PyObject *callback = NULL;
@@ -327,6 +424,7 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
 
     motor->default_speed = speed;
     motor->default_max_power = power;
+
     if (acceleration != motor->default_acceleration)
     {
         motor->default_acceleration = acceleration;
@@ -337,6 +435,7 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
         }
         motor->want_default_acceleration_set = 0;
     }
+
     if (deceleration != motor->default_deceleration)
     {
         motor->default_deceleration = deceleration;
@@ -347,14 +446,14 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
         }
         motor->want_default_deceleration_set = 0;
     }
-    if (stop != MOTOR_STOP_FLOAT &&
-        stop != MOTOR_STOP_BRAKE &&
-        stop != MOTOR_STOP_HOLD)
+
+    if ((parsed_stop = parse_stop(motor, stop)) < 0)
     {
         PyErr_SetString(PyExc_ValueError, "Invalid stop mode setting\n");
         return NULL;
     }
-    motor->default_stop = stop;
+    motor->default_stop = (uint32_t)parsed_stop;
+
     if (pid[0] != motor->default_position_pid[0] ||
         pid[1] != motor->default_position_pid[1] ||
         pid[2] != motor->default_position_pid[2])
@@ -374,6 +473,7 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
         }
         motor->want_default_stall_set = 0;
     }
+
     if (callback != NULL)
     {
         PyObject *cb = motor->callback;
@@ -395,12 +495,12 @@ Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
         "speed", "max_power", "acceleration", "deceleration", "stall",
         NULL
     };
-    int32_t speed = motor->default_speed;
+    int32_t speed;
     uint32_t power = motor->default_max_power;
     uint32_t accel = motor->default_acceleration;
     uint32_t decel = motor->default_deceleration;
     int stall = motor->default_stall;
-    int use_profile = 0;
+    uint8_t use_profile = 0;
 
     if (PyArg_ParseTupleAndKeywords(args, kwds,
                                     "i|IIIp:run_at_speed", kwlist,
@@ -413,56 +513,62 @@ Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
     decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
 
-    if (accel != motor->default_acceleration)
-    {
-        motor->want_default_acceleration_set = 1;
-        use_profile |= USE_PROFILE_ACCELERATE;
-        if (cmd_set_acceleration(port_get_id(motor->port), accel) < 0)
-            return NULL;
-    }
-    else if (motor->want_default_acceleration_set)
-    {
-        if (cmd_set_acceleration(port_get_id(motor->port),
-                                 motor->default_acceleration) < 0)
-            return NULL;
-        motor->want_default_acceleration_set = 0;
-    }
-    /* Else the right acceleration value has already been set */
-
-    if (decel != motor->default_deceleration)
-    {
-        motor->want_default_deceleration_set = 1;
-        use_profile |= USE_PROFILE_DECELERATE;
-        if (cmd_set_deceleration(port_get_id(motor->port), decel) < 0)
-            return NULL;
-    }
-    else if (motor->want_default_deceleration_set)
-    {
-        if (cmd_set_deceleration(port_get_id(motor->port),
-                                 motor->default_deceleration) < 0)
-            return NULL;
-        motor->want_default_deceleration_set = 0;
-    }
-    /* Else the right deceleration value has already been set */
-
-    stall = stall ? 1 : 0;
-    if (stall != motor->default_stall)
-    {
-        motor->want_default_stall_set = 1;
-        if (cmd_set_stall(port_get_id(motor->port), stall) < 0)
-            return NULL;
-    }
-    else if (motor->want_default_stall_set)
-    {
-        if (cmd_set_stall(port_get_id(motor->port),
-                          motor->default_stall) < 0)
-            return NULL;
-        motor->want_default_stall_set = 0;
-    }
-    /* Else the right stall detection is already set */
+    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+        set_deceleration(motor, decel, &use_profile) < 0 ||
+        set_stall(motor, stall) < 0)
+        return NULL;
 
     if (cmd_start_speed(port_get_id(motor->port),
                         speed, power, use_profile) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
+Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    MotorObject *motor = (MotorObject *)self;
+    static char *kwlist[] = {
+        "degrees", "speed", "max_power", "stop",
+        "acceleration", "deceleration", "stall",
+        NULL
+    };
+    int32_t degrees;
+    int32_t speed;
+    uint32_t power = motor->default_max_power;
+    uint32_t accel = motor->default_acceleration;
+    uint32_t decel = motor->default_deceleration;
+    int stall = motor->default_stall;
+    uint32_t stop = MOTOR_STOP_USE_DEFAULT;
+    uint8_t use_profile = 0;
+    int parsed_stop;
+
+    if (PyArg_ParseTupleAndKeywords(args, kwds,
+                                    "ii|IIIIp:run_for_degrees", kwlist,
+                                    &degrees, &speed, &power, &stop,
+                                    &accel, &decel, &stall) == 0)
+        return NULL;
+
+    speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
+    power = CLIP(power, POWER_MIN, POWER_MAX);
+    accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
+    decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
+    if ((parsed_stop = parse_stop(motor, stop)) < 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Invalid stop state");
+        return NULL;
+    }
+
+    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+        set_deceleration(motor, decel, &use_profile) < 0 ||
+        set_stall(motor, stall) < 0)
+        return NULL;
+
+    if (cmd_start_speed_for_degrees(port_get_id(motor->port),
+                                    degrees, speed, power,
+                                    (uint8_t)parsed_stop, use_profile) < 0)
         return NULL;
 
     Py_RETURN_NONE;
@@ -495,6 +601,11 @@ static PyMethodDef Motor_methods[] = {
         "run_at_speed", (PyCFunction)Motor_run_at_speed,
         METH_VARARGS | METH_KEYWORDS,
         "Run the motor at the given speed"
+    },
+    {
+        "run_for_degrees", (PyCFunction)Motor_run_for_degrees,
+        METH_VARARGS | METH_KEYWORDS,
+        "Run the motor for the given angle"
     },
     { NULL, NULL, 0, NULL }
 };
