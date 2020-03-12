@@ -247,4 +247,18 @@ extern int cmd_write_mode_data(uint8_t port_id,
  */
 extern int cmd_set_mode(uint8_t port_id, uint8_t mode);
 
+
+/* Sends a Virtual Port Setup command to connect two ports as a pair.
+ * Returns 0 on success, -1 on error.  The ports are not actually
+ * paired until the corresponding MotorPair object has a valid id
+ * field.
+ */
+extern int cmd_connect_virtual_port(uint8_t port_1_id,
+                                    uint8_t port_2_id);
+
+/* Sends a Virtual Port Setup command to disconnect the virtual port.
+ * Returns 0 on success, -1 on error.
+ */
+extern int cmd_disconnect_virtual_port(uint8_t port_id);
+
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

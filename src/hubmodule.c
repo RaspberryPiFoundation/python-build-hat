@@ -16,6 +16,7 @@
 #include "port.h"
 #include "device.h"
 #include "motor.h"
+#include "pair.h"
 
 #ifdef DEBUG_I2C
 #include "debug-i2c.h"
@@ -226,8 +227,18 @@ PyInit_hub(void)
         return NULL;
     }
 
+    if (pair_modinit() < 0)
+    {
+        port_demodinit();
+        motor_demodinit();
+        device_demodinit();
+        Py_DECREF(&HubType);
+        Py_DECREF(hub);
+    }
+
     if (cmd_modinit(hub) < 0)
     {
+        pair_demodinit();
         port_demodinit();
         motor_demodinit();
         device_demodinit();
@@ -243,6 +254,7 @@ PyInit_hub(void)
         Py_XDECREF(hub_obj);
         Py_CLEAR(hub_obj);
         cmd_demodinit();
+        pair_demodinit();
         port_demodinit();
         motor_demodinit();
         device_demodinit();

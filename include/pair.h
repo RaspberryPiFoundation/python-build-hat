@@ -1,0 +1,32 @@
+/* pair.h
+ *
+ * Copyright (c) Kynesim Ltd, 2020
+ *
+ * Motor Pair operations
+ */
+
+#ifndef RPI_STRAWBERRY_PAIR_H_INCLUDED
+#define RPI_STRAWBERRY_PAIR_H_INCLUDED
+
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+
+extern int pair_modinit(void);
+extern void pair_demodinit(void);
+
+/* Creates a new MotorPair class object, pairing the ports */
+extern PyObject *pair_get_pair(PyObject *primary, PyObject *secondary);
+
+/* Returns TRUE if the motor pair object is registered as attached */
+extern int pair_is_ready(PyObject *self);
+
+/* Signals that the given pair's attachment message has arrived */
+extern int pair_attach_port(uint8_t id,
+                            uint8_t primary_id,
+                            uint8_t secondary_id);
+
+/* Detaches the virtual port */
+extern int pair_unpair(PyObject *self);
+
+
+#endif /* RPI_STRAWBERRY_PAIR_H_INCLUDED */

@@ -11,7 +11,8 @@ hub_module = Extension('hub',
                                   'src/cmd.c',
                                   'src/port.c',
                                   'src/device.c',
-                                  'src/motor.c'])
+                                  'src/motor.c',
+                                  'src/pair.c'])
 
 # If the environment variable USE_DUMMY_I2C is set, build with a fake
 # back end for testing on a desktop.

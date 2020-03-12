@@ -27,6 +27,7 @@
 #include "i2c.h"
 #include "queue.h"
 #include "port.h"
+#include "pair.h"
 #include "protocol.h"
 
 #ifdef DEBUG_I2C
@@ -175,7 +176,7 @@ static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
     /* Hab Attacked I/O messages are at least 5 bytes long */
     if (nbytes < 5 || buffer[2] != TYPE_HUB_ATTACHED_IO)
         return 0; /* Not for us */
-    if (buffer[1] != 0 || buffer[3] >= NUM_HUB_PORTS)
+    if (buffer[1] != 0)
     {
         errno = EPROTO; /* Protocol error */
         return -1;
@@ -183,7 +184,8 @@ static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
     switch (buffer[4])
     {
         case 0: /* Detached I/O message */
-            if (port_detach_port(buffer[3]) < 0)
+            if (buffer[3] >= NUM_HUB_PORTS ||
+                port_detach_port(buffer[3]) < 0)
             {
                 errno = EPROTO;
                 return -1;
@@ -192,7 +194,7 @@ static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
 
         case 1: /* Attached I/O message */
             /* Attachment messages have another 10 bytes of data */
-            if (nbytes < 15)
+            if (nbytes < 15 || buffer[3] >= NUM_HUB_PORTS)
             {
                 errno = EPROTO;
                 return -1;
@@ -201,6 +203,25 @@ static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
                                  extract_uint16(buffer+5), /* ID */
                                  buffer+7, /* hw_revision */
                                  buffer+11 /* fw_revision */) < 0)
+            {
+                errno = EPROTO;
+                return -1;
+            }
+            break;
+
+        case 2: /* Attached Virtual I/O */
+            /* The documentation claims that virtual attachment
+             * messages have another 4 bytes of data, but then only
+             * lists two bytes (and the corresponding code only uses
+             * those two bytes.  Believe the code rather than the
+             * docs.
+             */
+            if (nbytes < 7)
+            {
+                errno = EPROTO;
+                return -1;
+            }
+            if (pair_attach_port(buffer[3], buffer[5], buffer[6]) < 0)
             {
                 errno = EPROTO;
                 return -1;
