@@ -254,6 +254,14 @@ extern int cmd_goto_abs_position(uint8_t port_id,
  */
 extern int cmd_preset_encoder(uint8_t port_id, int32_t position);
 
+/* Sends a Port Output command to set the motor pair's "zero"
+ * positions.  Returns 0 on success, or -1 on error (when a Python
+ * exception will have been raised).
+ */
+extern int cmd_preset_encoder_pair(uint8_t port_id,
+                                   int32_t position0,
+                                   int32_t position1);
+
 /* Sends a Port Write Direct Mode Data command, writing a byte stream
  * directly to the target device.  Returns 0 on success, -1 on error
  * (when a Python exception will have been raised).

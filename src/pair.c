@@ -375,6 +375,22 @@ MotorPair_pwm(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+MotorPair_preset(PyObject *self, PyObject *args)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+    int32_t position0, position1;
+
+    if (!PyArg_ParseTuple(args, "ii", &position0, &position1))
+        return NULL;
+
+    if (cmd_preset_encoder_pair(pair->id, position0, position1) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef MotorPair_methods[] = {
     {
         "primary", MotorPair_primary, METH_VARARGS,
@@ -415,6 +431,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "pwm", MotorPair_pwm, METH_VARARGS,
         "Set the PWM level for the motors"
+    },
+    {
+        "preset", MotorPair_preset, METH_VARARGS,
+        "Set the 'zero' positions for the motor pair"
     },
     { NULL, NULL, 0, NULL }
 };
