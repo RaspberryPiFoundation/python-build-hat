@@ -178,6 +178,12 @@ extern int cmd_get_mode_format(uint8_t port_id,
  */
 extern int cmd_set_pwm(uint8_t port_id, int8_t pwm);
 
+/* Sends a Port Output command to set the start power of the given
+ * port pair.  Returns 0 on success, -1 on error (when a Python
+ * exception will have been raised).
+ */
+extern int cmd_set_pwm_pair(uint8_t port_id, int8_t pwm0, int8_t pwm1);
+
 /* Set the default acceleration profile */
 extern int cmd_set_acceleration(uint8_t port_id, uint32_t accel);
 

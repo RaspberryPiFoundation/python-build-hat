@@ -579,6 +579,39 @@ int cmd_set_pwm(uint8_t port_id, int8_t pwm)
 }
 
 
+int cmd_set_pwm_pair(uint8_t port_id, int8_t pwm0, int8_t pwm1)
+{
+    uint8_t *response = make_request(8, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_START_POWER_2,
+                                     (uint8_t)pwm0,
+                                     (uint8_t)pwm1);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Start Power LR");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+
 int cmd_set_acceleration(uint8_t port_id, uint32_t accel)
 {
     uint8_t *response = make_request(9, TYPE_PORT_OUTPUT,

@@ -259,6 +259,23 @@ MotorPair_pid(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+MotorPair_float(PyObject *self, PyObject *args)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+
+    /* float() is equivalent to pwm(0) */
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    if (cmd_set_pwm_pair(pair->id, 0, 0) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef MotorPair_methods[] = {
     {
         "primary", MotorPair_primary, METH_VARARGS,
@@ -283,6 +300,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "pid", MotorPair_pid, METH_VARARGS,
         "Set the default P, I, D values"
+    },
+    {
+        "float", MotorPair_float, METH_VARARGS,
+        "Force the motor drivers to floating state"
     },
     { NULL, NULL, 0, NULL }
 };
