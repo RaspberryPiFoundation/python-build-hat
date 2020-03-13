@@ -276,6 +276,23 @@ MotorPair_float(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+MotorPair_brake(PyObject *self, PyObject *args)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+
+    /* brake() is equivalent to pwm(127) */
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    if (cmd_set_pwm_pair(pair->id, 127, 127) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef MotorPair_methods[] = {
     {
         "primary", MotorPair_primary, METH_VARARGS,
@@ -304,6 +321,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "float", MotorPair_float, METH_VARARGS,
         "Force the motor drivers to floating state"
+    },
+    {
+        "brake", MotorPair_brake, METH_VARARGS,
+        "Force the motor drivers to break state"
     },
     { NULL, NULL, 0, NULL }
 };
