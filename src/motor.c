@@ -366,6 +366,22 @@ Motor_busy(PyObject *self, PyObject *args)
 
 
 static PyObject *
+Motor_preset(PyObject *self, PyObject *args)
+{
+    MotorObject *motor = (MotorObject *)self;
+    int32_t position;
+
+    if (!PyArg_ParseTuple(args, "i", &position))
+        return NULL;
+
+    if (cmd_preset_encoder(port_get_id(motor->port), position) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
 Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
 {
     MotorObject *motor = (MotorObject *)self;
@@ -724,6 +740,7 @@ static PyMethodDef Motor_methods[] = {
         "Force the motor driver to hold position"
     },
     { "busy", Motor_busy, METH_VARARGS, "Check if the motor is busy" },
+    { "preset", Motor_preset, METH_VARARGS, "Set the encoder position" },
     {
         "default", (PyCFunction)Motor_default,
         METH_VARARGS | METH_KEYWORDS,
