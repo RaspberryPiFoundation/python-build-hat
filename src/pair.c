@@ -26,6 +26,7 @@ typedef struct
     PyObject *primary;
     PyObject *secondary;
     PyObject *callback_fn;
+    uint32_t default_position_pid[3];
     uint8_t id;
     uint8_t primary_id;
     uint8_t secondary_id;
@@ -95,6 +96,9 @@ MotorPair_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->id =
             self->primary_id =
             self->secondary_id = INVALID_ID;
+        self->default_position_pid[0] =
+            self->default_position_pid[1] =
+            self->default_position_pid[2] = 0;
     }
     return (PyObject *)self;
 }
@@ -227,6 +231,34 @@ MotorPair_unpair(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+MotorPair_pid(PyObject *self, PyObject *args)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+
+    /* If we have no parameters, return a tuple of the values */
+    if (PyTuple_Size(args) == 0)
+    {
+        return Py_BuildValue("III",
+                             pair->default_position_pid[0],
+                             pair->default_position_pid[1],
+                             pair->default_position_pid[2]);
+    }
+
+    /* Otherwise we should have all three values, and set them */
+    if (!PyArg_ParseTuple(args, "III:pid",
+                          &pair->default_position_pid[0],
+                          &pair->default_position_pid[1],
+                          &pair->default_position_pid[2]))
+        return NULL;
+
+    if (cmd_set_pid(pair->id, pair->default_position_pid) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef MotorPair_methods[] = {
     {
         "primary", MotorPair_primary, METH_VARARGS,
@@ -247,6 +279,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "unpair", MotorPair_unpair, METH_VARARGS,
         "Unpair the motors.  The object is no longer valid"
+    },
+    {
+        "pid", MotorPair_pid, METH_VARARGS,
+        "Set the default P, I, D values"
     },
     { NULL, NULL, 0, NULL }
 };
@@ -340,21 +376,26 @@ int pair_attach_port(uint8_t id,
 }
 
 
-int pair_detach_port(uint8_t id)
+static MotorPairObject *find_pair(uint8_t id)
 {
     int i;
 
     for (i = 0; i < PAIR_COUNT; i++)
-    {
         if (pairs[i] != NULL && pairs[i]->id == id)
-        {
-            /* This one */
-            pairs[i]->id = INVALID_ID;
-            return 0;
-        }
-    }
+            return pairs[i];
 
-    /* Most likely this is cause by timing out an unpair command */
+    return NULL;
+}
+
+
+int pair_detach_port(uint8_t id)
+{
+    MotorPairObject *pair = find_pair(id);
+
+    if (pair != NULL)
+        pair->id = INVALID_ID;
+
+    /* Most likely any error is caused by timing out an unpair command */
     return 0;
 }
 
@@ -414,3 +455,14 @@ int pair_unpair(PyObject *self)
     return 0;
 }
 
+
+int pair_feedback_status(uint8_t port_id, uint8_t status)
+{
+    MotorPairObject *pair = find_pair(port_id);
+
+    if (pair == NULL)
+        return -1;
+
+    /* Turns out we don't track busy here */
+    return 0;
+}

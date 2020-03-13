@@ -346,7 +346,11 @@ static int handle_output_feedback(uint8_t *buffer, uint16_t nbytes)
             return -1;
         }
 
-        if ((rv = port_feedback_status(buffer[0], buffer[1])) < 0)
+        if (buffer[0] < NUM_HUB_PORTS)
+            rv = port_feedback_status(buffer[0], buffer[1]);
+        else
+            rv = pair_feedback_status(buffer[0], buffer[1]);
+        if (rv < 0)
         {
             errno = EPROTO;
             return -1;

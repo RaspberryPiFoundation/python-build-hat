@@ -37,5 +37,8 @@ extern int pair_detach_subport(uint8_t id);
 /* Detaches the virtual port */
 extern int pair_unpair(PyObject *self);
 
+/* Signals an output command status */
+extern int pair_feedback_status(uint8_t port_id, uint8_t status);
+
 
 #endif /* RPI_STRAWBERRY_PAIR_H_INCLUDED */
