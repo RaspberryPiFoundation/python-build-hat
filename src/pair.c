@@ -355,6 +355,26 @@ MotorPair_hold(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+MotorPair_pwm(PyObject *self, PyObject *args)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+    int pwm0, pwm1;
+
+    if (!PyArg_ParseTuple(args, "ii", &pwm0, &pwm1))
+        return NULL;
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
+
+    if (cmd_set_pwm_pair(pair->id, pwm0, pwm1) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef MotorPair_methods[] = {
     {
         "primary", MotorPair_primary, METH_VARARGS,
@@ -391,6 +411,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "hold", MotorPair_hold, METH_VARARGS,
         "Force the motor drivers to hold position"
+    },
+    {
+        "pwm", MotorPair_pwm, METH_VARARGS,
+        "Set the PWM level for the motors"
     },
     { NULL, NULL, 0, NULL }
 };
