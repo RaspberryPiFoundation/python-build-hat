@@ -168,6 +168,18 @@ MotorPair_secondary(PyObject *self, PyObject *args)
 
 
 static PyObject *
+MotorPair_id(PyObject *self, PyObject *args)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    return PyLong_FromUnsignedLong(pair->id);
+}
+
+
+static PyObject *
 MotorPair_unpair(PyObject *self, PyObject *args)
 {
     int rv;
@@ -192,6 +204,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "secondary", MotorPair_secondary, METH_VARARGS,
         "Returns the secondary port"
+    },
+    {
+        "id", MotorPair_id, METH_VARARGS,
+        "Returns the ID of the port pair"
     },
     {
         "unpair", MotorPair_unpair, METH_VARARGS,
