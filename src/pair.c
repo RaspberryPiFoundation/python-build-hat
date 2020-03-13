@@ -25,6 +25,7 @@ typedef struct
     PyObject_HEAD
     PyObject *primary;
     PyObject *secondary;
+    PyObject *callback_fn;
     uint8_t id;
     uint8_t primary_id;
     uint8_t secondary_id;
@@ -88,6 +89,8 @@ MotorPair_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->primary = Py_None;
         Py_INCREF(Py_None);
         self->secondary = Py_None;
+        Py_INCREF(Py_None);
+        self->callback_fn = Py_None;
         Py_INCREF(Py_None);
         self->id =
             self->primary_id =
@@ -180,6 +183,34 @@ MotorPair_id(PyObject *self, PyObject *args)
 
 
 static PyObject *
+MotorPair_callback(PyObject *self, PyObject *args)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+    PyObject *callable = NULL;
+
+    if (!PyArg_ParseTuple(args, "|O:callback", &callable))
+        return NULL;
+
+    if (callable == NULL)
+    {
+        /* Just wants the current callback returned */
+        Py_INCREF(pair->callback_fn);
+        return pair->callback_fn;
+    }
+    if (callable != Py_None && !PyCallable_Check(callable))
+    {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+    Py_XINCREF(callable);
+    Py_XDECREF(pair->callback_fn);
+    pair->callback_fn = callable;
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
 MotorPair_unpair(PyObject *self, PyObject *args)
 {
     int rv;
@@ -208,6 +239,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "id", MotorPair_id, METH_VARARGS,
         "Returns the ID of the port pair"
+    },
+    {
+        "callback", MotorPair_callback, METH_VARARGS,
+        "Sets or returns the current callback function"
     },
     {
         "unpair", MotorPair_unpair, METH_VARARGS,
