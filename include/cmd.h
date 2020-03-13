@@ -205,6 +205,16 @@ extern int cmd_start_speed(uint8_t port_id,
                            uint8_t max_power,
                            uint8_t use_profile);
 
+/* Sends a Port Output command to set start or hold a motor pair.
+ * Returns 0 on success, -1 on error (when a Python exception will
+ * have been raised).
+ */
+extern int cmd_start_speed_pair(uint8_t port_id,
+                                int8_t speed0,
+                                int8_t speed1,
+                                uint8_t max_power,
+                                uint8_t use_profile);
+
 /* Sends a Port Output command to run a motor for a given number of
  * milliseconds.  Returns 0 on success, -1 on error (when a Python
  * exception will have been raised).

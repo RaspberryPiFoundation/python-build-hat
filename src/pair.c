@@ -26,6 +26,8 @@ typedef struct
     PyObject *primary;
     PyObject *secondary;
     PyObject *callback_fn;
+    uint32_t default_acceleration;
+    uint32_t default_deceleration;
     uint32_t default_position_pid[3];
     uint8_t id;
     uint8_t primary_id;
@@ -33,6 +35,24 @@ typedef struct
     uint16_t device_type;
 } MotorPairObject;
 
+
+#define DEFAULT_ACCELERATION 100
+#define DEFAULT_DECELERATION 150
+
+#define USE_PROFILE_ACCELERATE 0x01
+#define USE_PROFILE_DECELERATE 0x02
+
+#define SPEED_MIN -100
+#define SPEED_MAX 100
+#define POWER_MIN 0
+#define POWER_MAX 100
+#define ACCEL_MIN 0
+#define ACCEL_MAX 10000
+#define DECEL_MIN 0
+#define DECEL_MAX 10000
+
+#define CLIP(value,min,max) (((value) > (max)) ? (max) :                \
+                             (((value) < (min)) ? (min) : (value)))
 
 #define PAIR_COUNT 6
 
@@ -99,6 +119,8 @@ MotorPair_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->default_position_pid[0] =
             self->default_position_pid[1] =
             self->default_position_pid[2] = 0;
+        self->default_acceleration = DEFAULT_ACCELERATION;
+        self->default_deceleration = DEFAULT_DECELERATION;
     }
     return (PyObject *)self;
 }
@@ -252,6 +274,10 @@ MotorPair_pid(PyObject *self, PyObject *args)
                           &pair->default_position_pid[2]))
         return NULL;
 
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
+
     if (cmd_set_pid(pair->id, pair->default_position_pid) < 0)
         return NULL;
 
@@ -268,6 +294,10 @@ MotorPair_float(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
 
     if (cmd_set_pwm_pair(pair->id, 0, 0) < 0)
         return NULL;
@@ -286,7 +316,39 @@ MotorPair_brake(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
+
     if (cmd_set_pwm_pair(pair->id, 127, 127) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
+MotorPair_hold(PyObject *self, PyObject *args)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+    int max_power = 100;
+    uint8_t use_profile = 0;
+
+    if (!PyArg_ParseTuple(args, "|i", &max_power))
+        return NULL;
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
+
+    max_power = CLIP(max_power, POWER_MIN, POWER_MAX);
+
+    if (pair->default_acceleration != 0)
+        use_profile |= USE_PROFILE_ACCELERATE;
+    if (pair->default_deceleration != 0)
+        use_profile |= USE_PROFILE_DECELERATE;
+
+    if (cmd_start_speed_pair(pair->id, 0, 0, max_power, use_profile) < 0)
         return NULL;
 
     Py_RETURN_NONE;
@@ -325,6 +387,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "brake", MotorPair_brake, METH_VARARGS,
         "Force the motor drivers to break state"
+    },
+    {
+        "hold", MotorPair_hold, METH_VARARGS,
+        "Force the motor drivers to hold position"
     },
     { NULL, NULL, 0, NULL }
 };
