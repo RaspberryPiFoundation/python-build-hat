@@ -1076,7 +1076,7 @@ int cmd_connect_virtual_port(uint8_t port_1_id, uint8_t port_2_id)
 /* On this occasion we expect a Hub Attached I/O to tell us the
  * virtual port is now detached.
  */
-int cmd_disconnect_virtual_port(uint8_t port_id)
+int cmd_disconnect_virtual_port(uint8_t port_id, int background)
 {
     uint8_t *buffer = malloc(5);
 
@@ -1092,11 +1092,23 @@ int cmd_disconnect_virtual_port(uint8_t port_id)
     buffer[3] = 0; /* Disconnect */
     buffer[4] = port_id;
 
-    if (queue_add_buffer(buffer) != 0)
+    if (background)
     {
-        /* Exception already raised */
-        free(buffer);
-        return -1;
+        if (queue_add_buffer_background(buffer) != 0)
+        {
+            /* Exception already raised */
+            free(buffer);
+            return -1;
+        }
+    }
+    else
+    {
+        if (queue_add_buffer(buffer) != 0)
+        {
+            /* Exception already raised */
+            free(buffer);
+            return -1;
+        }
     }
 
     return 0;

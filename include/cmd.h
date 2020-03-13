@@ -259,6 +259,6 @@ extern int cmd_connect_virtual_port(uint8_t port_1_id,
 /* Sends a Virtual Port Setup command to disconnect the virtual port.
  * Returns 0 on success, -1 on error.
  */
-extern int cmd_disconnect_virtual_port(uint8_t port_id);
+extern int cmd_disconnect_virtual_port(uint8_t port_id, int background);
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

@@ -29,6 +29,11 @@ extern int pair_attach_port(uint8_t id,
 /* Signals that the given pair's detachment message has arrived */
 extern int pair_detach_port(uint8_t id);
 
+/* Signals that a port detachment message message has arrived that
+ * might be one of the ports in a pair.
+ */
+extern int pair_detach_subport(uint8_t id);
+
 /* Detaches the virtual port */
 extern int pair_unpair(PyObject *self);
 

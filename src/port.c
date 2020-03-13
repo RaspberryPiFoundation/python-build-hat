@@ -15,6 +15,7 @@
 #include "cmd.h"
 #include "device.h"
 #include "motor.h"
+#include "pair.h"
 
 
 /* The actual Port type */
@@ -664,6 +665,8 @@ int port_detach_port(uint8_t port_id)
     PortObject *port = (PortObject *)port_set->ports[port_id];
     PyObject *arg_list;
     int rv = 0;
+
+    pair_detach_subport(port_id);
 
     port->type_id = 0;
     port->flags = 0; /* Got nothing anymore */

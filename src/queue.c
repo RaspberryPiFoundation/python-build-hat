@@ -38,6 +38,8 @@ typedef int (*wait_fn_t)(sem_t *semaphore);
 
 static queue_t to_i2c_q;
 static queue_t from_i2c_q;
+static queue_item_t *background_qhead;
+static queue_item_t *background_qtail;
 
 
 static int init_queue(queue_t *q)
@@ -95,6 +97,7 @@ int queue_init(void)
 {
     int rv;
 
+    background_qhead = background_qtail = NULL;
     if ((rv = init_queue(&to_i2c_q)) != 0)
         return rv;
     return init_queue(&from_i2c_q);
@@ -251,4 +254,49 @@ int queue_get(uint8_t **pbuffer)
         PyErr_SetFromErrno(PyExc_OSError);
     }
     return rv;
+}
+
+
+/* Only accessed from background, so no locking necessary */
+int queue_add_buffer_background(uint8_t *buffer)
+{
+    queue_item_t *item;
+
+    if ((item = malloc(sizeof(queue_item_t))) == NULL)
+    {
+        PyErr_NoMemory();
+        return ENOMEM;
+    }
+    item->buffer = buffer;
+
+    item->prev = NULL;
+    item->next = background_qhead;
+    if (background_qhead == NULL)
+        background_qtail = item;
+    else
+        background_qhead->prev = item;
+    background_qhead = item;
+
+    return 0;
+}
+
+
+uint8_t *queue_check_background(void)
+{
+    queue_item_t *item;
+    uint8_t *buffer;
+
+    if (background_qtail == NULL)
+        return NULL;
+
+    item = background_qtail;
+    background_qtail = item->prev;
+    if (background_qtail == NULL)
+        background_qhead = NULL;
+    else
+        background_qtail->next = NULL;
+
+    buffer = item->buffer;
+    free(item);
+    return buffer;
 }

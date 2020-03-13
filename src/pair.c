@@ -308,6 +308,24 @@ int pair_detach_port(uint8_t id)
 }
 
 
+int pair_detach_subport(uint8_t id)
+{
+    int i;
+
+    for (i = 0; i < PAIR_COUNT; i++)
+    {
+        if (pairs[i] != NULL &&
+            (pairs[i]->primary_id == id ||
+             pairs[i]->secondary_id == id))
+        {
+            /* Ignore errors for now */
+            cmd_disconnect_virtual_port(pairs[i]->id, 1);
+        }
+    }
+    return 0;
+}
+
+
 int pair_unpair(PyObject *self)
 {
     int i;
@@ -325,7 +343,7 @@ int pair_unpair(PyObject *self)
         return -1;
 
     if (pair->id != INVALID_ID)
-        if (cmd_disconnect_virtual_port(pair->id) < 0)
+        if (cmd_disconnect_virtual_port(pair->id, 0) < 0)
             return -1;
 
     /* Wait for ID to become invalid */

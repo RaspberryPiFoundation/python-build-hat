@@ -429,7 +429,8 @@ static void *run_comms(void *args __attribute__((unused)))
 
     while (running && !shutdown)
     {
-        if ((rv = queue_check(&buffer)) != 0)
+        if ((buffer = queue_check_background()) == NULL &&
+            (rv = queue_check(&buffer)) != 0)
         {
             report_comms_error(rv);
             running = 0;
@@ -443,7 +444,6 @@ static void *run_comms(void *args __attribute__((unused)))
 #endif
                 running = send_command(buffer);
                 free(buffer);
-                /* XXX: wait for response? */
             }
             if (running)
                 running = poll_i2c();
