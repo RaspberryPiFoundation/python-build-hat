@@ -236,7 +236,22 @@ void pair_demodinit(void)
 
 PyObject *pair_get_pair(PyObject *primary, PyObject *secondary)
 {
-    /* TODO: First attempt to find an existing pair with these ports */
+    int i;
+    uint8_t primary_id = port_get_id(primary);
+    uint8_t secondary_id = port_get_id(secondary);
+
+    /* First attempt to find an existing pair with these ports */
+    for (i = 0; i < PAIR_COUNT; i++)
+    {
+        if (pairs[i] != NULL &&
+            ((pairs[i]->primary_id == primary_id &&
+              pairs[i]->secondary_id == secondary_id) ||
+             (pairs[i]->primary_id == secondary_id &&
+              pairs[i]->secondary_id == primary_id)))
+        {
+            return (PyObject *)pairs[i];
+        }
+    }
     return PyObject_CallFunctionObjArgs((PyObject *)&MotorPairType,
                                         primary, secondary, NULL);
 }
