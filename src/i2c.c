@@ -184,8 +184,16 @@ static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
     switch (buffer[4])
     {
         case 0: /* Detached I/O message */
-            if (buffer[3] >= NUM_HUB_PORTS ||
-                port_detach_port(buffer[3]) < 0)
+            if (buffer[3] < NUM_HUB_PORTS)
+            {
+                if (port_detach_port(buffer[3]) < 0)
+                {
+                    errno = EPROTO;
+                    return -1;
+                }
+            }
+            /* Otherwise it must be a virtual port */
+            else if (pair_detach_port(buffer[3]) < 0)
             {
                 errno = EPROTO;
                 return -1;
@@ -210,18 +218,11 @@ static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
             break;
 
         case 2: /* Attached Virtual I/O */
-            /* The documentation claims that virtual attachment
-             * messages have another 4 bytes of data, but then only
-             * lists two bytes (and the corresponding code only uses
-             * those two bytes.  Believe the code rather than the
-             * docs.
-             */
-            if (nbytes < 7)
-            {
-                errno = EPROTO;
-                return -1;
-            }
-            if (pair_attach_port(buffer[3], buffer[5], buffer[6]) < 0)
+            if (nbytes < 9 ||
+                pair_attach_port(buffer[3],
+                                 buffer[7],
+                                 buffer[8],
+                                 extract_uint16(buffer+5)) < 0)
             {
                 errno = EPROTO;
                 return -1;

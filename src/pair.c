@@ -28,6 +28,7 @@ typedef struct
     uint8_t id;
     uint8_t primary_id;
     uint8_t secondary_id;
+    uint16_t device_type;
 } MotorPairObject;
 
 
@@ -166,6 +167,23 @@ MotorPair_secondary(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+MotorPair_unpair(PyObject *self, PyObject *args)
+{
+    int rv;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    if ((rv = pair_unpair(self)) < 0)
+        return NULL;
+    else if (rv > 0)
+        Py_RETURN_FALSE;
+
+    Py_RETURN_TRUE;
+}
+
+
 static PyMethodDef MotorPair_methods[] = {
     {
         "primary", MotorPair_primary, METH_VARARGS,
@@ -174,6 +192,10 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "secondary", MotorPair_secondary, METH_VARARGS,
         "Returns the secondary port"
+    },
+    {
+        "unpair", MotorPair_unpair, METH_VARARGS,
+        "Unpair the motors.  The object is no longer valid"
     },
     { NULL, NULL, 0, NULL }
 };
@@ -228,7 +250,10 @@ int pair_is_ready(PyObject *self)
 }
 
 
-int pair_attach_port(uint8_t id, uint8_t primary_id, uint8_t secondary_id)
+int pair_attach_port(uint8_t id,
+                     uint8_t primary_id,
+                     uint8_t secondary_id,
+                     uint16_t device_type)
 {
     int i;
 
@@ -239,6 +264,7 @@ int pair_attach_port(uint8_t id, uint8_t primary_id, uint8_t secondary_id)
             pairs[i]->secondary_id == secondary_id)
         {
             pairs[i]->id = id;
+            pairs[i]->device_type = device_type;
             return 0;
         }
     }
@@ -248,16 +274,35 @@ int pair_attach_port(uint8_t id, uint8_t primary_id, uint8_t secondary_id)
 }
 
 
+int pair_detach_port(uint8_t id)
+{
+    int i;
+
+    for (i = 0; i < PAIR_COUNT; i++)
+    {
+        if (pairs[i] != NULL && pairs[i]->id == id)
+        {
+            /* This one */
+            pairs[i]->id = INVALID_ID;
+            return 0;
+        }
+    }
+
+    /* Most likely this is cause by timing out an unpair command */
+    return 0;
+}
+
+
 int pair_unpair(PyObject *self)
 {
     int i;
     MotorPairObject *pair = (MotorPairObject *)self;
+    clock_t start;
 
     for (i = 0; i < PAIR_COUNT; i++)
     {
         if (pairs[i] == pair)
         {
-            pairs[i] = NULL;
             break;
         }
     }
@@ -268,6 +313,20 @@ int pair_unpair(PyObject *self)
         if (cmd_disconnect_virtual_port(pair->id) < 0)
             return -1;
 
+    /* Wait for ID to become invalid */
+    start = clock();
+    while (pair->id != INVALID_ID)
+    {
+        if (clock() - start > CLOCKS_PER_SEC)
+        {
+            /* Timeout */
+            pairs[i] = NULL;
+            return 1;
+        }
+    }
+
+    pairs[i] = NULL;
     Py_DECREF(pair);
+    return 0;
 }
 

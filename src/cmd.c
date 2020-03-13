@@ -1073,6 +1073,9 @@ int cmd_connect_virtual_port(uint8_t port_1_id, uint8_t port_2_id)
 }
 
 
+/* On this occasion we expect a Hub Attached I/O to tell us the
+ * virtual port is now detached.
+ */
 int cmd_disconnect_virtual_port(uint8_t port_id)
 {
     uint8_t *buffer = malloc(5);

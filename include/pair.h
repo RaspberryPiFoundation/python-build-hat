@@ -23,7 +23,11 @@ extern int pair_is_ready(PyObject *self);
 /* Signals that the given pair's attachment message has arrived */
 extern int pair_attach_port(uint8_t id,
                             uint8_t primary_id,
-                            uint8_t secondary_id);
+                            uint8_t secondary_id,
+                            uint16_t device_type);
+
+/* Signals that the given pair's detachment message has arrived */
+extern int pair_detach_port(uint8_t id);
 
 /* Detaches the virtual port */
 extern int pair_unpair(PyObject *self);
