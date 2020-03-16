@@ -23,6 +23,13 @@
         ((n) >> 16) & 0xff,            \
         ((n) >> 24) & 0xff
 
+/* Macro to split a uint16_t into bytes for an argument list,
+ * intended for making make_request() calls a little easier
+ * to write.  Use with care.
+ */
+#define U16_TO_BYTE_ARG(n) (n) & 0xff, \
+        ((n) >> 8) & 0xff
+
 
 PyObject *hub_protocol_error;
 
@@ -818,19 +825,61 @@ int cmd_start_speed_pair(uint8_t port_id,
 
 
 int cmd_start_speed_for_time(uint8_t port_id,
-                             int32_t time,
+                             uint16_t time,
                              int8_t speed,
                              uint8_t max_power,
                              uint8_t stop,
                              uint8_t use_profile)
 {
-    uint8_t *response = make_request(14, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(12, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
                                      OUTPUT_CMD_START_SPEED_FOR_TIME,
-                                     U32_TO_BYTE_ARG((uint32_t)time),
+                                     U16_TO_BYTE_ARG(time),
                                      (uint8_t)speed,
+                                     max_power,
+                                     stop,
+                                     use_profile);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Start Speed For Degrees");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int cmd_start_speed_for_time_pair(uint8_t port_id,
+                                  uint16_t time,
+                                  int8_t speed0,
+                                  int8_t speed1,
+                                  uint8_t max_power,
+                                  uint8_t stop,
+                                  uint8_t use_profile)
+{
+    uint8_t *response = make_request(13, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_START_SPEED_2_FOR_TIME,
+                                     U16_TO_BYTE_ARG(time),
+                                     (uint8_t)speed0,
+                                     (uint8_t)speed1,
                                      max_power,
                                      stop,
                                      use_profile);

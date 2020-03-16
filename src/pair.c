@@ -44,6 +44,17 @@ typedef struct
 #define USE_PROFILE_ACCELERATE 0x01
 #define USE_PROFILE_DECELERATE 0x02
 
+/* Values passed into Python methods */
+#define MOTOR_STOP_FLOAT 0
+#define MOTOR_STOP_BRAKE 1
+#define MOTOR_STOP_HOLD  2
+#define MOTOR_STOP_USE_DEFAULT 3
+
+/* Values passed to the cmd functions */
+#define STOP_FLOAT 0
+#define STOP_HOLD 126
+#define STOP_BRAKE 127
+
 #define SPEED_MIN -100
 #define SPEED_MAX 100
 #define POWER_MIN 0
@@ -52,6 +63,8 @@ typedef struct
 #define ACCEL_MAX 10000
 #define DECEL_MIN 0
 #define DECEL_MAX 10000
+#define RUN_TIME_MIN 0
+#define RUN_TIME_MAX 65535
 
 #define CLIP(value,min,max) (((value) > (max)) ? (max) :                \
                              (((value) < (min)) ? (min) : (value)))
@@ -59,6 +72,70 @@ typedef struct
 #define PAIR_COUNT 6
 
 MotorPairObject *pairs[PAIR_COUNT] = { NULL };
+
+
+/* Utility functions for dealing with common parameters */
+static int parse_stop(uint32_t stop)
+{
+    switch (stop)
+    {
+        case MOTOR_STOP_FLOAT:
+            return STOP_FLOAT;
+
+        case MOTOR_STOP_BRAKE:
+        case MOTOR_STOP_USE_DEFAULT:
+            return STOP_BRAKE;
+
+        case MOTOR_STOP_HOLD:
+            return STOP_HOLD;
+
+        default:
+            break;
+    }
+    return -1;
+}
+
+
+static int set_acceleration(MotorPairObject *pair,
+                            uint32_t accel,
+                            uint8_t *p_use_profile)
+{
+    if (accel != pair->default_acceleration)
+    {
+        pair->want_default_acceleration_set = 1;
+        *p_use_profile |= USE_PROFILE_ACCELERATE;
+        return cmd_set_acceleration(pair->id, accel);
+    }
+    if (pair->want_default_acceleration_set)
+    {
+        if (cmd_set_acceleration(pair->id, pair->default_acceleration) < 0)
+            return -1;
+        pair->want_default_acceleration_set = 0;
+    }
+    /* Else the right acceleration value has already been set */
+    return 0;
+}
+
+
+static int set_deceleration(MotorPairObject *pair,
+                            uint32_t decel,
+                            uint8_t *p_use_profile)
+{
+    if (decel != pair->default_deceleration)
+    {
+        pair->want_default_deceleration_set = 1;
+        *p_use_profile |= USE_PROFILE_DECELERATE;
+        return cmd_set_deceleration(pair->id, decel);
+    }
+    if (pair->want_default_deceleration_set)
+    {
+        if (cmd_set_deceleration(pair->id, pair->default_deceleration) < 0)
+            return -1;
+        pair->want_default_deceleration_set = 0;
+    }
+    /* Else the right deceleration value has already been set */
+    return 0;
+}
 
 
 static int
@@ -395,48 +472,6 @@ MotorPair_preset(PyObject *self, PyObject *args)
 }
 
 
-static int set_acceleration(MotorPairObject *pair,
-                            uint32_t accel,
-                            uint8_t *p_use_profile)
-{
-    if (accel != pair->default_acceleration)
-    {
-        pair->want_default_acceleration_set = 1;
-        *p_use_profile |= USE_PROFILE_ACCELERATE;
-        return cmd_set_acceleration(pair->id, accel);
-    }
-    if (pair->want_default_acceleration_set)
-    {
-        if (cmd_set_acceleration(pair->id, pair->default_acceleration) < 0)
-            return -1;
-        pair->want_default_acceleration_set = 0;
-    }
-    /* Else the right acceleration value has already been set */
-    return 0;
-}
-
-
-static int set_deceleration(MotorPairObject *pair,
-                            uint32_t decel,
-                            uint8_t *p_use_profile)
-{
-    if (decel != pair->default_deceleration)
-    {
-        pair->want_default_deceleration_set = 1;
-        *p_use_profile |= USE_PROFILE_DECELERATE;
-        return cmd_set_deceleration(pair->id, decel);
-    }
-    if (pair->want_default_deceleration_set)
-    {
-        if (cmd_set_deceleration(pair->id, pair->default_deceleration) < 0)
-            return -1;
-        pair->want_default_deceleration_set = 0;
-    }
-    /* Else the right deceleration value has already been set */
-    return 0;
-}
-
-
 static PyObject *
 MotorPair_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
 {
@@ -468,6 +503,57 @@ MotorPair_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
 
     if (cmd_start_speed_pair(pair->id, speed0, speed1, power, use_profile) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
+MotorPair_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+    static char *kwlist[] = {
+        "msec", "speed0", "speed1", "max_power", "stop",
+        "acceleration", "deceleration",
+        NULL
+    };
+    uint32_t time;
+    int32_t speed0, speed1;
+    uint32_t power = 100;
+    uint32_t accel = pair->default_acceleration;
+    uint32_t decel = pair->default_deceleration;
+    uint32_t stop = MOTOR_STOP_USE_DEFAULT;
+    uint8_t use_profile = 0;
+    int parsed_stop;
+
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds,
+                                     "Iii|IIII:run_for_time", kwlist,
+                                     &time, &speed0, &speed1,
+                                     &power, &stop,
+                                     &accel, &decel))
+        return NULL;
+
+    time = CLIP(time, RUN_TIME_MIN, RUN_TIME_MAX);
+    speed0 = CLIP(speed0, SPEED_MIN, SPEED_MAX);
+    speed1 = CLIP(speed1, SPEED_MIN, SPEED_MAX);
+    power = CLIP(power, POWER_MIN, POWER_MAX);
+    accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
+    decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
+    if ((parsed_stop = parse_stop(stop)) < 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Invalid stop state");
+        return NULL;
+    }
+
+    if (set_acceleration(pair, accel, &use_profile) < 0 ||
+        set_deceleration(pair, decel, &use_profile) < 0)
+        return NULL;
+
+    if (cmd_start_speed_for_time_pair(pair->id, time,
+                                      speed0, speed1, power,
+                                      (uint8_t)parsed_stop, use_profile) < 0)
         return NULL;
 
     Py_RETURN_NONE;
@@ -523,6 +609,11 @@ static PyMethodDef MotorPair_methods[] = {
         "run_at_speed", (PyCFunction)MotorPair_run_at_speed,
         METH_VARARGS | METH_KEYWORDS,
         "Run the motor pair at specified speeds"
+    },
+    {
+        "run_for_time", (PyCFunction)MotorPair_run_for_time,
+        METH_VARARGS | METH_KEYWORDS,
+        "Run the motor pair for a given length of time"
     },
     { NULL, NULL, 0, NULL }
 };

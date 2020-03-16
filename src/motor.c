@@ -63,6 +63,8 @@ typedef struct
 #define ACCEL_MAX 10000
 #define DECEL_MIN 0
 #define DECEL_MAX 10000
+#define RUN_TIME_MIN 0
+#define RUN_TIME_MAX 65535
 
 #define CLIP(value,min,max) (((value) > (max)) ? (max) :                \
                              (((value) < (min)) ? (min) : (value)))
@@ -650,7 +652,7 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
         "acceleration", "deceleration", "stall",
         NULL
     };
-    int32_t time;
+    uint32_t time;
     int32_t speed;
     uint32_t power = motor->default_max_power;
     uint32_t accel = motor->default_acceleration;
@@ -661,11 +663,12 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
     int parsed_stop;
 
     if (PyArg_ParseTupleAndKeywords(args, kwds,
-                                    "ii|IIIIp:run_for_time", kwlist,
+                                    "Ii|IIIIp:run_for_time", kwlist,
                                     &time, &speed, &power, &stop,
                                     &accel, &decel, &stall) == 0)
         return NULL;
 
+    time = CLIP(time, RUN_TIME_MIN, RUN_TIME_MAX);
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);

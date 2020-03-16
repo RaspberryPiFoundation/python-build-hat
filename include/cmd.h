@@ -220,11 +220,23 @@ extern int cmd_start_speed_pair(uint8_t port_id,
  * exception will have been raised).
  */
 extern int cmd_start_speed_for_time(uint8_t port_id,
-                                    int32_t time,
+                                    uint16_t time,
                                     int8_t speed,
                                     uint8_t max_power,
                                     uint8_t stop,
                                     uint8_t use_profile);
+
+/* Sends a Port Output command to run a motor pair for a given number
+ * of milliseconds.  Returns 0 on success, -1 on error (when a Python
+ * exception will have been raised).
+ */
+extern int cmd_start_speed_for_time_pair(uint8_t port_id,
+                                         uint16_t time,
+                                         int8_t speed0,
+                                         int8_t speed1,
+                                         uint8_t max_power,
+                                         uint8_t stop,
+                                         uint8_t use_profile);
 
 /* Sends a Port Output command to run a motor through a given angle.
  * Returns 0 on success, -1 on error (when a Python exception will
