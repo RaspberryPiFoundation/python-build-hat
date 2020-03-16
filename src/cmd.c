@@ -1028,6 +1028,48 @@ int cmd_goto_abs_position(uint8_t port_id,
 }
 
 
+int cmd_goto_abs_position_pair(uint8_t port_id,
+                               int32_t position0,
+                               int32_t position1,
+                               int8_t speed,
+                               uint8_t max_power,
+                               uint8_t stop,
+                               uint8_t use_profile)
+{
+    uint8_t *response = make_request(18, TYPE_PORT_OUTPUT,
+                                     port_id,
+                                     OUTPUT_STARTUP_IMMEDIATE |
+                                     OUTPUT_COMPLETE_STATUS,
+                                     OUTPUT_CMD_GOTO_ABS_POSITION_2,
+                                     U32_TO_BYTE_ARG((uint32_t)position0),
+                                     U32_TO_BYTE_ARG((uint32_t)position1),
+                                     (uint8_t)speed,
+                                     max_power,
+                                     stop,
+                                     use_profile);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 5 ||
+        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+        response[3] != port_id)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Output Goto Abs Position");
+        return -1;
+    }
+    if ((response[4] & 0x04) != 0)
+    {
+        /* "Current Command(s) Discarded" bit set */
+        PyErr_SetString(hub_protocol_error, "Port busy");
+        return -1;
+    }
+
+    return 0;
+}
+
+
 int cmd_preset_encoder(uint8_t port_id, int32_t position)
 {
     uint8_t *response = make_request(10, TYPE_PORT_OUTPUT,

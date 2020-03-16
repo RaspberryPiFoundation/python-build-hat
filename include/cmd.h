@@ -272,6 +272,18 @@ extern int cmd_goto_abs_position(uint8_t port_id,
                                  uint8_t stop,
                                  uint8_t use_profile);
 
+/* Sends a Port Output command to run a motor pair to specified
+ * positions.  Returns 0 on success, -1 on error (when a Python
+ * exception will have been raised).
+ */
+extern int cmd_goto_abs_position_pair(uint8_t port_id,
+                                      int32_t position0,
+                                      int32_t position1,
+                                      int8_t speed,
+                                      uint8_t max_power,
+                                      uint8_t stop,
+                                      uint8_t use_profile);
+
 /* Sends a Port Output command to set the motor's "zero" position.
  * Returns 0 on success, or -1 on error (when a Python exception will
  * have been raised).
