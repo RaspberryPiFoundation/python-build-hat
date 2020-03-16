@@ -560,6 +560,56 @@ MotorPair_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 
+static PyObject *
+MotorPair_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    MotorPairObject *pair = (MotorPairObject *)self;
+    static char *kwlist[] = {
+        "degrees", "speed0", "speed1", "max_power", "stop",
+        "acceleration", "deceleration",
+        NULL
+    };
+    int32_t degrees;
+    int32_t speed0, speed1;
+    uint32_t power = 100;
+    uint32_t accel = pair->default_acceleration;
+    uint32_t decel = pair->default_deceleration;
+    uint32_t stop = MOTOR_STOP_USE_DEFAULT;
+    uint8_t use_profile = 0;
+    int parsed_stop;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds,
+                                     "iii|IIII:run_for_degrees", kwlist,
+                                     &degrees, &speed0, &speed1,
+                                     &power, &stop,
+                                     &accel, &decel))
+        return NULL;
+
+    speed0 = CLIP(speed0, SPEED_MIN, SPEED_MAX);
+    speed1 = CLIP(speed1, SPEED_MIN, SPEED_MAX);
+    power = CLIP(power, POWER_MIN, POWER_MAX);
+    accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
+    decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
+    if ((parsed_stop = parse_stop(stop)) < 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Invalid stop state");
+        return NULL;
+    }
+
+    if (set_acceleration(pair, accel, &use_profile) < 0 ||
+        set_deceleration(pair, decel, &use_profile) < 0)
+        return NULL;
+
+    if (cmd_start_speed_for_degrees_pair(pair->id, degrees,
+                                         speed0, speed1, power,
+                                         (uint8_t)parsed_stop,
+                                         use_profile) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef MotorPair_methods[] = {
     {
         "primary", MotorPair_primary, METH_VARARGS,
@@ -614,6 +664,11 @@ static PyMethodDef MotorPair_methods[] = {
         "run_for_time", (PyCFunction)MotorPair_run_for_time,
         METH_VARARGS | METH_KEYWORDS,
         "Run the motor pair for a given length of time"
+    },
+    {
+        "run_for_degrees", (PyCFunction)MotorPair_run_for_degrees,
+        METH_VARARGS | METH_KEYWORDS,
+        "Run the motor pair for the given angle"
     },
     { NULL, NULL, 0, NULL }
 };

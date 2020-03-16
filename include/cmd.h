@@ -249,6 +249,18 @@ extern int cmd_start_speed_for_degrees(uint8_t port_id,
                                        uint8_t stop,
                                        uint8_t use_profile);
 
+/* Sends a Port Output command to run a motor pair through a given
+ * angle.  Returns 0 on success, -1 on error (when a Python exception
+ * will have been raised).
+ */
+extern int cmd_start_speed_for_degrees_pair(uint8_t port_id,
+                                            int32_t degrees,
+                                            int8_t speed0,
+                                            int8_t speed1,
+                                            uint8_t max_power,
+                                            uint8_t stop,
+                                            uint8_t use_profile);
+
 /* Sends a Port Output command to run a motor to a specified
  * position.  Returns 0 on success, -1 on error (when a Python
  * exception will have been raised).
