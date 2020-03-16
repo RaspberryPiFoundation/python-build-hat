@@ -14,9 +14,7 @@
 #include "pair.h"
 #include "port.h"
 #include "cmd.h"
-
-
-#define INVALID_ID (0xff)
+#include "motor-settings.h"
 
 
 /* The actual motor pair type */
@@ -37,37 +35,6 @@ typedef struct
     uint16_t device_type;
 } MotorPairObject;
 
-
-#define DEFAULT_ACCELERATION 100
-#define DEFAULT_DECELERATION 150
-
-#define USE_PROFILE_ACCELERATE 0x01
-#define USE_PROFILE_DECELERATE 0x02
-
-/* Values passed into Python methods */
-#define MOTOR_STOP_FLOAT 0
-#define MOTOR_STOP_BRAKE 1
-#define MOTOR_STOP_HOLD  2
-#define MOTOR_STOP_USE_DEFAULT 3
-
-/* Values passed to the cmd functions */
-#define STOP_FLOAT 0
-#define STOP_HOLD 126
-#define STOP_BRAKE 127
-
-#define SPEED_MIN -100
-#define SPEED_MAX 100
-#define POWER_MIN 0
-#define POWER_MAX 100
-#define ACCEL_MIN 0
-#define ACCEL_MAX 10000
-#define DECEL_MIN 0
-#define DECEL_MAX 10000
-#define RUN_TIME_MIN 0
-#define RUN_TIME_MAX 65535
-
-#define CLIP(value,min,max) (((value) > (max)) ? (max) :                \
-                             (((value) < (min)) ? (min) : (value)))
 
 #define PAIR_COUNT 6
 
@@ -652,8 +619,8 @@ MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
 {
     MotorPairObject *pair = (MotorPairObject *)self;
     static char *kwlist[] = {
-        "position0", "position1", "speed", "max_power",
-        "acceleration", "deceleration", "stop",
+        "position0", "position1", "speed", "max_power", "stop",
+        "acceleration", "deceleration",
         NULL
     };
     int32_t position0, position1;
