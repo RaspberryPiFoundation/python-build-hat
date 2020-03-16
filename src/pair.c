@@ -259,6 +259,13 @@ MotorPair_primary(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
+    if (pair->id == INVALID_ID)
+    {
+        PyErr_SetString(cmd_get_exception(),
+                        "Motor pair no longer connected");
+        return NULL;
+    }
+
     Py_XINCREF(pair->primary);
     return pair->primary;
 }
@@ -271,6 +278,13 @@ MotorPair_secondary(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
+
+    if (pair->id == INVALID_ID)
+    {
+        PyErr_SetString(cmd_get_exception(),
+                        "Motor pair no longer connected");
+        return NULL;
+    }
 
     Py_XINCREF(pair->secondary);
     return pair->secondary;
@@ -297,6 +311,10 @@ MotorPair_callback(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "|O:callback", &callable))
         return NULL;
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
 
     if (callable == NULL)
     {
@@ -338,6 +356,10 @@ static PyObject *
 MotorPair_pid(PyObject *self, PyObject *args)
 {
     MotorPairObject *pair = (MotorPairObject *)self;
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
 
     /* If we have no parameters, return a tuple of the values */
     if (PyTuple_Size(args) == 0)
@@ -465,6 +487,10 @@ MotorPair_preset(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "ii", &position0, &position1))
         return NULL;
 
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
+
     if (cmd_preset_encoder_pair(pair->id, position0, position1) < 0)
         return NULL;
 
@@ -491,6 +517,10 @@ MotorPair_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
                                      &speed0, &speed1, &power,
                                      &accel, &decel))
         return NULL;
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
 
     speed0 = CLIP(speed0, SPEED_MIN, SPEED_MAX);
     speed1 = CLIP(speed1, SPEED_MIN, SPEED_MAX);
@@ -527,7 +557,6 @@ MotorPair_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
     uint8_t use_profile = 0;
     int parsed_stop;
 
-
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
                                      "Iii|IIII:run_for_time", kwlist,
                                      &time, &speed0, &speed1,
@@ -546,6 +575,10 @@ MotorPair_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_ValueError, "Invalid stop state");
         return NULL;
     }
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
 
     if (set_acceleration(pair, accel, &use_profile) < 0 ||
         set_deceleration(pair, decel, &use_profile) < 0)
@@ -584,6 +617,10 @@ MotorPair_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
                                      &power, &stop,
                                      &accel, &decel))
         return NULL;
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
 
     speed0 = CLIP(speed0, SPEED_MIN, SPEED_MAX);
     speed1 = CLIP(speed1, SPEED_MIN, SPEED_MAX);
@@ -634,6 +671,10 @@ MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
                                      &power, &stop,
                                      &accel, &decel))
         return NULL;
+
+    /* If the object is invalid, return False */
+    if (pair->id == INVALID_ID)
+        Py_RETURN_FALSE;
 
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
