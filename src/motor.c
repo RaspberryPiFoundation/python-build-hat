@@ -476,6 +476,34 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
 
 
 static PyObject *
+Motor_callback(PyObject *self, PyObject *args)
+{
+    MotorObject *motor = (MotorObject *)self;
+    PyObject *callable = NULL;
+
+    if (!PyArg_ParseTuple(args, "|O:callback", &callable))
+        return NULL;
+
+    if (callable == NULL)
+    {
+        /* JUst wants the current callback returned */
+        Py_INCREF(motor->callback);
+        return motor->callback;
+    }
+    if (callable != Py_None && !PyCallable_Check(callable))
+    {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+    Py_INCREF(callable);
+    Py_XDECREF(motor->callback);
+    motor->callback = callable;
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
 Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
 {
     MotorObject *motor = (MotorObject *)self;
@@ -718,6 +746,7 @@ static PyMethodDef Motor_methods[] = {
         METH_VARARGS | METH_KEYWORDS,
         "View or set the default values used in motor functions"
     },
+    { "callback", Motor_callback, METH_VARARGS, "Get or set the callback" },
     {
         "run_at_speed", (PyCFunction)Motor_run_at_speed,
         METH_VARARGS | METH_KEYWORDS,
