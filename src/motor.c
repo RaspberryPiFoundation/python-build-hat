@@ -778,21 +778,21 @@ static PyGetSetDef Motor_getsetters[] =
         (getter)Motor_get_constant,
         NULL,
         "Callback reason code: event completed normally",
-        (void *)0
+        (void *)CALLBACK_COMPLETE
     },
     {
         "EVENT_INTERRUPTED",
         (getter)Motor_get_constant,
         NULL,
         "Callback reason code: event was interrupted",
-        (void *)1
+        (void *)CALLBACK_INTERRUPTED
     },
     {
         "EVENT_STALL",
         (getter)Motor_get_constant,
         NULL,
         "Callback reason code: event has stalled",
-        (void *)2
+        (void *)CALLBACK_STALLED
     },
     {
         "FORMAT_RAW",
@@ -930,4 +930,24 @@ PyObject *motor_new_motor(PyObject *port, PyObject *device)
 {
     return PyObject_CallFunctionObjArgs((PyObject *)&MotorType,
                                         port, device, NULL);
+}
+
+
+int motor_callback(PyObject *self, int event)
+{
+    MotorObject *motor = (MotorObject *)self;
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    int rv = 0;
+
+    if (motor->callback != Py_None)
+    {
+        PyObject *args = Py_BuildValue("(i)", event);
+
+        rv = (PyObject_CallObject(motor->callback, args) != NULL) ? 0 : -1;
+        Py_XDECREF(args);
+    }
+
+    PyGILState_Release(gstate);
+
+    return rv;
 }

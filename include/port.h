@@ -37,6 +37,11 @@ typedef struct mode_info_s
 /* Total number of physical ports connected to the hat */
 #define NUM_HUB_PORTS 6
 
+/* Value passed to the motor/pair callbacks */
+#define CALLBACK_COMPLETE    0
+#define CALLBACK_INTERRUPTED 1
+#define CALLBACK_STALLED     2
+
 extern int port_modinit(void);
 extern void port_demodinit(void);
 

@@ -17,6 +17,9 @@ extern void motor_demodinit(void);
 /* Creates a new Motor class object for attaching to a port */
 extern PyObject *motor_new_motor(PyObject *port, PyObject *device);
 
+/* Fire the Python-level callback function, if one is registered */
+extern int motor_callback(PyObject *self, int event);
+
 /* Check for the device type being Motor (0001), System Train Motor (0002),
  * External Motor With Tacho (0026), Internal Motor With Tacho (0027),
  * Large Tacho Motor (002e), Extra Large Tacho Motor (002f), Medium

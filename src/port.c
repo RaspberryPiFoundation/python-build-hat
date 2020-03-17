@@ -757,10 +757,26 @@ int port_feedback_status(uint8_t port_id, uint8_t status)
         /* We don't think anything is attached.  How odd. */
         return -1;
     }
-    /* The status byte is not very clearly documented.  The
-     * corresponding code insists that bit zero is the Busy bit, so
-     * filter that through.
+    /* The documentation of the status byte is somewhat confusing.
+     * Judging from the Flipper code, the bits actually mean the
+     * following:
+     *
+     * Bit 0: BUSY: the device is working on a command
+     * Bit 1: COMPLETE: a command completed
+     * Bit 2: DISCARDED: a command was discarded
+     * Bit 3: IDLE: unclear
+     * Bit 4: BUSY/FULL: unclear
+     * Bit 5: STALL: the device has stalled
      */
+    if (port->motor != Py_None)
+    {
+        if ((status & 0x02) != 0)
+            motor_callback(port->motor, CALLBACK_COMPLETE);
+        if ((status & 0x04) != 0)
+            motor_callback(port->motor,
+                           ((status & 0x20) != 0) ? CALLBACK_STALLED :
+                           CALLBACK_INTERRUPTED);
+    }
     return device_set_port_busy(port->device, status & 0x01);
 }
 
