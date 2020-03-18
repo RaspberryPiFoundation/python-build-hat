@@ -31,7 +31,12 @@ time.sleep(1)
 # These tests should pass regardless of the state of the hat
 class GeneralTestCase(unittest.TestCase):
 	def test_hub_type(self):
-		expected_values = {'firmware', 'info', 'port', 'power_off', 'status', 'temperature'}		
+                # The Shortcake Hat does not have "temperature" or (at
+                # least at present) "firmware" attributes, and it's
+                # debatable whether it should have the "power_off()"
+                # method.
+		#expected_values = {'firmware', 'info', 'port', 'power_off', 'status', 'temperature'}
+		expected_values = {'info', 'port', 'status'}
 		for x in expected_values:
 			with self.subTest(msg='Checking that p1 is in dir(hub)', p1=x):
 				self.assertIn(x,dir(hub))
