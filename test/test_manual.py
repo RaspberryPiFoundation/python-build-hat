@@ -24,6 +24,8 @@ fakeHat.stdin.write(b'attach a $dummy\n')
 fakeHat.stdin.flush()
 fakeHat.stdin.write(b'attach c $motor\n')
 fakeHat.stdin.flush()
+fakeHat.stdin.write(b'attach d $motor\n')
+fakeHat.stdin.flush()
 time.sleep(0.1)
 time.sleep(1)
 
