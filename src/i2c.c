@@ -38,6 +38,14 @@
 #define I2C_DEVICE_NAME "/dev/i2c-1"
 #define HAT_ADDRESS 0x10 /* TODO: replace with the right number */
 
+#ifndef USE_DUMMY_I2C
+#define I2C_GPIO_NUMBER "5"
+#define GPIO_DIRECTORY "/sys/class/gpio/gpio" I2C_GPIO_NUMBER
+#define DIRECTION_PSEUDOFILE GPIO_DIRECTORY "/direction"
+#define VALUE_PSEUDOFILE GPIO_DIRECTORY "/value"
+
+static int gpio_fd = -1;
+#endif /* DEBUG_I2C */
 
 static int i2c_fd = -1;
 static pthread_t comms_thread;
@@ -81,6 +89,63 @@ static inline uint32_t extract_uint32(uint8_t *buffer)
         (buffer[2] << 16) |
         (buffer[3] << 24);
 }
+
+
+#ifndef USE_DUMMY_I2C
+static int open_wake_gpio(void)
+{
+    int fd;
+    const char *export = I2C_GPIO_NUMBER;
+    const char *direction = "in";
+
+    /* First export the GPIO */
+    if ((fd = open("/sys/class/gpio/export", O_WRONLY)) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    if (write(fd, export, strlen(export)) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    close(fd);
+
+    /* Now set the direction */
+    if ((fd = open(DIRECTION_PSEUDOFILE, O_WRONLY)) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    if (write(fd, direction, 2) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    close(fd);
+
+    /* Finally open the GPIO for reading */
+    if ((gpio_fd = open(VALUE_PSEUDOFILE, O_RDWR)) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int read_wake_gpio(void)
+{
+    char buffer;
+
+    if (lseek(gpio_fd, 0, SEEK_SET) == (off_t)-1 ||
+        read(gpio_fd, &buffer, 1) < 0)
+    {
+        return -1;
+    }
+    return (buffer == '1');
+}
+#endif
 
 
 static void report_comms_error(int rv)
@@ -128,12 +193,19 @@ static int read_message(uint8_t **pbuffer)
     uint8_t byte;
     uint8_t *buffer;
     int offset = 1;
+#ifndef USE_DUMMY_I2C
+    int rv;
+#endif
 
     *pbuffer = NULL;
 
 #ifndef USE_DUMMY_I2C
     if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
         return 0;
+    if ((rv = read_wake_gpio()) < 0)
+        return -1;
+    else if (rv == 0)
+        return 0; /* Nothing to read */
 #endif
 
     /* Read in the length */
@@ -481,6 +553,8 @@ int i2c_open_hat(void)
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
+    if (open_wake_gpio() < 0)
+        return -1; /* Exception already raised */
 #endif /* USE_DUMMY_I2C */
 
 #ifdef DEBUG_I2C
@@ -527,6 +601,10 @@ int i2c_close_hat(void)
         return -1;
     }
     i2c_fd = -1;
+#ifndef USE_DUMMY_I2C
+    close(gpio_fd);
+#endif
+
     return 0;
 }
 
