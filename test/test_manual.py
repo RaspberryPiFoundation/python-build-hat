@@ -123,6 +123,24 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		hub.port.C.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
 		hub.port.C.motor.pid()
 
+# Motors must be connected to ports C and D
+class MotorPairCDTestCase(unittest.TestCase):
+	def test_create_motor_pair(self):
+		pair = hub.port.C.motor.pair(hub.port.D.motor)
+		self.assertEqual(pair.primary(), hub.port.C.motor)
+		self.assertEqual(pair.secondary(), hub.port.D.motor)
+		pair.unpair()
+
+	def test_motor_pair_functionality(self):
+		pair = hub.port.C.motor.pair(hub.port.D.motor)
+		pair.brake()
+		pair.float()
+		pair.run_for_time(1000, 127)
+		pair.run_for_time(1000, -127)
+		pair.run_at_speed(-100, 50)
+		pair.run_to_position(0, 127, 70)
+
+
 # Touch sensor must be connected to port B
 @unittest.skip("Using FakeHat")
 class TouchSensorBTestCase(unittest.TestCase):
