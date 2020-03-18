@@ -137,8 +137,8 @@ class MotorPairCDTestCase(unittest.TestCase):
 		pair = hub.port.C.motor.pair(hub.port.D.motor)
 		pair.brake()
 		pair.float()
-		pair.run_for_time(1000, 127)
-		pair.run_for_time(1000, -127)
+		pair.run_for_time(1000, 127, 127)
+		pair.run_for_time(1000, -127, -127)
 		pair.run_at_speed(-100, 50)
 		pair.run_to_position(0, 127, 70)
 
