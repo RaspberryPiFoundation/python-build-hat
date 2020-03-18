@@ -845,3 +845,50 @@ port_check_mode(PyObject *port, int mode)
 
     return (mode >= 0) && (mode < self->num_modes);
 }
+
+
+static PyObject *
+port_get_value_list(PyObject *port)
+{
+    PortObject *self = (PortObject *)port;
+
+    if (self->device == Py_None)
+        return PyList_New(0);
+    return PyObject_CallMethod(self->device, "get", NULL);
+}
+
+
+PyObject *
+ports_get_value_dict(PyObject *port_set)
+{
+    PortSetObject *self = (PortSetObject *)port_set;
+    int i;
+    PyObject *dict = PyDict_New();
+    char name[2];
+
+    if (dict == NULL)
+        return NULL;
+
+    /* 'name' will be used to generate the port letter string */
+    name[1] = '\0';
+
+    for (i = 0; i < NUM_HUB_PORTS; i++)
+    {
+        PyObject *value = port_get_value_list(self->ports[i]);
+
+        if (value == NULL)
+        {
+            Py_DECREF(dict);
+            return NULL;
+        }
+        name[0] = 'A' + i;
+        if (PyDict_SetItemString(dict, name, value) < 0)
+        {
+            Py_DECREF(value);
+            Py_DECREF(dict);
+            return NULL;
+        }
+    }
+
+    return dict;
+}

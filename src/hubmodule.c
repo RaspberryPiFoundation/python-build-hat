@@ -107,7 +107,7 @@ static PyGetSetDef Hub_getsetters[] =
 
 
 static PyObject *
-hub_info(PyObject *self, PyObject *args)
+Hub_info(PyObject *self, PyObject *args)
 {
     PyObject *dict;
     PyObject *hw_revision;
@@ -137,9 +137,26 @@ hub_info(PyObject *self, PyObject *args)
     return dict;
 }
 
+
+static PyObject *
+Hub_status(PyObject *self, PyObject *args)
+{
+    HubObject *hub = (HubObject *)self;
+    PyObject *port_status;
+
+    if (!PyArg_ParseTuple(args, "")) /* No args to this function */
+        return NULL;
+
+    if ((port_status = ports_get_value_dict(hub->ports)) == NULL)
+        return NULL;
+
+    return Py_BuildValue("{sO}", "port", port_status);
+}
+
+
 #ifdef DEBUG_I2C
 static PyObject *
-hub_debug_i2c(PyObject *self, PyObject *args)
+Hub_debug_i2c(PyObject *self, PyObject *args)
 {
     if (!PyArg_ParseTuple(args, "")) /* No args here either */
         return NULL;
@@ -152,9 +169,10 @@ hub_debug_i2c(PyObject *self, PyObject *args)
 
 
 static PyMethodDef Hub_methods[] = {
-    { "info", hub_info, METH_VARARGS, "Information about the Hub" },
+    { "info", Hub_info, METH_VARARGS, "Information about the Hub" },
+    { "status", Hub_status, METH_VARARGS, "Status of the Hub" },
 #ifdef DEBUG_I2C
-    { "debug_i2c", hub_debug_i2c, METH_VARARGS, "Dump recorded I2C traffic" },
+    { "debug_i2c", Hub_debug_i2c, METH_VARARGS, "Dump recorded I2C traffic" },
 #endif
     { NULL, NULL, 0, NULL }
 };
