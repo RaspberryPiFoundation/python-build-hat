@@ -64,5 +64,6 @@ extern int port_ensure_mode_info(PyObject *port);
 extern mode_info_t *port_get_mode(PyObject *port, int mode);
 extern int port_check_mode(PyObject *port, int mode);
 extern PyObject *ports_get_value_dict(PyObject *portset);
+extern PyObject *port_get_motor(PyObject *port);  /* Returns new reference */
 
 #endif /* RPI_STRAWBERRY_PORT_H_INCLUDED */

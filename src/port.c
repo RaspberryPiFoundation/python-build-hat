@@ -892,3 +892,10 @@ ports_get_value_dict(PyObject *port_set)
 
     return dict;
 }
+
+
+PyObject *
+port_get_motor(PyObject *port)
+{
+    return Port_get_motor((PortObject *)port, NULL);
+}

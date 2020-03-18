@@ -233,8 +233,7 @@ MotorPair_primary(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    Py_XINCREF(pair->primary);
-    return pair->primary;
+    return port_get_motor(pair->primary);
 }
 
 
@@ -253,8 +252,7 @@ MotorPair_secondary(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    Py_XINCREF(pair->secondary);
-    return pair->secondary;
+    return port_get_motor(pair->secondary);
 }
 
 
