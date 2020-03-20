@@ -119,25 +119,27 @@ static PyObject *
 Port_callback(PyObject *self, PyObject *args)
 {
     PortObject *port = (PortObject *)self;
-    PyObject *result = NULL;
-    PyObject *temp;
+    PyObject *temp = NULL;
 
-    if (PyArg_ParseTuple(args, "O:callback", &temp))
+    if (!PyArg_ParseTuple(args, "O:callback", &temp))
+        return NULL;
+
+    if (temp == NULL)
     {
-        if (!PyCallable_Check(temp))
-        {
-            PyErr_SetString(PyExc_TypeError, "callback must be callable");
-            return NULL;
-        }
-        Py_XINCREF(temp);
-        Py_XDECREF(port->callback_fn);
-        port->callback_fn = temp;
-        /* Now return None */
-        Py_INCREF(Py_None);
-        result = Py_None;
+        Py_INCREF(port->callback_fn);
+        return port->callback_fn;
     }
 
-    return result;
+    if (temp != Py_None && !PyCallable_Check(temp))
+    {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+    Py_XINCREF(temp);
+    Py_XDECREF(port->callback_fn);
+    port->callback_fn = temp;
+
+    Py_RETURN_NONE;
 }
 
 
