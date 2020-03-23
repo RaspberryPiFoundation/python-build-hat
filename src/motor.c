@@ -375,13 +375,8 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
      * To determine that, we need to inspect the tuple `args` and
      * the dictionary `kwds` to see if they contain anything.
      */
-    if (PyTuple_Size(args) != 0)
-    {
-        PyErr_SetString(PyExc_TypeError,
-                        "Function takes at most 0 positional arguments");
-        return NULL;
-    }
-    if (kwds == NULL || PyDict_Size(kwds) == 0)
+    if (PyTuple_Size(args) == 0 &&
+        (kwds == NULL || PyDict_Size(kwds) == 0))
     {
         /* No args, return the dictionary */
         return Py_BuildValue("{sI sI sI sI sN sI sO s(III)}",
