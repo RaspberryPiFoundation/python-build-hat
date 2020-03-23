@@ -200,8 +200,8 @@ Motor_init(MotorObject *self, PyObject *args, PyObject *kwds)
     self->default_stall = 1;
     self->default_stop = STOP_BRAKE;
     self->default_position_pid[0] = 0;
-    self->default_position_pid[0] = 1;
-    self->default_position_pid[0] = 2;
+    self->default_position_pid[1] = 0;
+    self->default_position_pid[2] = 0;
 
     self->want_default_acceleration_set = 1;
     self->want_default_deceleration_set = 1;
