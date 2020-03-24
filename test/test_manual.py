@@ -51,7 +51,18 @@ class GeneralTestCase(unittest.TestCase):
 		assert isinstance(hub.info(), dict)
 
 	def test_hub_info_keys(self):
-		assert 'hardware_revision' in hub.info().keys()
+		assert 'hw_version' in hub.info().keys()
+		assert 'fw_version' in hub.info().keys()
+
+	def test_hub_status_type(self):
+		assert isinstance(hub.info(), dict)
+
+	def test_hub_status_keys(self):
+		assert 'port' in hub.status().keys()
+		assert len(hub.status())==1
+
+	def test_hub_status_port_keys(self):
+		assert {'A','B','C','D','E','F'}.issubset(hub.status()['port'].keys())
 
 	def test_port_types(self):
 		ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.F]
@@ -59,7 +70,17 @@ class GeneralTestCase(unittest.TestCase):
 		for P in ports:
 			assert {'callback', 'device', 'info', 'mode', 'pwm'}.issubset(dir(P))
 			assert isinstance(P.info(), dict)
-			assert {'type'}.issubset(P.info().keys())
+			assert {'type','fw_version','hw_version','combi_modes','modes'}.issubset(P.info().keys())
+			assert type(P.info()['modes']) is list
+			assert type(P.device.get(0)) is list
+			assert type(P.device.get(1)) is list
+			assert type(P.device.get(2)) is list
+			for M in P.info()['modes']:
+				assert {'name','capability','symbol','raw','pct','si','map_out','map_in','format'}.issubset(M.keys())
+				assert {'datasets','figures','decimals','type'}.issubset(M['format'])
+				assert 0 <= M['format']['type'] <= 3
+				assert 0 <= M['map_out'] <= 255
+				assert 0 <= M['map_in'] <= 255
 
 	@unittest.skip("Mode not implemented yet")
 	def test_port_mode_implemented(self):
@@ -116,18 +137,27 @@ class MotorAttachedCTestCase(unittest.TestCase):
 				self.assertIn(x,hub.port.C.motor.default().keys())
 
 	def test_motor_C_basic_functionality_with_motor_connected(self):
+		hub.port.C.motor.preset(0)
+		hub.port.C.motor.hold(100)
+		hub.port.C.motor.hold(0)
 		hub.port.C.motor.brake()
 		hub.port.C.motor.float()
 		hub.port.C.motor.get()
+		assert type(hub.port.C.motor.busy(0)) is bool
+		assert type(hub.port.C.motor.busy(1)) is bool
+		assert isinstance(hub.port.C.motor.default(), dict)
+		assert {'speed','max_power','acceleration','deceleration','stall','callback','stop','pid'}.issubset(hub.port.C.motor.default().keys())
 
 	def test_motor_C_movement_functionality_with_motor_connected(self):
+		hub.port.C.motor.run_at_speed(10, 100,10000,10000)
+		hub.port.C.motor.float()
 		hub.port.C.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
 		hub.port.C.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
 		hub.port.C.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
 		hub.port.C.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
 		hub.port.C.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
 		hub.port.C.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
-		hub.port.C.motor.pid()
+		assert type(hub.port.C.motor.pid()) is tuple
 
 # Motors must be connected to ports C and D
 class MotorPairCDTestCase(unittest.TestCase):
@@ -139,11 +169,16 @@ class MotorPairCDTestCase(unittest.TestCase):
 
 	def test_motor_pair_functionality(self):
 		pair = hub.port.C.motor.pair(hub.port.D.motor)
+		pair.preset(0,0)
+		pair.hold(100)
+		pair.hold(0)
 		pair.brake()
 		pair.float()
+		assert pair.pid() == (0,0,0)
+		pair.run_at_speed(10,10, 100,10000,10000)
+		pair.run_for_degrees(180, 127,127)
 		pair.run_for_time(1000, 127, 127)
 		pair.run_for_time(1000, -127, -127)
-		pair.run_at_speed(-100, 50)
 		pair.run_to_position(0, 127, 70)
 		pair.unpair()
 
