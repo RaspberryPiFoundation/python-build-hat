@@ -108,13 +108,24 @@ class DummyAttachedATestCase(unittest.TestCase):
 			self.skipTest('Mode not implemented')
 
 # These tests must be done with nothing attached to port F
-class PortDetachedBTestCase(unittest.TestCase):
+class PortDetachedFTestCase(unittest.TestCase):
 	def test_port_info(self):
 		assert isinstance(hub.port.F.info(), dict)
 		assert hub.port.F.info() == {'type': None}
 
 	def test_port_device(self):
 		assert hub.port.F.device is None
+
+# These tests must be done with a dummy attached to port A
+class PWMATestCase(unittest.TestCase):
+	def test_pwm_values(self):
+		hub.port.A.pwm(100)
+		hub.port.A.pwm(-100)
+		with self.assertRaises(ValueError):
+			hub.port.A.pwm(101)
+		with self.assertRaises(ValueError):
+			hub.port.A.pwm(-101)
+		hub.port.A.pwm(0)
 
 # These tests must be done with a motor attached to port C
 class MotorAttachedCTestCase(unittest.TestCase):
@@ -158,6 +169,22 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		hub.port.C.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
 		hub.port.C.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
 		assert type(hub.port.C.motor.pid()) is tuple
+
+	def test_motor_callbacks(self):
+		global myflag
+		myflag = 0
+		def myfun(x):
+			global myflag
+			myflag=1
+
+		assert hub.port.C.motor.callback() is None
+		hub.port.C.motor.callback(myfun)
+		assert callable(hub.port.C.motor.callback())
+		assert myflag==0
+		hub.port.C.motor.brake()
+		assert myflag==1
+
+
 
 # Motors must be connected to ports C and D
 class MotorPairCDTestCase(unittest.TestCase):
