@@ -226,9 +226,9 @@
         permitted.
 
         :param int value: The PWM level generated, ranging from -100
-            to +100.  The polarity of the PWM signal matches the sign
-            of the value.
-
+            to +100, plus the special value 127 to put a motor into
+            brake state.  The polarity of the PWM signal matches the
+            sign of the value.
         :raises ValueError: if the input is greater than 100 or less
             than -100.
 
@@ -243,6 +243,11 @@
             Arguably this should only be implemented as a method of
             the Device class, in the same way that
             :py:meth:`Port.mode()` is.
+
+        .. note::
+
+            The original silently clips out of range input values back
+            to the -100 to +100 range, and disallows pwm(127).
 
     .. py:method:: callback([fn])
 

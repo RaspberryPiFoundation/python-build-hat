@@ -85,6 +85,28 @@
 
         ``format`` is a position-only argument.
 
+    .. py:method:: pwm(value)
+
+        Sets the PWM level generated at the port, if output is
+        permitted.
+
+        :param int value: The PWM level generated, ranging from -100
+            to +100, plus the special value 127 to put a motor into
+            brake state.  The polarity of the PWM signal matches the
+            sign of the value.
+        :raises ValueError: if the input is greater than 100 or less
+            than -100.
+
+        Calling ``pwm(0)`` stops the PWM signal and leaves the port
+        driver in a floating state.
+
+        ``value`` is a position-only argument.
+
+        .. note::
+
+            The original silently clips out of range input values back
+            to the -100 to +100 range, and disallows pwm(127).
+
     .. py:method:: mode([mode[, mode_data]])
 
         Puts the device in the specified mode(s)
@@ -245,6 +267,31 @@ Device_repr(PyObject *self)
     int port_id = port_get_id(device->port);
 
     return PyUnicode_FromFormat("Device(%c)", 'A' + port_id);
+}
+
+
+static PyObject *
+Device_pwm(PyObject *self, PyObject *args)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    int pwm_level;
+
+    if (!PyArg_ParseTuple(args, "i:pwm", &pwm_level))
+        return NULL;
+
+    /* Check the pwm value is within range */
+    if (pwm_level < -100 || (pwm_level > 100 && pwm_level != 127))
+    {
+        PyErr_Format(PyExc_ValueError,
+                     "PWM value %d out of range",
+                     pwm_level);
+        return NULL;
+    }
+
+    if (cmd_set_pwm(port_get_id(device->port), pwm_level) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
 }
 
 
@@ -562,6 +609,7 @@ Device_get(PyObject *self, PyObject *args)
 
 
 static PyMethodDef Device_methods[] = {
+    { "pwm", Device_pwm, METH_VARARGS, "Set the PWM level for the port" },
     { "mode", Device_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Device_get, METH_VARARGS, "Get a set of readings from the device" },
     { NULL, NULL, 0, NULL }
