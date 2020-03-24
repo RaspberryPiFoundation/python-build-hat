@@ -16,6 +16,273 @@
 #include "cmd.h"
 #include "motor-settings.h"
 
+/**
+
+.. py:class:: MotorPair
+
+    The ``MotorPair`` object provides the API that is available to
+    paired motors operated as one.
+
+    The methods of this class will generally return ``False`` if the
+    motors are no longer paired, either explicitly or because one of
+    the motors has been unplugged.
+
+    .. note::
+
+        This class is not actually available to the user.  Instances
+        are created by the :py:meth:`Motor.pair()` method.
+
+    .. note::
+
+        Returning ``False`` is a poor API choice, but it's what the
+        original does.  For consistency we do likewise, but raising an
+        exception would be much better.
+
+    .. py:method: primary()
+
+        Returns the :py:class:`Motor` object representing the motor
+        that created this pair.
+
+    .. py:method: secondary()
+
+        Returns the :py:class:`Motor` object representing the motor
+        that was paired with the :py:meth:`.primary()` to create this
+        pair.
+
+    .. py:method: id()
+
+        Returns the integer ID assigned to the port pair.
+
+    .. py:method: callback([fn])
+
+        Gets or sets the function to be called when a motor command on
+        the pair completes.
+
+        :param fn: The function to call.  This is a positional
+            parameter only.
+        :type fn: Callable or None
+        :raises TypeError: if ``fn`` is present, not ``None`` and not
+            callable.
+        :return: the current callback function if ``fn`` is omitted,
+            otherwise ``None``.
+        :rtype: Callable or None
+
+        ``fn``, if present, should be a function taking one parameter
+        that indicates whether the motor command completed
+        successfully.  The possible values are:
+
+        * :py:const:`Motor.EVENT_COMPLETED` : indicates that the
+          command completed successfully.
+        * :py:const:`Motor.EVENT_INTERRUPTED` : indicates that the
+          command was interrupted before it could complete.
+        * :py:const:`Motor.EVENT_STALL` : indicates that the motor
+          stalled, preventing the command from completing.
+
+        The callback function is called from a background context,
+        which limits what it can safely do.  In particular, calling
+        any of the functions in the hub library is likely to cause
+        problems.  It is usually best to set a flag variable and deal
+        with the event from the foreground.
+
+        ``fn`` is a position-only parameter.
+
+        .. note::
+
+            The callback is not as useful as one might hope, since it
+            does not indicate which motor command is being reported.
+            Methods of the :py:class:`Motor` class may invoke more
+            than one motor command, depending on their exact
+            parameters.
+
+    .. py:method: unpair()
+
+        Removes the pairing between the motors in this pair.  After
+        calling this method, this :py:class:`MotorPair` object will be
+        invalid.
+
+        Returns ``True`` if the unpair was successful, or ``False`` if
+        the attempt timed out.
+
+    .. py:method:: pid([p, i, d])
+
+        With no parameters, returns a tuple with the current used P, I
+        and D values if the values have been set using this method or
+        :py:meth:`Motor.default()`.  If the values have not been set,
+        a tuple of zeroes is returned and is invalid.  Otherwise all
+        three parameters must be given, and the default P, I and D
+        values are set from them.
+
+       .. note::
+
+           At the moment it is not possible to readout the default PID
+           values used in the low-level drivers. To do this it is
+           required to implement additional sub-commands in the LPF2
+           protocol.
+
+       .. note::
+
+           The above is taken from the original documentation with
+           only minor edits for grammar and flow.  I have no further
+           information on what these P, I and D values might be or do.
+
+    .. py:method:: float()
+
+        Force the motor driver to floating state.  Equivalent to
+        ``MotorPair.pwm(0)``.
+
+    .. py:method:: brake()
+
+        Force the motor driver to brake state.  Equivalent to
+        ``MotorPair.pwm(127)``
+
+    .. py:method:: hold([power])
+
+        :param int power: Percentage of maximum power to use (0 - 100).
+
+        Force the motor drivers to hold position.  If ``power`` is
+        specified and is negative or greater than 100, it is clipped
+        back to the valid range rather than raising an exception.
+
+        ``power`` is a position-only parameter.
+
+    .. py:method:: pwm(value)
+
+        As :py:meth:`Port.pwm()`
+
+    .. py:method:: preset(position0, position1)
+
+        "Presets" the motors' relative zero positions.
+
+        :param int position0: the position the primary motor should
+            consider itself to be at relative to the "zero" point.
+
+        :param int position1: the position the secondary motor should
+            consider itself to be at relative to the "zero" point.
+
+        ``position0`` and ``position1`` are position-only parameters.
+
+    .. py:method:: run_at_speed(speed0, speed1[, max_power, \
+                                acceleration, deceleration])
+
+        Sets the motors running at the given speeds.
+
+        :param int speed0: the percentage of full speed at which to
+            run the primary motor, from -100 to +100.  Out of range
+            values are silently clipped to the correct range.
+            Negative values run the motor in reverse.
+        :param int speed1: the percentage of full speed at which to
+            run the secondary motor, from -100 to +100.  Out of range
+            values are silently clipped to the correct range.
+            Negative values run the motor in reverse.
+        :param int max_power: the maximum power of the motors to use
+            when regulating speed, as a percentage of full power (0 -
+            100).  Out of range values are silently clipped to the
+            correct range.  If omitted, 100% power is assumed.
+        :param int acceleration: the time in milliseconds to achieve
+            the given speed (0 - 10000).  Out of range values are
+            silently clipped to the correct range.  If omitted, the
+            default is 100ms.
+        :param int deceleration: the time in milliseconds to stop from
+            full speed (0 - 10000).  Out of range values are silently
+            clipped to the correct range.  If omitted, the default is
+            150ms.
+
+    .. py:method:: run_for_time(msec, speed0, speed1[, max_power, \
+                                stop, acceleration, deceleration])
+
+        Runs the motors for the given period.
+
+        :param int msec: the time in milliseconds for which to run the
+            motors.
+        :param int speed0: the percentage of full speed at which to
+            run the primary motor, from -100 to +100.  Out of range
+            values are silently clipped to the correct range.
+            Negative values run the motor in reverse.
+        :param int speed1: the percentage of full speed at which to
+            run the secondary motor, from -100 to +100.  Out of range
+            values are silently clipped to the correct range.
+            Negative values run the motor in reverse.
+        :param int max_power: the maximum power of the motors to use
+            when regulating speed, as a percentage of full power (0 -
+            100).  Out of range values are silently clipped to the
+            correct range.  If omitted, 100% power is assumed.
+        :param int stop: the stop state of the motor.  Must be one of
+            ``0`` (floating), ``1`` (brake), ``2`` (hold position) or
+            ``3`` (current default setting).  If omitted, ``1``
+            (break) is used by default.
+        :param int acceleration: the time in milliseconds to achieve
+            the given speed (0 - 10000).  Out of range values are
+            silently clipped to the correct range.  If omitted, the
+            default is 100ms.
+        :param int deceleration: the time in milliseconds to stop from
+            full speed (0 - 10000).  Out of range values are silently
+            clipped to the correct range.  If omitted, the default is
+            150ms.
+
+    .. py:method:: run_for_degrees(degrees, speed0, speed1[, max_power, \
+                                stop, acceleration, deceleration])
+
+        Runs the motor through the given angle.
+
+        :param int degrees: the angle in degrees to move the motors
+            through from their current positions.
+        :param int speed0: the percentage of full speed at which to
+            run the primary motor, from -100 to +100.  Out of range
+            values are silently clipped to the correct range.
+            Negative values run the motor in reverse.
+        :param int speed1: the percentage of full speed at which to
+            run the secondary motor, from -100 to +100.  Out of range
+            values are silently clipped to the correct range.
+            Negative values run the motor in reverse.
+        :param int max_power: the maximum power of the motors to use
+            when regulating speed, as a percentage of full power (0 -
+            100).  Out of range values are silently clipped to the
+            correct range.  If omitted, 100% power is assumed.
+        :param int stop: the stop state of the motor.  Must be one of
+            ``0`` (floating), ``1`` (brake), ``2`` (hold position) or
+            ``3`` (current default setting).  If omitted, ``1``
+            (break) is used by default.
+        :param int acceleration: the time in milliseconds to achieve
+            the given speed (0 - 10000).  Out of range values are
+            silently clipped to the correct range.  If omitted, the
+            default is 100ms.
+        :param int deceleration: the time in milliseconds to stop from
+            full speed (0 - 10000).  Out of range values are silently
+            clipped to the correct range.  If omitted, the default is
+            150ms.
+
+    .. py:method:: run_to_position(position0, position1, speed[, max_power, \
+                                   stop, acceleration, deceleration])
+
+        Runs the motors to the given absolute positions.
+
+        :param int position0: the angle from the "zero position" preset
+            to move the primary motor to.
+        :param int position1: the angle from the "zero position" preset
+            to move the secondary motor to.
+        :param int speed: the percentage of full speed at which to run
+            the motors, from -100 to +100.  Out of range values are
+            silently clipped to the correct range.  Negative values
+            run the motor in reverse.
+        :param int max_power: the maximum power of the motors to use
+            when regulating speed, as a percentage of full power (0 -
+            100).  Out of range values are silently clipped to the
+            correct range.  If omitted, 100% power is assumed.
+        :param int stop: the stop state of the motor.  Must be one of
+            ``0`` (floating), ``1`` (brake), ``2`` (hold position) or
+            ``3`` (current default setting).  If omitted, ``1``
+            (break) is used by default.
+        :param int acceleration: the time in milliseconds to achieve
+            the given speed (0 - 10000).  Out of range values are
+            silently clipped to the correct range.  If omitted, the
+            default is 100ms.
+        :param int deceleration: the time in milliseconds to stop from
+            full speed (0 - 10000).  Out of range values are silently
+            clipped to the correct range.  If omitted, the default is
+            150ms.
+
+ */
+
 
 /* The actual motor pair type */
 typedef struct

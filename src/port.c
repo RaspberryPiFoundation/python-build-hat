@@ -17,6 +17,287 @@
 #include "motor.h"
 #include "pair.h"
 
+/**
+
+.. py:class:: PortSet
+
+    Represents the collection of ports attached to the Hub.
+
+    .. note::
+
+        This class is not actually available to the user.  It is only
+        used by the Hub object itself, and comes ready initialized.
+
+    .. py:attribute:: A
+
+        :type: Port
+
+        A ``Port`` instance (see below) representing port A.
+
+    .. py:attribute:: B
+
+        :type: Port
+
+        Represents port B.
+
+    .. py:attribute:: C
+
+        :type: Port
+
+        Represents port C.
+
+    .. py:attribute:: D
+
+        :type: Port
+
+        Represents port D.
+
+    .. py:attribute:: E
+
+        :type: Port
+
+        Represents port E.
+
+    .. py:attribute:: F
+
+        :type: Port
+
+        Represents port F.
+
+    .. py:attribute:: ATTACHED
+
+        :type: int
+        :value: 1
+
+        The value passed to the ``Port`` instance callback function
+        when a device is attached to the port.
+
+    .. py:attribute:: DETACHED
+
+        :type: int
+        :value: 0
+
+        The value passed to the ``Port`` instance callback function
+        when a device is detached from the port.
+
+    .. note::
+
+        The original doesn't explicitly acknowledge that this
+        intermediate collection object exists.  To avoid confusion, it
+        seems better to document it as it really is.  There is also no
+        documentation of the ATTACHED and DETACHED attributes.
+
+.. py:class:: Port
+
+    Represents a port on the Hat, which may or may not have a device
+    attached to it.  The methods of this class are always available.
+
+    The ports on the hub are able to autodetect the capabilities of
+    the device that is plugged in.  When a motor or device is
+    detected, then an enhanced set of methods is available through the
+    Port.motor or Port.device attribute.
+
+    .. note::
+
+        This class is not actually available to the user.  It is only
+        used by the Hub object itself, and comes ready initialized.
+
+    .. py:attribute:: device
+
+        A ``Device`` instance for the device attached to the port, or
+        ``None`` if no device is currently attached.
+
+    .. py:attribute:: motor
+
+        A ``Motor`` instance for the motor attached to the port, or
+        ``None`` if there is no recognised motor currently attached.
+
+    .. py:method:: info() -> dict
+
+        Returns a dictionary describing the capabilities of the device
+        connected to the port.  If the port has nothing plugged in,
+        then the result is a dictinoary with only a ``type`` key with
+        a value of ``None``.
+
+        A port with a powered-up compatible device plugged in returns
+        a dictionary with the following keys:
+
+        * ``type`` : Device type as an integer.
+        * ``fw_version`` : Firmware version as a string in the form
+          ``MAJOR.MINOR.BUGFIX.BUILD``
+        * ``hw_version`` : Hardware version as a string in the form
+          ``MAJOR.MINOR.BUGFIX.BUILD``
+        * ``combi_modes`` : A tuple of legal mode combinations as
+          16-bit unsigned integers.  In each integer, bit ``N``
+          corresponds to mode number ``N`` (see below), and the set
+          bits indicate modes that can be combined together.
+        * ``modes`` : A list of dictionaries representing available
+          modes.  Where _mode numbers_ are called for in this
+          documentation, they are the index of the mode in this list.
+
+        .. note::
+
+            The original Port.info() dictionary also contains a
+            ``speed`` key, containing the maximum baud rate of the
+            device connected.  There doesn't appear to be any means
+            for this library to acquire that information.
+
+            The original ``fw_version`` and ``hw_version`` values are
+            unsigned 32-bit integers rather than human-readable
+            strings.  The encoding used is not entirely obvious, and
+            it was thought decoding the version into a string might be
+            more convenient.
+
+            The original documentation mistakenly claims that the
+            ``combi-modes`` value is a list rather than a tuple.  At
+            present, combination modes are not (very) implemented.
+
+        Each ``modes`` list item dictionary has the following keys:
+
+        * ``name`` : The name of the mode as a string.
+        * ``capability`` : The 48-bit capability as a length 6 byte
+          string.
+        * ``symbol`` : The SI symbol name to use for the data returned
+          by the device in SI format.
+        * ``raw`` : The range of the raw data (as returned in RAW
+          format) expressed as a 2 element tuple ``(minimum,
+          maximum)``.
+        * ``pct`` : The range of the percentage data (as returned in
+          PCT format) expressed as a 2 element tuple ``(minimum,
+          maximum)``.
+        * ``si`` : The range of the SI data (as returned in SI format)
+          expressed as a 2 element tuple ``(minimum, maximum)``.
+        * ``map_out`` : The output mapping bits as an 8 bit value.
+        * ``map_in`` : The input mapping bits as an 8 bit value.
+        * ``format`` : A dictionary representing the format data for
+          this mode.
+
+        The input and output mapping bits are defined as follows:
+
+        ===  =======
+        Bit  Meaning
+        ===  =======
+        7    Supports NULL value
+        6    Supports Functional Mapping 2.0+
+        5    N/A
+        4    ABS (Absolute [min..max])
+        3    REL (Relative [-1..1])
+        2    DIS (Discrete [0, 1, 2, 3])
+        1    N/A
+        0    N/A
+        ===  =======
+
+        .. note::
+
+            This information was taken from the LEGO Wireless Protocol
+            3.0.00 documentation available online.  No further
+            documentation of what these fields actually mean is
+            currently provided.
+
+        Each ``format`` dictionary has the following keys:
+
+        * ``datasets`` : The number of data values that this mode
+          returns.
+        * ``figures`` : The number digits in the data value.
+        * ``decimals`` : the number of digits after the implied
+          decimal point.
+        * ``type`` : The type of the returned data, encoded as an
+          integer.
+
+        The ``type`` values are defined as follows:
+
+        =====  =======
+        Value  Meaning
+        =====  =======
+        0      8-bit signed integer
+        1      16-bit signed integer
+        2      32-bit signed integer
+        3      IEEE 32-bit floating point
+        =====  =======
+
+        .. note::
+
+            There is no available documentation of the Capability
+            bits.
+
+    .. py:method:: pwm(value: int) -> None
+
+        Sets the PWM level generated at the port, if output is
+        permitted.
+
+        :param int value: The PWM level generated, ranging from -100
+            to +100.  The polarity of the PWM signal matches the sign
+            of the value.
+
+        :raises ValueError: if the input is greater than 100 or less
+            than -100.
+
+        Calling ``pwm(0)`` stops the PWM signal and leaves the port
+        driver in a floating state.
+
+        Note that ``value`` is not a keyword argument: calling
+        ``pwm(value=42)`` will raise a ``TypeError``.
+
+        .. note::
+
+            Arguably this should only be implemented as a method of
+            the Device class, in the same way that
+            :py:meth:`Port.mode()` is.
+
+    .. py:method:: callback([fn])
+
+        Sets the function to be called when a device is plugged into
+        or removed from this port.
+
+        :param fn: The function to call.  This is a positional
+            parameter only.
+        :type fn: Callable or None
+        :raises TypeError: if ``fn`` is present, not ``None`` and not
+            callable.
+
+        If ``fn`` is omitted, the current callback function will be
+        returned.  Otherwise ``None`` is returned.
+
+        If ``fn`` is ``None``, the callback will be disabled.
+
+        Otherwise ``fn`` should be a function taking one parameter
+        that indicates why the callback was made.  The possible values
+        are:
+
+        * :py:const:`PortSet.ATTACHED` (available as
+          ``hub.port.ATTACHED``) : indicates that something has been
+          plugged into the port.
+        * :py:const:`PortSet.DETACHED` : (available as
+          ``hub.port.DETACHED``) : indicates that the device
+          previously plugged into the port has been removed.
+
+        The callback function is called from a background context,
+        which limits what it can do.  In particular, calling any of
+        the functions in the hub library is likely to cause problems.
+        It is usually best to set a flag variable and deal with the
+        event from the foreground.
+
+        Example::
+
+            from hub import hub
+
+            def greet(event):
+                if event == hub.port.ATTACHED:
+                    print("Hello, new thing on port A")
+                else:
+                    print("Goodbye, old thing on port A")
+
+            hub.port.A.callback(greet)
+
+    .. py:method:: mode(mode)
+
+        Sets the mode of the device on this port.
+
+        .. caution::
+
+            ``Port.mode()`` is not implemented.  Use
+            :py:meth:`Device.mode()` instead.
+*/
 
 /* The actual Port type */
 typedef struct

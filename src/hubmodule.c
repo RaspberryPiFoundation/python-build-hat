@@ -22,6 +22,109 @@
 #include "debug-i2c.h"
 #endif
 
+/**
+
+This module provides access to the Shortcake hat.
+
+.. note::
+
+    The original module directly contained the functions and
+    attributes of the Hub object.  Unfortunately because
+    communications with the hat take place in a background thread,
+    this unavoidably sometimes caused address exceptions during
+    module finalization (i.e. when a program using the hub module
+    ended).  Separating the actual hub functionality into its own
+    class allows us to avoid this problem, and allows for
+    supporting multiple hats in the future.
+
+    To use pre-existing examples of code using the hub module,
+    simply replace ``import hub`` with ``from hub import hub``.
+
+.. caution::
+
+    The methods of the original ``hub`` module are not documented.
+    The documentation here is for the  implemention made for the
+    Shortcake hat.  This was created by examining the existing code
+    and making deductions from the behaviour of the example Flipper
+    hub in our possession.
+
+.. py:exception:: hub.HubProtocolError
+
+    This exception is raised by the hub module when no standard
+    exception is more relevant.  It often indicates a problem
+    communicating with the Shortcake hat.
+
+    .. note::
+
+        This exception is not supplied in the original.
+
+.. py:class:: hub.Hub
+
+    Represents a Shortcake hat.
+
+    .. note::
+
+        This class is not directly available to the user.  It is
+        only used to create the ``hub.hub`` instance. Future
+        versions of the module may make the Hub object available
+        to support multiple hats with different I2C addresses.
+
+    .. py:attribute:: port
+
+        :type: PortSet
+
+        The collection of ports on the Shortcake hat.
+
+    .. py:method:: info() -> dict
+
+        Returns a dictionary containing the following keys:
+
+        * ``fw_version`` : Firmware version as a string in the form
+          ``MAJOR.MINOR.BUGFIX.BUILD``
+        * ``hw_version`` : Hardware version as a string in the form
+          ``MAJOR.MINOR.BUGFIX.BUILD``
+
+        .. note::
+
+            The original info dictionary did not contain the firmware
+            version.  It did give the Bluetooth UUID of the hub (not
+            present on Shortcake), an undocumented integer as a
+            product variant code, and a number of statistics related
+            to execution under Micropython.  These were all omitted as
+            irrelevant to Shortcake.
+
+            The original info() method allowed a byte string to be
+            passed as a parameter.  If this key matched a hash of the
+            Bluetooth UUID, a Python module was created on the fly to
+            allow testing of various low-level features of the hub
+            hardware.  This is not particularly useful for this
+            library, so has not been implemented.
+
+    .. py:method:: status() -> dict
+
+        Returns a dictionary containing a single key, ``port``, whose
+        value is another dictionary.  That dictionary has the keys
+        ``A``, ``B``, ``C``, ``D``, ``E``, and ``F``, whose values are
+        the current values of the corresponding ports.  See
+        **CROSS-REFERENCE REQUIRED** for details.
+
+        .. note::
+
+            The original status dictionary also contained the current
+            values of the accelerometer, gyroscope, position and
+            display.  Since none of these are present on Shortcake,
+            they have been omitted.
+
+.. py:attribute:: hub.hub
+
+    This is an instance of the :py:class:`hub.Hub` class created to
+    communicate with the physical Shortcake hat at the default I2C
+    address.  It is automatically created when the hub module is
+    loaded.
+
+
+*/
+
 /* The Hub object, an instance of which we make available */
 typedef struct
 {

@@ -14,6 +14,138 @@
 #include "device.h"
 #include "port.h"
 
+/**
+
+.. py:class:: Device
+
+    The ports on the Shortcake hat are able to autodetect the
+    capabilities of the device that is plugged in.  When a generic
+    device is detected, then an enhanced set of methods is available.
+
+    The ``Device`` object provides the base API that is available to
+    generic devices when they are plugged into a port.
+
+    .. note::
+
+        This class is not actually available to the user.  It is only
+        used by the the six device instances, which are provided
+        already initialised.
+
+    .. py:attribute:: FORMAT_RAW
+
+        :type: int
+        :value: 0
+
+        The value to pass to the :py:meth:`Device.get()` method to retrieve
+        raw data from the device.
+
+    .. py:attribute:: FORMAT_PCT
+
+        :type: int
+        :value: 1
+
+        The value to pass to the :py:meth:`Device.get()` method to retrieve
+        percentage-scaled data from the device.
+
+    .. py:attribute:: FORMAT_SI
+
+        :type: int
+        :value: 2
+
+        The value to pass to the :py:meth:`Device.get()` method to retrieve
+        SI unit-scaled data from the device.
+
+    .. py:method:: get([format=2])
+
+        Returns a list of value(s) that the currently active device
+        mode makes available.
+
+        :param int format: The format to return the value.  Must be 0,
+            1 or 2 (for RAW, PCT and SI respectively).  Defaults to
+            SI.  :py:const:`FORMAT_RAW`, :py:const:`FORMAT_PCT` and
+            :py:const:`FORMAT_SI` are provided for convenience.
+        :return: a list of values
+        :rtype: list[int] or list[float]
+        :raises ValueError: if an invalid format number is given.
+
+        If the device is in a single mode, the length of the list is
+        given by the ``datasets`` field of the mode's format, and the
+        type of the values by the ``type`` field.  If the device is a
+        combination mode, the result is defined by the particular
+        combination of modes and datasets specified in the
+        :py:meth:`Device.mode()` method.
+
+        .. note::
+
+            It is not clear from the code when values are actively
+            read from the device.  At present, a call to get() does
+            not explicitly request a value through the hat; this will
+            likely change as the semantics of data acquisition are
+            clarified.
+
+        ``format`` is a position-only argument.
+
+    .. py:method:: mode([mode[, mode_data]])
+
+        Puts the device in the specified mode(s)
+
+        :param mode: The mode to put the device into.
+        :type mode: int or list[tuple[int, int]]
+        :param mode_data: Mode data to be written to the device
+        :type mode_data: bytes or bytearray
+        :raises ValueError: if an invalid mode number is given
+
+        If no parameters are given, this method returns a list of
+        ``(mode_number, dataset_number)`` tuples.  Each tuple
+        corresponds to one entry in the list of values returned by
+        :py:meth:`Device.get()`.  Otherwise the method returns
+        ``None``.
+
+        If ``mode`` is an integer, the device is put into that mode.
+        :py:meth:`Device.get()` will return the list of values as read
+        for that mode.
+
+        If the mode specifier is a list, it must contain
+        ``(mode_number, dataset_number)`` tuples.  In this case the
+        device will return each value for that mode and dataset, in
+        order, when the :py:meth:`Device.get()` method is invoked.
+        The modes must be a permitted combination (as in the
+        ``combi_modes`` entry of the :py:meth:`Port.info()`
+        dictionary.
+
+        .. note::
+
+            Combination modes are not currently implemented.
+
+        If the ``mode`` is an integer (simple mode), it may be
+        followed by ``mode_data``.  The sequence of bytes is sent
+        directly to the device via an output mode write, details of
+        which are beyond the scope of this document.
+
+        ``mode`` and ``mode_data`` are position-only parameters.
+
+    .. py:method:: pwm(value)
+
+        Sets the PWM level generated at the port, if output is
+        permitted.
+
+        :param int value: The PWM level generated, ranging from -100
+            to +100.  The polarity of the PWM signal matches the sign
+            of the value.
+
+        :raises ValueError: if the input is greater than 100 or less
+            than -100.
+
+        Calling ``pwm(0)`` stops the PWM signal and leaves the port
+        driver in a floating state.
+
+        ``value`` is a position-only parameter.
+
+        .. note::
+
+            This is not currently implemented.
+
+*/
 
 /* The actual Device type */
 typedef struct
