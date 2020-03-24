@@ -342,10 +342,6 @@ MotorPair_pid(PyObject *self, PyObject *args)
                           &pair->default_position_pid[2]))
         return NULL;
 
-    /* If the object is invalid, return False */
-    if (pair->id == INVALID_ID)
-        Py_RETURN_FALSE;
-
     if (cmd_set_pid(pair->id, pair->default_position_pid) < 0)
         return NULL;
 
