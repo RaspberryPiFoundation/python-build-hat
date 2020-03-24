@@ -927,7 +927,7 @@ Motor_pair(PyObject *self, PyObject *args)
             /* Timeout */
             if (pair_unpair(pair) < 0)
                 return NULL;
-            Py_RETURN_NONE;
+            Py_RETURN_FALSE;
         }
     }
 
