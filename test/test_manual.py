@@ -77,14 +77,16 @@ class GeneralTestCase(unittest.TestCase):
 				self.assertIn(x,dir(hub))
 
 	def test_hub_info_type(self):
-		assert isinstance(hub.info(), dict)
+		self.assertIsInstance(hub.info(), dict)
 
-	def test_hub_info_keys(self):
-		assert 'hw_version' in hub.info().keys()
-		assert 'fw_version' in hub.info().keys()
+	def test_hub_info_keys_hw_version(self):
+		self.assertIn('hw_version',hub.info().keys())
+
+	def test_hub_info_keys_fw_version(self):
+		self.assertIn('fw_version',hub.info().keys())
 
 	def test_hub_status_type(self):
-		assert isinstance(hub.info(), dict)
+		self.assertIsInstance(hub.info(), dict)
 
 	def test_hub_status_keys(self):
 		assert 'port' in hub.status().keys()
@@ -94,22 +96,15 @@ class GeneralTestCase(unittest.TestCase):
 		assert {'A','B','C','D','E','F'}.issubset(hub.status()['port'].keys())
 
 	def test_port_types(self):
-		ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.F]
+		ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.E, hub.port.F]
 		random.shuffle(ports)
 		for P in ports:
-			assert {'callback', 'device', 'info', 'mode', 'pwm'}.issubset(dir(P))
-			assert isinstance(P.info(), dict)
-			assert {'type','fw_version','hw_version','combi_modes','modes'}.issubset(P.info().keys())
-			assert type(P.info()['modes']) is list
-			assert type(P.device.get(0)) is list
-			assert type(P.device.get(1)) is list
-			assert type(P.device.get(2)) is list
-			for M in P.info()['modes']:
-				assert {'name','capability','symbol','raw','pct','si','map_out','map_in','format'}.issubset(M.keys())
-				assert {'datasets','figures','decimals','type'}.issubset(M['format'])
-				assert 0 <= M['format']['type'] <= 3
-				assert 0 <= M['map_out'] <= 255
-				assert 0 <= M['map_in'] <= 255
+			with self.subTest(port = P):
+				assert {'callback', 'device', 'info', 'mode', 'pwm'}.issubset(dir(P))
+				self.assertIsInstance(P.info(), dict)
+				for key in {'type'}:
+					with self.subTest(key=key):
+						self.assertIn(key,P.info().keys())
 
 	@unittest.skip("Using Port mode not implemented")
 	def test_port_mode_implemented(self):
@@ -121,6 +116,65 @@ class GeneralTestCase(unittest.TestCase):
 			except NotImplementedError:
 				self.fail("Mode not implemented yet")
 
+class MixedAttachedTestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
+	def test_dummy_port_types(self):
+		ports = [hub.port.A]
+		random.shuffle(ports)
+		for P in ports:
+			with self.subTest(port = P):
+				assert {'callback', 'device', 'info', 'mode', 'pwm'}.issubset(dir(P))
+				self.assertIsInstance(P.info(), dict)
+				for key in {'type','fw_version','hw_version','combi_modes','modes'}:
+					with self.subTest(key=key):
+						self.assertIn(key,P.info().keys())
+				self.assertIsInstance(P.info()['modes'],list)
+				self.assertIsInstance(P.device.get(0),list)
+				self.assertIsInstance(P.device.get(1),list)
+				self.assertIsInstance(P.device.get(2),list)
+				for M in P.info()['modes']:
+					assert {'name','capability','symbol','raw','pct','si','map_out','map_in','format'}.issubset(M.keys())
+					assert {'datasets','figures','decimals','type'}.issubset(M['format'])
+					assert 0 <= M['format']['type'] <= 3
+					assert 0 <= M['map_out'] <= 255
+					assert 0 <= M['map_in'] <= 255
+
+	def test_motor_port_types(self):
+		ports = [hub.port.C, hub.port.D]
+		random.shuffle(ports)
+		for P in ports:
+			with self.subTest(port = P):
+				assert {'callback', 'device', 'info', 'mode', 'pwm'}.issubset(dir(P))
+				self.assertIsInstance(P.info(), dict)
+				for key in {'type','fw_version','hw_version','combi_modes','modes'}:
+					with self.subTest(key=key):
+						self.assertIn(key,P.info().keys())
+				self.assertIsInstance(P.info()['modes'],list)
+				self.assertIsInstance(P.device.get(0),list)
+				self.assertIsInstance(P.device.get(1),list)
+				self.assertIsInstance(P.device.get(2),list)
+				for M in P.info()['modes']:
+					assert {'name','capability','symbol','raw','pct','si','map_out','map_in','format'}.issubset(M.keys())
+					assert {'datasets','figures','decimals','type'}.issubset(M['format'])
+					assert 0 <= M['format']['type'] <= 3
+					assert 0 <= M['map_out'] <= 255
+					assert 0 <= M['map_in'] <= 255
+
+	def test_empty_types(self):
+		ports = [hub.port.B, hub.port.E, hub.port.F]
+		random.shuffle(ports)
+		for P in ports:
+			with self.subTest(port = P):
+				assert {'callback', 'device', 'info', 'mode', 'pwm'}.issubset(dir(P))
+				self.assertIsInstance(P.info(), dict)
+				self.assertEqual(P.info().keys(),{'type'})
+				self.assertIsNone(P.device)
+
 # These tests must be done with a dummy attached to port A
 class DummyAttachedATestCase(unittest.TestCase):
 	def setUp(self):
@@ -130,16 +184,16 @@ class DummyAttachedATestCase(unittest.TestCase):
 		detachall()
 
 	def test_dummy_port_info(self):
-		assert isinstance(hub.port.A.info(), dict)
+		self.assertIsInstance(hub.port.A.info(), dict)
 		assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(hub.port.A.info().keys())
-		assert isinstance(hub.port.A.info()['modes'], list)
+		self.assertIsInstance(hub.port.A.info()['modes'], list)
 		assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(hub.port.A.info()['modes'][1].keys())
 
 	def test_port_device_mode_read(self):
 		assert {'mode'}.issubset(dir(hub.port.A.device))
 		try:
-			assert isinstance(hub.port.A.device.mode(), list)
-			assert isinstance(hub.port.A.device.mode()[0], tuple)
+			self.assertIsInstance(hub.port.A.device.mode(), list)
+			self.assertIsInstance(hub.port.A.device.mode()[0], tuple)
 			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
 		except NotImplementedError:
 			self.fail('Mode not implemented')
@@ -147,16 +201,16 @@ class DummyAttachedATestCase(unittest.TestCase):
 	def test_port_device_mode_set(self):
 		assert {'mode'}.issubset(dir(hub.port.A.device))
 		try:
-			assert isinstance(hub.port.A.device.mode(), list)
-			assert isinstance(hub.port.A.device.mode()[0], tuple)
+			self.assertIsInstance(hub.port.A.device.mode(), list)
+			self.assertIsInstance(hub.port.A.device.mode()[0], tuple)
 			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
 			hub.port.A.device.mode(1)
-			assert isinstance(hub.port.A.device.mode(), list)
-			assert isinstance(hub.port.A.device.mode()[0], tuple)
+			self.assertIsInstance(hub.port.A.device.mode(), list)
+			self.assertIsInstance(hub.port.A.device.mode()[0], tuple)
 			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
 			hub.port.A.device.mode([(3,4),(5,6)])
-			assert isinstance(hub.port.A.device.mode(), list)
-			assert isinstance(hub.port.A.mode()[0], tuple)
+			self.assertIsInstance(hub.port.A.device.mode(), list)
+			self.assertIsInstance(hub.port.A.mode()[0], tuple)
 			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
 		except NotImplementedError:
 			self.fail('Mode not implemented')
@@ -170,7 +224,7 @@ class PortDetachedFTestCase(unittest.TestCase):
 		detachall()
 
 	def test_port_info(self):
-		assert isinstance(hub.port.F.info(), dict)
+		self.assertIsInstance(hub.port.F.info(), dict)
 		assert hub.port.F.info() == {'type': None}
 
 	def test_port_device(self):
@@ -204,7 +258,7 @@ class MotorAttachedCTestCase(unittest.TestCase):
 	def test_port_B_type_with_motor_connected(self):
 		P = hub.port.C
 		assert {'callback', 'device', 'info', 'mode', 'motor', 'pwm'}.issubset(dir(P)) 
-		assert isinstance(P.info(), dict)
+		self.assertIsInstance(P.info(), dict)
 		assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(P.info().keys())
 
 	def test_motor_C_type_with_motor_connected(self):
@@ -226,9 +280,9 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		hub.port.C.motor.brake()
 		hub.port.C.motor.float()
 		hub.port.C.motor.get()
-		assert type(hub.port.C.motor.busy(0)) is bool
-		assert type(hub.port.C.motor.busy(1)) is bool
-		assert isinstance(hub.port.C.motor.default(), dict)
+		self.assertIsInstance(hub.port.C.motor.busy(0),bool)
+		self.assertIsInstance(hub.port.C.motor.busy(1),bool)
+		self.assertIsInstance(hub.port.C.motor.default(), dict)
 		assert {'speed','max_power','acceleration','deceleration','stall','callback','stop','pid'}.issubset(hub.port.C.motor.default().keys())
 
 	def test_motor_C_movement_functionality_with_motor_connected(self):
@@ -240,7 +294,7 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		hub.port.C.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
 		hub.port.C.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
 		hub.port.C.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
-		assert type(hub.port.C.motor.pid()) is tuple
+		self.assertIsInstance(hub.port.C.motor.pid(),tuple)
 		assert len(hub.port.C.motor.pid()) == 3
 
 	def test_motor_callbacks(self):
@@ -299,7 +353,7 @@ class MotorPairCDTestCase(unittest.TestCase):
 		pair.brake()
 		pair.float()
 		assert pair.pid() == (0,0,0)
-		assert type(pair.pid()) is tuple
+		self.assertIsInstance(pair.pid(),tuple)
 		assert len(pair.pid()) == 3
 		pair.run_at_speed(10,10, 100,10000,10000)
 		pair.run_for_degrees(180, 127,127)
