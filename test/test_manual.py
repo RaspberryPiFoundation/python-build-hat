@@ -33,10 +33,12 @@ poller_stderr.register(fakeHat.stderr, select.POLLIN)
 
 # helpers
 def clearFakeHatInput():
-	while poller_stdout.poll(1):
-		fakeHat.stdout.readline()
-	while poller_stderr.poll(1):
-		fakeHat.stdout.readline()
+	pass
+	# this function is needed when the hub is producing output
+	# if poller_stdout.poll(1):
+	# 	fakeHat.stdout.readline()
+	# if poller_stderr.poll(1):
+	# 	fakeHat.stdout.readline()
 
 def defaultsetup():
 	time.sleep(0.1)
