@@ -224,6 +224,8 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		assert len(hub.port.C.motor.pid()) == 3
 
 	def test_motor_callbacks(self):
+		hub.port.C.motor.callback(None)
+
 		mymock = mock.Mock()
 		mymock.method.assert_not_called()
 		assert hub.port.C.motor.callback() is None
@@ -232,6 +234,26 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		mymock.method.assert_not_called()
 		hub.port.C.motor.brake()
 		mymock.method.assert_called_once()
+
+		hub.port.C.motor.callback(None)
+
+	def test_motor_callbacks_old(self):
+		hub.port.C.motor.callback(None)
+
+		global myflag
+		myflag = 0
+		def myfun(x):
+			global myflag
+			myflag=1
+
+		assert hub.port.C.motor.callback() is None
+		hub.port.C.motor.callback(myfun)
+		assert callable(hub.port.C.motor.callback())
+		assert myflag==0
+		hub.port.C.motor.brake()
+		assert myflag==1
+
+		hub.port.C.motor.callback(None)
 
 
 
@@ -338,7 +360,7 @@ class PortCallbackATestCase(unittest.TestCase):
 	def tearDown(self):
 		detachall()
 
-	def test_connect_disconnect_port(self):
+	def test_connect_disconnect_port_callbacks(self):
 		mymock = mock.Mock()
 		mymock.method.assert_not_called()
 		hub.port.A.callback(mymock.method)
@@ -356,6 +378,31 @@ class PortCallbackATestCase(unittest.TestCase):
 		self.assertEqual(mymock.method.call_count, 3)
 		mymock.method.assert_called_with(hub.port.DETACHED)
 
+	def test_connect_disconnect_port_callbacks_old(self):
+		global myflag
+		myflag = 0
+		def myfun(x):
+			global myflag
+			myflag=1
+
+		self.assertEqual(myflag, 0)
+		myfun(1)
+		self.assertEqual(myflag, 1)
+		myflag = 0
+
+		self.assertEqual(myflag, 0)
+		fakeHat.stdin.write(b'attach a $dummy\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		self.assertEqual(myflag, 1)
+		myflag = 0
+
+		self.assertEqual(myflag, 0)
+		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		self.assertEqual(myflag, 1)
+		myflag = 0
 
 
 if __name__ == '__main__':
