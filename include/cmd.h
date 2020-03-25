@@ -27,7 +27,8 @@ typedef struct port_modes_s
 #define CAP_MODE_COMBINABLE     0x04
 #define CAP_MODE_SYNCHRONIZABLE 0x08
 
-typedef uint16_t combi_mode_t[8];
+#define MAX_COMBI_MODES 8
+typedef uint16_t combi_mode_t[MAX_COMBI_MODES];
 
 typedef struct value_format_s
 {
@@ -312,6 +313,17 @@ extern int cmd_write_mode_data(uint8_t port_id,
  * on error (when a Python exception will have been raised already).
  */
 extern int cmd_set_mode(uint8_t port_id, uint8_t mode);
+
+/* Sends the required set of Port Input Format Setup Combined commands
+ * to set the combi mode used on the given port.  Returns 0 on
+ * success, -1 on error (when a Python exception will have been raised
+ * already.)  On error, the function tries to leave the device in a
+ * reset state, but this cannot be guaranteed.
+ */
+extern int cmd_set_combi_mode(uint8_t port,
+                              int combi_index,
+                              uint8_t *modes,
+                              int num_modes);
 
 
 /* Sends a Virtual Port Setup command to connect two ports as a pair.

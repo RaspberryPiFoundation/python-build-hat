@@ -1135,6 +1135,43 @@ port_check_mode(PyObject *port, int mode)
 }
 
 
+int port_check_mode_and_dataset(PyObject *port, int mode, int dataset)
+{
+    PortObject *self = (PortObject *)port;
+
+    if (port_ensure_mode_info(port) < 0)
+        return -1;
+
+    if (mode < 0 || mode >= self->num_modes)
+        return 0;
+    return (dataset >= 0 && dataset < self->modes[mode].format.datasets);
+}
+
+
+int port_check_mode_combinations(PyObject *port, uint16_t mode_map)
+{
+    PortObject *self = (PortObject *)port;
+    int i;
+
+    if (port_ensure_mode_info(port) < 0)
+        return -2; /* Signals an exception has already been raised */
+
+    for (i = 0; i < MAX_COMBI_MODES; i++)
+    {
+        if (self->combi_modes[i] == 0)
+            /* Haven't found a match */
+            return -1;
+        /* Are all the bits in the map in this entry? */
+        if ((self->combi_modes[i] & mode_map) == mode_map)
+            return i; /* Yes, this combination is permitted! */
+        i++;
+    }
+
+    /* Haven't found a match in the whole table.  Phooey. */
+    return -1;
+}
+
+
 static PyObject *
 port_get_value_list(PyObject *port)
 {

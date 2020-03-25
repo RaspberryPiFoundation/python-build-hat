@@ -169,6 +169,9 @@
 
 */
 
+#define MAX_DATASETS 8
+#define MODE_IS_COMBI (-1)
+
 /* The actual Device type */
 typedef struct
 {
@@ -179,6 +182,8 @@ typedef struct
     uint8_t is_unreported;
     uint8_t is_mode_busy;
     uint8_t is_motor_busy;
+    uint8_t num_combi_modes;
+    uint8_t combi_mode[MAX_DATASETS];
 } DeviceObject;
 
 
@@ -235,6 +240,7 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->is_unreported = 0;
         self->is_mode_busy = 0;
         self->is_motor_busy = 0;
+        self->num_combi_modes = 0;
     }
     return (PyObject *)self;
 }
@@ -310,29 +316,50 @@ Device_mode(PyObject *self, PyObject *args)
         PyObject *results;
         int i;
 
-        /* Return the current mode and dataset(s) */
-        mode_info_t *mode = port_get_mode(device->port,
-                                          device->current_mode);
-
-        if (mode == NULL)
+        if (device->current_mode != MODE_IS_COMBI)
         {
-            if (PyErr_Occurred() == NULL)
+            /* Return the current mode and dataset(s) */
+            mode_info_t *mode = port_get_mode(device->port,
+                                              device->current_mode);
+
+            if (mode == NULL)
             {
-                /* This shouldn't be possible unless the device
-                 * detaches in mid call somehow.
-                 */
-                PyErr_SetString(cmd_get_exception(),
-                                "Unexpectedly detached device");
+                if (PyErr_Occurred() == NULL)
+                {
+                    /* This shouldn't be possible unless the device
+                     * detaches in mid call somehow.
+                     */
+                    PyErr_SetString(cmd_get_exception(),
+                                    "Unexpectedly detached device");
+                }
+                return NULL;
             }
-            return NULL;
+
+            /* Now create the response list */
+            if ((results = PyList_New(mode->format.datasets)) == NULL)
+                return NULL;
+            for (i = 0; i < mode->format.datasets; i++)
+            {
+                PyObject *entry = Py_BuildValue("(ii)", device->current_mode, i);
+
+                if (entry == NULL)
+                {
+                    Py_DECREF(results);
+                    return NULL;
+                }
+                PyList_SET_ITEM(results, i, entry);
+            }
+            return results;
         }
 
-        /* Now create the response list */
-        if ((results = PyList_New(mode->format.datasets)) == NULL)
+        /* Else this is a combi mode */
+        if ((results = PyList_New(device->num_combi_modes)) == NULL)
             return NULL;
-        for (i = 0; i < mode->format.datasets; i++)
+        for (i = 0; i < device->num_combi_modes; i++)
         {
-            PyObject *entry = Py_BuildValue("(ii)", device->current_mode, i);
+            PyObject *entry = Py_BuildValue("(ii)",
+                                            (device->combi_mode[i] >> 4) &0xf,
+                                            device->combi_mode[i] & 0x0f);
 
             if (entry == NULL)
             {
@@ -420,13 +447,100 @@ Device_mode(PyObject *self, PyObject *args)
                 return NULL;
             Py_RETURN_NONE;
         }
-        PyErr_SetString(PyExc_TypeError,
-                        "Second arg to mode() must be a bytes or bytearray object");
+        PyErr_SetString(
+            PyExc_TypeError,
+            "Second arg to mode() must be a bytes or bytearray object");
         return NULL;
     }
-    /* TODO: write the rest of this */
-    PyErr_SetString(PyExc_NotImplementedError,
-                    "mode() with non-int parameters not yet implemented");
+
+    else if (PyList_Check(arg1))
+    {
+        /* Else we have been given a combi mode.  This enters our
+         * lives as a list of (mode, dataset) 2-tuples.  Validate all
+         * the args before we even try changing modes.
+         */
+        uint8_t mode_and_dataset[MAX_DATASETS];
+        int i;
+        int num_entries;
+        int combi_index;
+        uint16_t mode_map = 0;
+        int rv;
+
+        if ((num_entries = PyList_Size(arg1)) > MAX_DATASETS)
+        {
+            PyErr_SetString(PyExc_ValueError,
+                            "Too many items for a combination mode");
+            return NULL;
+        }
+        memset(mode_and_dataset, 0, MAX_DATASETS);
+        for (i = 0; i < num_entries; i++)
+        {
+            PyObject *entry = PyList_GET_ITEM(arg1, i);
+            PyObject *mode_obj, *dataset_obj;
+            long mode, dataset;
+
+            if (!PyTuple_Check(entry) || PyTuple_Size(entry) != 2)
+            {
+                PyErr_SetString(
+                    PyExc_TypeError,
+                    "Invalid combination mode: must be a list of 2-tuples of ints");
+                return NULL;
+            }
+            mode_obj = PyTuple_GET_ITEM(entry, 0);
+            dataset_obj = PyTuple_GET_ITEM(entry, 1);
+            if (!PyLong_Check(mode_obj) || !PyLong_Check(dataset_obj))
+            {
+                PyErr_SetString(
+                    PyExc_TypeError,
+                    "Invalid combination mode: must be a list of 2-tuples of ints");
+                return NULL;
+            }
+            if ((mode = PyLong_AsLong(mode_obj)) == -1 &&
+                PyErr_Occurred() != NULL)
+                return NULL;
+            if ((dataset = PyLong_AsLong(dataset_obj)) == -1 &&
+                PyErr_Occurred() != NULL)
+                return NULL;
+            if ((rv = port_check_mode_and_dataset(device->port,
+                                                  mode, dataset)) < 0)
+                return NULL;
+            else if (rv == 0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "Invalid mode/dataset combination (%d/%d)",
+                             mode, dataset);
+                return NULL;
+            }
+
+            /* This one is valid.  Hoorah. */
+            mode_and_dataset[i] = (mode << 4) | dataset;
+            mode_map |= (1 << mode);
+        }
+
+        /* Check if this combination is permitted */
+        if ((combi_index = port_check_mode_combinations(device->port,
+                                                        mode_map)) < 0)
+        {
+            /* Check if we need to raise an exception */
+            if (combi_index == -1)
+                PyErr_SetString(PyExc_ValueError, "Invalid mode combination");
+            return NULL;
+        }
+
+        if (cmd_set_combi_mode(port_get_id(device->port),
+                               combi_index,
+                               mode_and_dataset,
+                               num_entries) < 0)
+            return NULL;
+
+        memcpy(device->combi_mode, mode_and_dataset, MAX_DATASETS);
+        device->num_combi_modes = num_entries;
+        device->current_mode = MODE_IS_COMBI;
+
+        Py_RETURN_NONE;
+    }
+
+    PyErr_SetString(PyExc_TypeError, "Mode must be an int or list of 2-tuples");
     return NULL;
 }
 

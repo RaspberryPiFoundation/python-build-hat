@@ -72,7 +72,7 @@ typedef enum protocol_mode_info_e
 
 typedef enum protocol_info_format_cmd_e
 {
-    INFO_FORMAT_SET_MODE_AND_DATASET = 1,
+    INFO_FORMAT_SET = 1,
     INFO_FORMAT_LOCK,
     INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_ENABLED,
     INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_DISABLED,

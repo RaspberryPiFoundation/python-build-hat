@@ -1309,6 +1309,213 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
 }
 
 
+int cmd_set_combi_mode(uint8_t port_id,
+                       int combi_index,
+                       uint8_t *modes,
+                       int num_modes)
+{
+    uint8_t *response;
+    uint8_t *buffer;
+    int i;
+    uint16_t combi_map;
+
+    /* First reset the device's mode */
+    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+                            port_id,
+                            INFO_FORMAT_RESET);
+    if (response == NULL)
+        return -1;
+
+    /* It's not completely clear what response to expect to a reset */
+    if (response[0] != 7 ||
+        response[2] != TYPE_PORT_FORMAT_COMBINED ||
+        response[3] != port_id ||
+        response[4] != 0 ||
+        response[5] != 0 ||
+        response[6] != 0)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Format Combi Setup Reset");
+        return -1;
+    }
+
+    free(response);
+
+    /* Now lock the device against actual mode changes */
+    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+                            port_id,
+                            INFO_FORMAT_LOCK);
+    if (response == NULL)
+        return -1;
+
+    /* It's not clear what to expect here either */
+    if (response[0] != 7 ||
+        response[2] != TYPE_PORT_FORMAT_COMBINED ||
+        response[3] != port_id ||
+        response[4] != 0 ||
+        response[5] != 0 ||
+        response[6] != 0)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Format Combi Setup Lock");
+        return -1;
+    }
+
+    free(response);
+
+    /* For each mode, do a Format Single Setup on it */
+    for (i = 0; i < num_modes; i++)
+    {
+        response = make_request(10, TYPE_PORT_FORMAT_SETUP_SINGLE,
+                                port_id,
+                                modes[i] >> 4,
+                                0, 0, 0, 0, /* Delta = 0 ? */
+                                0); /* Notification disabled */
+        if (response == NULL)
+            return -1;
+
+        if (response[0] != 10 ||
+            response[2] != TYPE_PORT_FORMAT_SINGLE ||
+            response[3] != port_id ||
+            response[4] != modes[i] >> 4 ||
+            response[5] != 0 ||
+            response[6] != 0 ||
+            response[7] != 0 ||
+            response[8] != 0 ||
+            response[9] != 0)
+        {
+            free(response);
+            PyErr_Format(hub_protocol_error,
+                         "Unexpected reply formatting mode %d",
+                         modes[i] >> 4);
+
+            /* Do an emergency reset rather than just leave this unsafe */
+            goto emergency_reset;
+        }
+    }
+
+    /* Now set the combination.  This one we can't make_request() */
+    /* The documentation claims this is 7 bytes long, then promptly
+     * declares a variable length structure.  Sigh.  The real answer
+     * is that we need 6 bytes plus one per mode/dataset combination.
+     */
+    if ((buffer = malloc(6 + num_modes)) == NULL)
+    {
+        PyErr_NoMemory();
+        /* Again, reset rather than just give up. */
+        goto emergency_reset;
+    }
+
+    buffer[0] = 6 + num_modes;
+    buffer[1] = 0x00;
+    buffer[2] = TYPE_PORT_FORMAT_SETUP_COMBINED;
+    buffer[3] = port_id;
+    buffer[4] = INFO_FORMAT_SET;
+    buffer[5] = combi_index;
+    memcpy(buffer+6, modes, num_modes);
+
+    if (queue_add_buffer(buffer) != 0)
+    {
+        /* Exception already raised */
+        free(buffer);
+        goto emergency_reset;
+    }
+
+    if (queue_get(&response) != 0)
+    {
+        /* Exception already raised */
+        goto emergency_reset;
+    }
+
+    if (response[1] != 0x00)
+    {
+        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        free(response);
+        goto emergency_reset;
+    }
+
+    if (response[2] == TYPE_GENERIC_ERROR)
+    {
+        handle_generic_error(TYPE_PORT_FORMAT_SETUP_COMBINED, response);
+        free(response);
+        goto emergency_reset;
+    }
+
+    combi_map = (1 << num_modes) - 1;
+    if (response[0] != 7 ||
+        response[1] != 0x00 ||
+        response[2] != TYPE_PORT_FORMAT_COMBINED ||
+        response[3] != port_id ||
+        response[4] != combi_index ||
+        response[5] != (combi_map & 0xff) ||
+        response[6] != ((combi_map >> 8) & 0xff))
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Format Setup Combi Set");
+        goto emergency_reset;
+    }
+
+    free(response);
+
+    /* Unlock and restart the device */
+    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+                            port_id,
+                            INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_DISABLED);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 7 ||
+        response[2] != TYPE_PORT_FORMAT_COMBINED ||
+        response[3] != port_id ||
+        response[4] != 0 ||
+        response[5] != 0 ||
+        response[6] != 0)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Format Combi Setup Start");
+        return -1;
+    }
+
+    free(response);
+
+    /* For some reason we do that again */
+    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+                            port_id,
+                            INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_DISABLED);
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 7 ||
+        response[2] != TYPE_PORT_FORMAT_COMBINED ||
+        response[3] != port_id ||
+        response[4] != 0 ||
+        response[5] != 0 ||
+        response[6] != 0)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Port Format Combi Setup Start");
+        return -1;
+    }
+
+    free(response);
+
+    return 0;
+
+
+emergency_reset:
+    /* Try to put the device back in a known state */
+    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+                            port_id,
+                            INFO_FORMAT_RESET);
+    free(response);
+    return -1;
+}
+
 /* For a virtual port connection, we do not expect a reply as such.
  * We should get a Hub Attached IO for the new virtual port, and we
  * give ourselves permission to use the MotorPair from that.  This
