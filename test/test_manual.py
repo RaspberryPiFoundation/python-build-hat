@@ -221,6 +221,7 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		hub.port.C.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
 		hub.port.C.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
 		assert type(hub.port.C.motor.pid()) is tuple
+		assert len(hub.port.C.motor.pid()) == 3
 
 	def test_motor_callbacks(self):
 		mymock = mock.Mock()
@@ -256,6 +257,8 @@ class MotorPairCDTestCase(unittest.TestCase):
 		pair.brake()
 		pair.float()
 		assert pair.pid() == (0,0,0)
+		assert type(pair.pid()) is tuple
+		assert len(pair.pid()) == 3
 		pair.run_at_speed(10,10, 100,10000,10000)
 		pair.run_for_degrees(180, 127,127)
 		pair.run_for_time(1000, 127, 127)
