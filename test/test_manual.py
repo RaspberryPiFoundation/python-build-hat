@@ -390,6 +390,8 @@ class PortCallbackATestCase(unittest.TestCase):
 		self.assertEqual(myflag, 1)
 		myflag = 0
 
+		hub.port.A.callback(myfun)
+
 		self.assertEqual(myflag, 0)
 		fakeHat.stdin.write(b'attach a $dummy\n')
 		fakeHat.stdin.flush()
