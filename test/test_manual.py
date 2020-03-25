@@ -343,13 +343,17 @@ class PortCallbackATestCase(unittest.TestCase):
 		mymock.method.assert_not_called()
 		hub.port.A.callback(mymock.method)
 		mymock.method.assert_not_called()
+		mymock.method()
+		self.assertEqual(mymock.method.call_count, 1)
 		fakeHat.stdin.write(b'attach a $dummy\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
-		mymock.method.assert_called_once_with(hub.port.ATTACHED)
+		self.assertEqual(mymock.method.call_count, 2)
+		mymock.method.assert_called_with(hub.port.ATTACHED)
 		fakeHat.stdin.write(b'detach a\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
+		self.assertEqual(mymock.method.call_count, 3)
 		mymock.method.assert_called_with(hub.port.DETACHED)
 
 
