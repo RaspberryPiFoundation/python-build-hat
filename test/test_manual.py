@@ -23,19 +23,46 @@ fakeHat = subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subpro
 time.sleep(0.5) # Sometimes FakeHat taks a little while to initialise
 from hub import hub # isort:skip
 
-# Attaching a dummy to port A
-fakeHat.stdin.write(b'attach a $dummy\n')
-fakeHat.stdin.flush()
-fakeHat.stdin.write(b'attach c $motor\n')
-fakeHat.stdin.flush()
-fakeHat.stdin.write(b'attach d $motor\n')
-fakeHat.stdin.flush()
-time.sleep(0.1)
-time.sleep(1)
+# helpers
+def defaultsetup():
+	time.sleep(0.1)
+	fakeHat.stdin.write(b'attach a $dummy\n')
+	fakeHat.stdin.write(b'attach c $motor\n')
+	fakeHat.stdin.write(b'attach d $motor\n')
+	fakeHat.stdin.flush()
+	time.sleep(0.1)
 
+def detachall():
+	time.sleep(0.1)
+	fakeHat.stdin.write(b'detach a\n')
+	fakeHat.stdin.write(b'detach b\n')
+	fakeHat.stdin.write(b'detach c\n')
+	fakeHat.stdin.write(b'detach d\n')
+	fakeHat.stdin.write(b'detach e\n')
+	fakeHat.stdin.write(b'detach f\n')
+	fakeHat.stdin.flush()
+	time.sleep(0.1)
+
+
+class portAttachDetachTestCase(unittest.TestCase):
+	def test_repeated_attach_detach(self):
+		for i in range(20):
+			fakeHat.stdin.write(b'detach a\n')
+			fakeHat.stdin.write(b'attach a $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(2)
+		for i in range(360):
+			hub.port.A.motor.run_to_position(i, 100)
 
 # These tests should pass regardless of the state of the hat
 class GeneralTestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
+
 	def test_hub_type(self):
                 # The Shortcake Hat does not have "temperature" or (at
                 # least at present) "firmware" attributes, and it's
@@ -94,6 +121,12 @@ class GeneralTestCase(unittest.TestCase):
 
 # These tests must be done with a dummy attached to port A
 class DummyAttachedATestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
 	def test_dummy_port_info(self):
 		assert isinstance(hub.port.A.info(), dict)
 		assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(hub.port.A.info().keys())
@@ -109,6 +142,12 @@ class DummyAttachedATestCase(unittest.TestCase):
 
 # These tests must be done with nothing attached to port F
 class PortDetachedFTestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
 	def test_port_info(self):
 		assert isinstance(hub.port.F.info(), dict)
 		assert hub.port.F.info() == {'type': None}
@@ -118,6 +157,12 @@ class PortDetachedFTestCase(unittest.TestCase):
 
 # These tests must be done with a dummy attached to port A
 class PWMATestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
 	def test_pwm_values(self):
 		hub.port.A.pwm(100)
 		hub.port.A.pwm(-100)
@@ -129,6 +174,12 @@ class PWMATestCase(unittest.TestCase):
 
 # These tests must be done with a motor attached to port C
 class MotorAttachedCTestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
 	def test_port_B_type_with_motor_connected(self):
 		P = hub.port.C
 		assert {'callback', 'device', 'info', 'mode', 'motor', 'pwm'}.issubset(dir(P)) 
@@ -188,6 +239,12 @@ class MotorAttachedCTestCase(unittest.TestCase):
 
 # Motors must be connected to ports C and D
 class MotorPairCDTestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
 	def test_create_motor_pair(self):
 		pair = hub.port.C.motor.pair(hub.port.D.motor)
 		self.assertEqual(pair.primary(), hub.port.C.motor)
@@ -211,6 +268,12 @@ class MotorPairCDTestCase(unittest.TestCase):
 
 # Motor must be connected to port C
 class MemoryLeakTestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
 	def testMemoryLeaks(self):
 		startmemory = process.memory_info().rss
 		hub.port.C.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
@@ -257,6 +320,12 @@ class MemoryLeakTestCase(unittest.TestCase):
 # Touch sensor must be connected to port B
 @unittest.skip("Using FakeHat")
 class TouchSensorBTestCase(unittest.TestCase):
+	def setUp(self):
+		defaultsetup()
+
+	def tearDown(self):
+		detachall()
+
 	def test_touch_sensor_B_type(self):
 		assert {'FORMAT_PCT', 'FORMAT_RAW', 'FORMAT_SI', 'get', 'mode', 'pwm'}.issubset(dir(hub.port.B.device))
 
