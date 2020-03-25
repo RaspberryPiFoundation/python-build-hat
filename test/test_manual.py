@@ -346,7 +346,7 @@ class PortCallbackATestCase(unittest.TestCase):
 		fakeHat.stdin.write(b'attach a $dummy\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
-		mymock.method.assert_called_once(hub.port.ATTACHED)
+		mymock.method.assert_called_once_with(hub.port.ATTACHED)
 		fakeHat.stdin.write(b'detach a\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
