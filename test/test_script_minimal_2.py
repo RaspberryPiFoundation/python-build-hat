@@ -10,11 +10,12 @@ from hub import hub # isort:skip
 for i in range(10):
 	for i in range(20):
 		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
 		fakeHat.stdin.write(b'attach a $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
 
-	fakeHat.stdin.flush()
-
-	time.sleep(1)
 
 	# hub.port.A.motor.run_to_position(42, 100)
 

@@ -5,6 +5,7 @@ import random
 import subprocess
 import time
 import unittest
+from unittest import mock
 
 import psutil
 
@@ -222,18 +223,14 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		assert type(hub.port.C.motor.pid()) is tuple
 
 	def test_motor_callbacks(self):
-		global myflag
-		myflag = 0
-		def myfun(x):
-			global myflag
-			myflag=1
-
+		mymock = mock.Mock()
+		mymock.method.assert_not_called()
 		assert hub.port.C.motor.callback() is None
-		hub.port.C.motor.callback(myfun)
+		hub.port.C.motor.callback(mymock.method)
 		assert callable(hub.port.C.motor.callback())
-		assert myflag==0
+		mymock.method.assert_not_called()
 		hub.port.C.motor.brake()
-		assert myflag==1
+		mymock.method.assert_called_once()
 
 
 
@@ -333,6 +330,26 @@ class TouchSensorBTestCase(unittest.TestCase):
 		assert hub.port.B.device.get() <= 1 # Without button pressed
 		assert hub.port.B.device.get() >= 0 # At all times
 		assert hub.port.B.device.get() <= 9 # At all times
+
+class PortCallbackATestCase(unittest.TestCase):
+	def tearDown(self):
+		detachall()
+
+	def test_connect_disconnect_port(self):
+		mymock = mock.Mock()
+		mymock.method.assert_not_called()
+		hub.port.A.callback(mymock.method)
+		mymock.method.assert_not_called()
+		fakeHat.stdin.write(b'attach a $dummy\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		mymock.method.assert_called_once(hub.port.ATTACHED)
+		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		mymock.method.assert_called_with(hub.port.DETACHED)
+
+
 
 if __name__ == '__main__':
 	unittest.main(argv=['first arg is ignored'])
