@@ -1,3 +1,4 @@
+import select
 import subprocess
 import time
 
@@ -7,6 +8,11 @@ time.sleep(0.5)
 
 from hub import hub # isort:skip
 
+poller_stdout=select.poll()
+poller_stdout.register(fakeHat.stdout, select.POLLIN)
+poller_stderr=select.poll()
+poller_stderr.register(fakeHat.stderr, select.POLLIN)
+
 for i in range(10):
 	for i in range(20):
 		fakeHat.stdin.write(b'detach a\n')
@@ -15,12 +21,21 @@ for i in range(10):
 		fakeHat.stdin.write(b'attach a $motor\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
+		if poller_stdout.poll(1):
+			fakeHat.stdout.readline()
+		if poller_stderr.poll(1):
+			fakeHat.stdout.readline()
 
 
 	# hub.port.A.motor.run_to_position(42, 100)
 
-	for i in range(360):
-		hub.port.A.motor.run_to_position(i, 100)
+for i in range(360):
+	hub.port.A.motor.run_to_position(i, 100)
+	if poller_stdout.poll(1):
+		fakeHat.stdout.readline()
+	if poller_stderr.poll(1):
+		fakeHat.stdout.readline()
+
 
 
 # sometimes I get:

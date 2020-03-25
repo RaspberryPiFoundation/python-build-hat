@@ -2,6 +2,7 @@
 
 import os
 import random
+import select
 import subprocess
 import time
 import unittest
@@ -23,8 +24,20 @@ if __name__ == "__main__":
 fakeHat = subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 time.sleep(0.5) # Sometimes FakeHat taks a little while to initialise
 from hub import hub # isort:skip
+time.sleep(0.5)
+
+poller_stdout=select.poll()
+poller_stdout.register(fakeHat.stdout, select.POLLIN)
+poller_stderr=select.poll()
+poller_stderr.register(fakeHat.stderr, select.POLLIN)
 
 # helpers
+def clearFakeHatInput():
+	while poller_stdout.poll(1):
+		fakeHat.stdout.readline()
+	while poller_stderr.poll(1):
+		fakeHat.stdout.readline()
+
 def defaultsetup():
 	time.sleep(0.1)
 	fakeHat.stdin.write(b'attach a $dummy\n')
@@ -32,6 +45,7 @@ def defaultsetup():
 	fakeHat.stdin.write(b'attach d $motor\n')
 	fakeHat.stdin.flush()
 	time.sleep(0.1)
+	clearFakeHatInput()
 
 def detachall():
 	time.sleep(0.1)
@@ -43,6 +57,7 @@ def detachall():
 	fakeHat.stdin.write(b'detach f\n')
 	fakeHat.stdin.flush()
 	time.sleep(0.1)
+	clearFakeHatInput()
 
 
 class portAttachDetachTestCase(unittest.TestCase):
@@ -52,6 +67,7 @@ class portAttachDetachTestCase(unittest.TestCase):
 			fakeHat.stdin.write(b'attach a $motor\n')
 		fakeHat.stdin.flush()
 		time.sleep(2)
+		clearFakeHatInput()
 		for i in range(360):
 			hub.port.A.motor.run_to_position(i, 100)
 
@@ -370,11 +386,13 @@ class PortCallbackATestCase(unittest.TestCase):
 		fakeHat.stdin.write(b'attach a $dummy\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
+		clearFakeHatInput()
 		self.assertEqual(mymock.method.call_count, 2)
 		mymock.method.assert_called_with(hub.port.ATTACHED)
 		fakeHat.stdin.write(b'detach a\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
+		clearFakeHatInput()
 		self.assertEqual(mymock.method.call_count, 3)
 		mymock.method.assert_called_with(hub.port.DETACHED)
 
@@ -396,6 +414,7 @@ class PortCallbackATestCase(unittest.TestCase):
 		fakeHat.stdin.write(b'attach a $dummy\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
+		clearFakeHatInput()
 		self.assertEqual(myflag, 1)
 		myflag = 0
 
@@ -403,6 +422,7 @@ class PortCallbackATestCase(unittest.TestCase):
 		fakeHat.stdin.write(b'detach a\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
+		clearFakeHatInput()
 		self.assertEqual(myflag, 1)
 		myflag = 0
 
