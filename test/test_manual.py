@@ -21,24 +21,10 @@ if __name__ == "__main__":
         fake_hat_binary = args.fake_hat
 
 # Fake Hat for testing purposes
-fakeHat = subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+fakeHat = subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(0.5) # Sometimes FakeHat taks a little while to initialise
 from hub import hub # isort:skip
 time.sleep(0.5)
-
-poller_stdout=select.poll()
-poller_stdout.register(fakeHat.stdout, select.POLLIN)
-poller_stderr=select.poll()
-poller_stderr.register(fakeHat.stderr, select.POLLIN)
-
-# helpers
-def clearFakeHatInput():
-	pass
-	# this function is needed when the hub is producing output
-	# if poller_stdout.poll(1):
-	# 	fakeHat.stdout.readline()
-	# if poller_stderr.poll(1):
-	# 	fakeHat.stdout.readline()
 
 def defaultsetup():
 	time.sleep(0.1)
@@ -47,8 +33,7 @@ def defaultsetup():
 	fakeHat.stdin.write(b'attach d $motor\n')
 	fakeHat.stdin.flush()
 	time.sleep(0.1)
-	clearFakeHatInput()
-
+	
 def detachall():
 	time.sleep(0.1)
 	fakeHat.stdin.write(b'detach a\n')
@@ -59,8 +44,7 @@ def detachall():
 	fakeHat.stdin.write(b'detach f\n')
 	fakeHat.stdin.flush()
 	time.sleep(0.1)
-	clearFakeHatInput()
-
+	
 
 class portAttachDetachTestCase(unittest.TestCase):
 	def test_repeated_attach_detach(self):
@@ -69,7 +53,6 @@ class portAttachDetachTestCase(unittest.TestCase):
 			fakeHat.stdin.write(b'attach a $motor\n')
 		fakeHat.stdin.flush()
 		time.sleep(2)
-		clearFakeHatInput()
 		for i in range(360):
 			hub.port.A.motor.run_to_position(i, 100)
 
@@ -388,13 +371,11 @@ class PortCallbackATestCase(unittest.TestCase):
 		fakeHat.stdin.write(b'attach a $dummy\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
-		clearFakeHatInput()
 		self.assertEqual(mymock.method.call_count, 2)
 		mymock.method.assert_called_with(hub.port.ATTACHED)
 		fakeHat.stdin.write(b'detach a\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
-		clearFakeHatInput()
 		self.assertEqual(mymock.method.call_count, 3)
 		mymock.method.assert_called_with(hub.port.DETACHED)
 
@@ -416,7 +397,6 @@ class PortCallbackATestCase(unittest.TestCase):
 		fakeHat.stdin.write(b'attach a $dummy\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
-		clearFakeHatInput()
 		self.assertEqual(myflag, 1)
 		myflag = 0
 
@@ -424,7 +404,6 @@ class PortCallbackATestCase(unittest.TestCase):
 		fakeHat.stdin.write(b'detach a\n')
 		fakeHat.stdin.flush()
 		time.sleep(0.1)
-		clearFakeHatInput()
 		self.assertEqual(myflag, 1)
 		myflag = 0
 
