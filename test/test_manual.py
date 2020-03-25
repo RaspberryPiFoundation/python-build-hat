@@ -111,7 +111,7 @@ class GeneralTestCase(unittest.TestCase):
 				assert 0 <= M['map_out'] <= 255
 				assert 0 <= M['map_in'] <= 255
 
-	@unittest.skip("Mode not implemented yet")
+	@unittest.skip("Using Port mode not implemented")
 	def test_port_mode_implemented(self):
 		ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.F]
 		random.shuffle(ports)
@@ -135,12 +135,31 @@ class DummyAttachedATestCase(unittest.TestCase):
 		assert isinstance(hub.port.A.info()['modes'], list)
 		assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(hub.port.A.info()['modes'][1].keys())
 
-	def test_port_device_mode(self):
+	def test_port_device_mode_read(self):
 		assert {'mode'}.issubset(dir(hub.port.A.device))
 		try:
-			isinstance(hub.port.A.device.mode(), dict)
+			assert isinstance(hub.port.A.device.mode(), list)
+			assert isinstance(hub.port.A.device.mode()[0], tuple)
+			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
 		except NotImplementedError:
-			self.skipTest('Mode not implemented')
+			self.fail('Mode not implemented')
+
+	def test_port_device_mode_set(self):
+		assert {'mode'}.issubset(dir(hub.port.A.device))
+		try:
+			assert isinstance(hub.port.A.device.mode(), list)
+			assert isinstance(hub.port.A.device.mode()[0], tuple)
+			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
+			hub.port.A.device.mode(1)
+			assert isinstance(hub.port.A.device.mode(), list)
+			assert isinstance(hub.port.A.device.mode()[0], tuple)
+			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
+			hub.port.A.device.mode([(3,4),(5,6)])
+			assert isinstance(hub.port.A.device.mode(), list)
+			assert isinstance(hub.port.A.mode()[0], tuple)
+			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
+		except NotImplementedError:
+			self.fail('Mode not implemented')
 
 # These tests must be done with nothing attached to port F
 class PortDetachedFTestCase(unittest.TestCase):
@@ -337,6 +356,18 @@ class MemoryLeakTestCase(unittest.TestCase):
 		pair.run_to_position(0, 127, 70)
 		pair.unpair()
 		tworunmemory = process.memory_info().rss
+		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		fakeHat.stdin.write(b'attach a $dummy\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		fakeHat.stdin.write(b'attach a $dummy\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
 		self.assertLessEqual(tworunmemory, onerunmemory)
 
 
