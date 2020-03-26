@@ -311,7 +311,7 @@ class MotorTestCase(unittest.TestCase):
 					with self.subTest(msg='Checking that p1 is in dir(port.motor)', p1=x):
 						self.assertIn(x,dir(port.motor))
 
-	def test_motor_C_default_type(self):
+	def test_motor_default_type(self):
 		for port in self.ports:
 			with self.subTest(port=port):
 				expected_values = {'speed', 'max_power', 'acceleration', 'deceleration', 'stop', 'pid', 'stall', 'callback'}
@@ -319,7 +319,7 @@ class MotorTestCase(unittest.TestCase):
 					with self.subTest(msg='Checking that p1 is in port.motor.default().keys()', p1=x):
 						self.assertIn(x,port.motor.default().keys())
 
-	def test_motor_C_constants(self):
+	def test_motor_constants(self):
 		for port in self.ports:
 			with self.subTest(port=port):
 				self.assertEqual(port.motor.BUSY_MODE,0)
@@ -336,7 +336,7 @@ class MotorTestCase(unittest.TestCase):
 				self.assertEqual(port.motor.STOP_BRAKE,1)
 				self.assertEqual(port.motor.STOP_HOLD,2)
 
-	def test_motor_C_get(self):
+	def test_motor_get(self):
 		for port in self.ports:
 			with self.subTest(port=port):
 				motor = port.motor
@@ -350,7 +350,7 @@ class MotorTestCase(unittest.TestCase):
 							self.assertIsInstance(motor.get(get_format)[0], numbers.Real) # Apparently python thinks that floats are irrational
 
 
-	def test_motor_C_basic_functionality_with_motor_connected(self):
+	def test_motor_basic_functionality_with_motor_connected(self):
 		for port in self.ports:
 			with self.subTest(port=port):
 				port.motor.preset(0)
@@ -364,7 +364,7 @@ class MotorTestCase(unittest.TestCase):
 				self.assertIsInstance(port.motor.default(), dict)
 				assert {'speed','max_power','acceleration','deceleration','stall','callback','stop','pid'}.issubset(port.motor.default().keys())
 
-	def test_motor_C_movement_functionality_with_motor_connected(self):
+	def test_motor_movement_functionality_with_motor_connected(self):
 		for port in self.ports:
 			with self.subTest(port=port):
 				port.motor.run_at_speed(10, 100,10000,10000)
@@ -446,6 +446,274 @@ class MotorTestCase(unittest.TestCase):
 					port.pwm(-101)
 				port.pwm(0)
 
+
+# real physical motors need to be attached to all ports for this
+@unittest.skip("Using FakeHat")
+class PhysicalMotorTestCase(unittest.TestCase):
+	def setUp(self):
+		time.sleep(0.1)
+		fakeHat.stdin.write(b'attach a $motor\n')
+		fakeHat.stdin.write(b'attach b $motor\n')
+		fakeHat.stdin.write(b'attach c $motor\n')
+		fakeHat.stdin.write(b'attach d $motor\n')
+		fakeHat.stdin.write(b'attach e $motor\n')
+		fakeHat.stdin.write(b'attach f $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+
+		self.ports = {hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.E, hub.port.F}
+
+	def tearDown(self):
+		detachall()
+
+	def test_port_type_with_motor_connected(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				assert {'callback', 'device', 'info', 'mode', 'motor', 'pwm'}.issubset(dir(port)) 
+				self.assertIsInstance(port.info(), dict)
+				assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(port.info().keys())
+
+	def test_motor_type_with_motor_connected(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				expected_values = {'BUSY_MODE', 'BUSY_MOTOR', 'EVENT_COMPLETED', 'EVENT_INTERRUPTED', 'FORMAT_PCT', 'FORMAT_RAW', 'FORMAT_SI', 'PID_POSITION', 'PID_SPEED', 'STOP_BRAKE', 'STOP_FLOAT', 'STOP_HOLD', 'brake', 'busy', 'callback', 'default', 'float', 'get', 'hold', 'mode', 'pair', 'pid', 'preset', 'pwm', 'run_at_speed', 'run_for_degrees', 'run_for_time', 'run_to_position'}
+				for x in expected_values:
+					with self.subTest(msg='Checking that p1 is in dir(port.motor)', p1=x):
+						self.assertIn(x,dir(port.motor))
+
+	def test_motor_default_type(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				expected_values = {'speed', 'max_power', 'acceleration', 'deceleration', 'stop', 'pid', 'stall', 'callback'}
+				for x in expected_values:
+					with self.subTest(msg='Checking that p1 is in port.motor.default().keys()', p1=x):
+						self.assertIn(x,port.motor.default().keys())
+
+	def test_motor_constants(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				self.assertEqual(port.motor.BUSY_MODE,0)
+				self.assertEqual(port.motor.BUSY_MOTOR,1)
+				self.assertEqual(port.motor.EVENT_COMPLETED,0)
+				self.assertEqual(port.motor.EVENT_INTERRUPTED,1)
+				self.assertEqual(port.motor.EVENT_STALL,2)
+				self.assertEqual(port.motor.FORMAT_RAW,0)
+				self.assertEqual(port.motor.FORMAT_PCT,1)
+				self.assertEqual(port.motor.FORMAT_SI,2)
+				self.assertEqual(port.motor.PID_SPEED,0)
+				self.assertEqual(port.motor.PID_POSITION,1)
+				self.assertEqual(port.motor.STOP_FLOAT,0)
+				self.assertEqual(port.motor.STOP_BRAKE,1)
+				self.assertEqual(port.motor.STOP_HOLD,2)
+
+	def test_motor_get(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				motor = port.motor
+				self.assertEqual(motor.FORMAT_RAW,0)
+				self.assertEqual(motor.FORMAT_PCT,1)
+				self.assertEqual(motor.FORMAT_SI,2)
+				for get_format in {motor.FORMAT_RAW, motor.FORMAT_PCT, motor.FORMAT_SI}:
+					with self.subTest(get_format = get_format):
+						self.assertIsInstance(motor.get(get_format), list)
+						if len(motor.get(get_format))>0:
+							self.assertIsInstance(motor.get(get_format)[0], numbers.Real) # Apparently python thinks that floats are irrational
+
+
+	def test_motor_basic_functionality(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.preset(0)
+				port.motor.hold(100)
+				port.motor.hold(0)
+				port.motor.brake()
+				port.motor.float()
+				port.motor.get()
+				self.assertIsInstance(port.motor.busy(0),bool)
+				self.assertIsInstance(port.motor.busy(1),bool)
+				self.assertIsInstance(port.motor.default(), dict)
+				assert {'speed','max_power','acceleration','deceleration','stall','callback','stop','pid'}.issubset(port.motor.default().keys())
+
+	def test_motor_movement_functionality(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.run_to_position(0, 100)
+				port.motor.run_at_speed(10, 100,10000,10000)
+				port.motor.float()
+				port.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
+				port.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
+				port.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
+				port.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
+				port.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
+				port.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
+				self.assertIsInstance(port.motor.pid(),tuple)
+				assert len(port.motor.pid()) == 3
+
+	def test_motor_run_at_speed(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				mymock.method = mock.Mock()
+				mockcalls = mymock.method.call_count
+				port.motor.callback(mymock.method)
+				port.device.mode(3)
+				port.motor.run_to_position(0, 100)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertEqual(port.device.get(),0)
+				port.motor.run_at_speed(10, 100,10000,10000)
+				device.mode(1)
+				self.assertNotEqual(port.device.get(),0)
+				device.mode(3)
+				time.sleep(0.5)
+				port.float()
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertNotEqual((port.device.get(),0)
+				port.motor.run_to_position(0, 100)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertEqual(port.device.get(),0)
+
+	def test_motor_run_for_time(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				mymock.method = mock.Mock()
+				mockcalls = mymock.method.call_count
+				port.motor.callback(mymock.method)
+				port.device.mode(3)
+				port.motor.run_to_position(0, 100)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertEqual(port.device.get(),0)
+				port.motor.run_for_time(1000, 127)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertNotEqual((port.device.get(),0)
+				port.motor.run_to_position(0, 100)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertEqual(port.device.get(),0)
+
+	def test_motor_run_for_time2(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				mymock.method = mock.Mock()
+				mockcalls = mymock.method.call_count
+				port.motor.callback(mymock.method)
+				port.device.mode(3)
+				port.motor.run_to_position(0, 100)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertEqual(port.device.get(),0)
+				port.motor.run_for_time(1000, -50)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertNotEqual((port.device.get(),0)
+				port.motor.run_to_position(0, 100)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertEqual(port.device.get(),0)
+
+	def test_motor_run_for_degrees(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				mymock.method = mock.Mock()
+				mockcalls = mymock.method.call_count
+				port.motor.callback(mymock.method)
+				port.device.mode(3)
+				port.motor.run_to_position(0, 100)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertEqual(port.device.get(),0)
+				port.motor.run_for_degrees(180, 99)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertNotEqual((port.device.get(),0)
+				port.motor.run_to_position(0, 100)
+				while mockcalls == mymock.method.call_count:
+					time.sleep(0.1)
+				mockcalls = mymock.method.call_count
+				self.assertEqual(port.device.get(),0)
+
+
+	# This test fails atm, maybe FakeHat's motor state machine completes commands instantly?
+	def test_motor_busy(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.run_for_time(1000, 127)
+				self.assertEqual(port.motor.busy(port.motor.BUSY_MOTOR),True)
+
+	def test_motor_callbacks(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.callback(None)
+
+				mymock = mock.Mock()
+				mymock.method.assert_not_called()
+				assert port.motor.callback() is None
+				port.motor.callback(mymock.method)
+				assert callable(port.motor.callback())
+				mymock.method.assert_not_called()
+				port.motor.brake()
+				mymock.method.assert_called_once()
+
+				port.motor.callback(None)
+
+	def test_motor_callbacks_old(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.callback(None)
+
+				global myflag
+				myflag = 0
+				def myfun(x):
+					global myflag
+					myflag=1
+
+				assert port.motor.callback() is None
+				port.motor.callback(myfun)
+				assert callable(port.motor.callback())
+				assert myflag==0
+				port.motor.brake()
+				assert myflag==1
+
+				port.motor.callback(None)
+
+	def test_motor_default_callbacks(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.callback(None)
+
+				mymock = mock.Mock()
+				mymock.method.assert_not_called()
+				port.motor.default(callback=mymock.method)
+				mymock.method.assert_not_called()
+				port.motor.brake()
+				mymock.method.assert_called_once()
+
+				port.motor.callback(None)
+
+	def test_pwm_values(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.pwm(100)
+				port.pwm(-100)
+				with self.assertRaises(ValueError):
+					port.pwm(101)
+				with self.assertRaises(ValueError):
+					port.pwm(-101)
+				port.pwm(0)
 
 
 # Motors must be connected to ports C and D
