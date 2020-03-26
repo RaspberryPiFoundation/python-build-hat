@@ -61,6 +61,7 @@ class portAttachDetachTestCase(unittest.TestCase):
 class GeneralTestCase(unittest.TestCase):
 	def setUp(self):
 		defaultsetup()
+		self.ports = {hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.E, hub.port.F}
 
 	def tearDown(self):
 		detachall()
@@ -97,9 +98,7 @@ class GeneralTestCase(unittest.TestCase):
 		assert {'A','B','C','D','E','F'}.issubset(hub.status()['port'].keys())
 
 	def test_port_types(self):
-		ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.E, hub.port.F]
-		random.shuffle(ports)
-		for P in ports:
+		for P in self.ports:
 			with self.subTest(port = P):
 				assert {'callback', 'device', 'info', 'mode', 'pwm'}.issubset(dir(P))
 				self.assertIsInstance(P.info(), dict)
@@ -111,13 +110,12 @@ class GeneralTestCase(unittest.TestCase):
 
 	@unittest.skip("Using Port mode not implemented")
 	def test_port_mode_implemented(self):
-		ports = [hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.F]
-		random.shuffle(ports)
-		for P in ports:
-			try:
-				P.mode()
-			except NotImplementedError:
-				self.fail("Mode not implemented yet")
+		for P in self.ports:
+			with self.subTest(port=P):
+				try:
+					P.mode()
+				except NotImplementedError:
+					self.fail("Mode not implemented yet")
 
 class MixedAttachedTestCase(unittest.TestCase):
 	def setUp(self):
@@ -194,122 +192,154 @@ class MixedAttachedTestCase(unittest.TestCase):
 							self.assertIsInstance(device.get(get_format)[0], numbers.Real) # Apparently python thinks that floats are irrational
 
 
-# These tests must be done with a dummy attached to port A
-class DummyAttachedATestCase(unittest.TestCase):
+class DummyTestCase(unittest.TestCase):
+
 	def setUp(self):
-		defaultsetup()
+		time.sleep(0.1)
+		fakeHat.stdin.write(b'attach a $dummy\n')
+		fakeHat.stdin.write(b'attach b $dummy\n')
+		fakeHat.stdin.write(b'attach c $dummy\n')
+		fakeHat.stdin.write(b'attach d $dummy\n')
+		fakeHat.stdin.write(b'attach e $dummy\n')
+		fakeHat.stdin.write(b'attach f $dummy\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+
+		self.ports = {hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.E, hub.port.F}
 
 	def tearDown(self):
 		detachall()
 
 	def test_dummy_port_info(self):
-		self.assertIsInstance(hub.port.A.info(), dict)
-		assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(hub.port.A.info().keys())
-		self.assertIsInstance(hub.port.A.info()['modes'], list)
-		assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(hub.port.A.info()['modes'][1].keys())
+		for port in self.ports:
+			with self.subTest(port=port):
+				self.assertIsInstance(port.info(), dict)
+				assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(port.info().keys())
+				self.assertIsInstance(port.info()['modes'], list)
+				assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(port.info()['modes'][1].keys())
 
 	def test_port_device_mode_read(self):
-		assert {'mode'}.issubset(dir(hub.port.A.device))
-		try:
-			self.assertIsInstance(hub.port.A.device.mode(), list)
-			self.assertIsInstance(hub.port.A.device.mode()[0], tuple)
-			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
-		except NotImplementedError:
-			self.fail('Mode not implemented')
+		for port in self.ports:
+			with self.subTest(port=port):
+				assert {'mode'}.issubset(dir(port.device))
+				try:
+					self.assertIsInstance(port.device.mode(), list)
+					self.assertIsInstance(port.device.mode()[0], tuple)
+					self.assertEqual(len(port.device.mode()[0]), 2)
+				except NotImplementedError:
+					self.fail('Mode not implemented')
 
 	def test_port_device_mode_set(self):
-		assert {'mode'}.issubset(dir(hub.port.A.device))
-		try:
-			self.assertIsInstance(hub.port.A.device.mode(), list)
-			self.assertIsInstance(hub.port.A.device.mode()[0], tuple)
-			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
-			hub.port.A.device.mode(1)
-			self.assertIsInstance(hub.port.A.device.mode(), list)
-			self.assertIsInstance(hub.port.A.device.mode()[0], tuple)
-			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
-			hub.port.A.device.mode([(3,4),(5,6)])
-			self.assertIsInstance(hub.port.A.device.mode(), list)
-			self.assertIsInstance(hub.port.A.mode()[0], tuple)
-			self.assertEqual(len(hub.port.A.device.mode()[0]), 2)
-		except NotImplementedError:
-			self.fail('Mode not implemented')
+		for port in self.ports:
+			with self.subTest(port=port):
+				assert {'mode'}.issubset(dir(port.device))
+				try:
+					self.assertIsInstance(port.device.mode(), list)
+					self.assertIsInstance(port.device.mode()[0], tuple)
+					self.assertEqual(len(port.device.mode()[0]), 2)
+					port.device.mode(1)
+					self.assertIsInstance(port.device.mode(), list)
+					self.assertIsInstance(port.device.mode()[0], tuple)
+					self.assertEqual(len(port.device.mode()[0]), 2)
+					port.device.mode([(3,4),(5,6)])
+					self.assertIsInstance(port.device.mode(), list)
+					self.assertIsInstance(port.mode()[0], tuple)
+					self.assertEqual(len(port.device.mode()[0]), 2)
+				except NotImplementedError:
+					self.fail('Mode not implemented')
 
-# These tests must be done with nothing attached to port F
-class PortDetachedFTestCase(unittest.TestCase):
+	def test_pwm_values(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.pwm(100)
+				port.pwm(-100)
+				with self.assertRaises(ValueError):
+					port.pwm(101)
+				with self.assertRaises(ValueError):
+					port.pwm(-101)
+				port.pwm(0)
+
+class PortDetachedTestCase(unittest.TestCase):
 	def setUp(self):
-		defaultsetup()
+		detachall()
+		self.ports = {hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.E, hub.port.F}
 
 	def tearDown(self):
 		detachall()
 
 	def test_port_info(self):
-		self.assertIsInstance(hub.port.F.info(), dict)
-		assert hub.port.F.info() == {'type': None}
+		for port in self.ports:
+			with self.subTest(port=port):
+				self.assertIsInstance(port.info(), dict)
+				assert port.info() == {'type': None}
 
 	def test_port_device(self):
-		assert hub.port.F.device is None
+		for port in self.ports:
+			with self.subTest(port=port):
+				assert port.device is None
 
-# These tests must be done with a dummy attached to port A
-class PWMATestCase(unittest.TestCase):
+
+class MotorTestCase(unittest.TestCase):
 	def setUp(self):
-		defaultsetup()
+		time.sleep(0.1)
+		fakeHat.stdin.write(b'attach a $motor\n')
+		fakeHat.stdin.write(b'attach b $motor\n')
+		fakeHat.stdin.write(b'attach c $motor\n')
+		fakeHat.stdin.write(b'attach d $motor\n')
+		fakeHat.stdin.write(b'attach e $motor\n')
+		fakeHat.stdin.write(b'attach f $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+
+		self.ports = {hub.port.A, hub.port.B, hub.port.C, hub.port.D, hub.port.E, hub.port.F}
 
 	def tearDown(self):
 		detachall()
 
-	def test_pwm_values(self):
-		hub.port.A.pwm(100)
-		hub.port.A.pwm(-100)
-		with self.assertRaises(ValueError):
-			hub.port.A.pwm(101)
-		with self.assertRaises(ValueError):
-			hub.port.A.pwm(-101)
-		hub.port.A.pwm(0)
+	def test_port_type_with_motor_connected(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				assert {'callback', 'device', 'info', 'mode', 'motor', 'pwm'}.issubset(dir(port)) 
+				self.assertIsInstance(port.info(), dict)
+				assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(port.info().keys())
 
-# These tests must be done with a motor attached to port C
-class MotorAttachedCTestCase(unittest.TestCase):
-	def setUp(self):
-		defaultsetup()
-
-	def tearDown(self):
-		detachall()
-
-	def test_port_C_type_with_motor_connected(self):
-		P = hub.port.C
-		assert {'callback', 'device', 'info', 'mode', 'motor', 'pwm'}.issubset(dir(P)) 
-		self.assertIsInstance(P.info(), dict)
-		assert {'type', 'fw_version', 'hw_version', 'modes', 'combi_modes'}.issubset(P.info().keys())
-
-	def test_motor_C_type_with_motor_connected(self):
-		expected_values = {'BUSY_MODE', 'BUSY_MOTOR', 'EVENT_COMPLETED', 'EVENT_INTERRUPTED', 'FORMAT_PCT', 'FORMAT_RAW', 'FORMAT_SI', 'PID_POSITION', 'PID_SPEED', 'STOP_BRAKE', 'STOP_FLOAT', 'STOP_HOLD', 'brake', 'busy', 'callback', 'default', 'float', 'get', 'hold', 'mode', 'pair', 'pid', 'preset', 'pwm', 'run_at_speed', 'run_for_degrees', 'run_for_time', 'run_to_position'}
-		for x in expected_values:
-			with self.subTest(msg='Checking that p1 is in dir(hub.port.C.motor)', p1=x):
-				self.assertIn(x,dir(hub.port.C.motor))
+	def test_motor_type_with_motor_connected(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				expected_values = {'BUSY_MODE', 'BUSY_MOTOR', 'EVENT_COMPLETED', 'EVENT_INTERRUPTED', 'FORMAT_PCT', 'FORMAT_RAW', 'FORMAT_SI', 'PID_POSITION', 'PID_SPEED', 'STOP_BRAKE', 'STOP_FLOAT', 'STOP_HOLD', 'brake', 'busy', 'callback', 'default', 'float', 'get', 'hold', 'mode', 'pair', 'pid', 'preset', 'pwm', 'run_at_speed', 'run_for_degrees', 'run_for_time', 'run_to_position'}
+				for x in expected_values:
+					with self.subTest(msg='Checking that p1 is in dir(port.motor)', p1=x):
+						self.assertIn(x,dir(port.motor))
 
 	def test_motor_C_default_type(self):
-		expected_values = {'speed', 'max_power', 'acceleration', 'deceleration', 'stop', 'pid', 'stall', 'callback'}
-		for x in expected_values:
-			with self.subTest(msg='Checking that p1 is in hub.port.C.motor.default().keys()', p1=x):
-				self.assertIn(x,hub.port.C.motor.default().keys())
+		for port in self.ports:
+			with self.subTest(port=port):
+				expected_values = {'speed', 'max_power', 'acceleration', 'deceleration', 'stop', 'pid', 'stall', 'callback'}
+				for x in expected_values:
+					with self.subTest(msg='Checking that p1 is in port.motor.default().keys()', p1=x):
+						self.assertIn(x,port.motor.default().keys())
 
 	def test_motor_C_constants(self):
-		self.assertEqual(hub.port.C.motor.BUSY_MODE,0)
-		self.assertEqual(hub.port.C.motor.BUSY_MOTOR,1)
-		self.assertEqual(hub.port.C.motor.EVENT_COMPLETED,0)
-		self.assertEqual(hub.port.C.motor.EVENT_INTERRUPTED,1)
-		self.assertEqual(hub.port.C.motor.EVENT_STALL,2)
-		self.assertEqual(hub.port.C.motor.FORMAT_RAW,0)
-		self.assertEqual(hub.port.C.motor.FORMAT_PCT,1)
-		self.assertEqual(hub.port.C.motor.FORMAT_SI,2)
-		self.assertEqual(hub.port.C.motor.PID_SPEED,0)
-		self.assertEqual(hub.port.C.motor.PID_POSITION,1)
-		self.assertEqual(hub.port.C.motor.STOP_FLOAT,0)
-		self.assertEqual(hub.port.C.motor.STOP_BRAKE,1)
-		self.assertEqual(hub.port.C.motor.STOP_HOLD,2)
+		for port in self.ports:
+			with self.subTest(port=port):
+				self.assertEqual(port.motor.BUSY_MODE,0)
+				self.assertEqual(port.motor.BUSY_MOTOR,1)
+				self.assertEqual(port.motor.EVENT_COMPLETED,0)
+				self.assertEqual(port.motor.EVENT_INTERRUPTED,1)
+				self.assertEqual(port.motor.EVENT_STALL,2)
+				self.assertEqual(port.motor.FORMAT_RAW,0)
+				self.assertEqual(port.motor.FORMAT_PCT,1)
+				self.assertEqual(port.motor.FORMAT_SI,2)
+				self.assertEqual(port.motor.PID_SPEED,0)
+				self.assertEqual(port.motor.PID_POSITION,1)
+				self.assertEqual(port.motor.STOP_FLOAT,0)
+				self.assertEqual(port.motor.STOP_BRAKE,1)
+				self.assertEqual(port.motor.STOP_HOLD,2)
 
 	def test_motor_C_get(self):
-		for motor in {hub.port.C.motor}:
-			with self.subTest(motor = motor):
+		for port in self.ports:
+			with self.subTest(port=port):
+				motor = port.motor
 				self.assertEqual(motor.FORMAT_RAW,0)
 				self.assertEqual(motor.FORMAT_PCT,1)
 				self.assertEqual(motor.FORMAT_SI,2)
@@ -321,77 +351,100 @@ class MotorAttachedCTestCase(unittest.TestCase):
 
 
 	def test_motor_C_basic_functionality_with_motor_connected(self):
-		hub.port.C.motor.preset(0)
-		hub.port.C.motor.hold(100)
-		hub.port.C.motor.hold(0)
-		hub.port.C.motor.brake()
-		hub.port.C.motor.float()
-		hub.port.C.motor.get()
-		self.assertIsInstance(hub.port.C.motor.busy(0),bool)
-		self.assertIsInstance(hub.port.C.motor.busy(1),bool)
-		self.assertIsInstance(hub.port.C.motor.default(), dict)
-		assert {'speed','max_power','acceleration','deceleration','stall','callback','stop','pid'}.issubset(hub.port.C.motor.default().keys())
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.preset(0)
+				port.motor.hold(100)
+				port.motor.hold(0)
+				port.motor.brake()
+				port.motor.float()
+				port.motor.get()
+				self.assertIsInstance(port.motor.busy(0),bool)
+				self.assertIsInstance(port.motor.busy(1),bool)
+				self.assertIsInstance(port.motor.default(), dict)
+				assert {'speed','max_power','acceleration','deceleration','stall','callback','stop','pid'}.issubset(port.motor.default().keys())
 
 	def test_motor_C_movement_functionality_with_motor_connected(self):
-		hub.port.C.motor.run_at_speed(10, 100,10000,10000)
-		hub.port.C.motor.float()
-		hub.port.C.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
-		hub.port.C.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
-		hub.port.C.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
-		hub.port.C.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
-		hub.port.C.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
-		hub.port.C.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
-		self.assertIsInstance(hub.port.C.motor.pid(),tuple)
-		assert len(hub.port.C.motor.pid()) == 3
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.run_at_speed(10, 100,10000,10000)
+				port.motor.float()
+				port.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
+				port.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
+				port.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
+				port.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
+				port.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
+				port.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
+				self.assertIsInstance(port.motor.pid(),tuple)
+				assert len(port.motor.pid()) == 3
 
 	# This test fails atm, maybe FakeHat's motor state machine completes commands instantly?
 	def test_motor_busy(self):
-		hub.port.C.motor.run_for_time(1000, 127)
-		self.assertEqual(hub.port.C.motor.busy(hub.port.C.motor.BUSY_MOTOR),True)
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.run_for_time(1000, 127)
+				self.assertEqual(port.motor.busy(port.motor.BUSY_MOTOR),True)
 
 	def test_motor_callbacks(self):
-		hub.port.C.motor.callback(None)
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.callback(None)
 
-		mymock = mock.Mock()
-		mymock.method.assert_not_called()
-		assert hub.port.C.motor.callback() is None
-		hub.port.C.motor.callback(mymock.method)
-		assert callable(hub.port.C.motor.callback())
-		mymock.method.assert_not_called()
-		hub.port.C.motor.brake()
-		mymock.method.assert_called_once()
+				mymock = mock.Mock()
+				mymock.method.assert_not_called()
+				assert port.motor.callback() is None
+				port.motor.callback(mymock.method)
+				assert callable(port.motor.callback())
+				mymock.method.assert_not_called()
+				port.motor.brake()
+				mymock.method.assert_called_once()
 
-		hub.port.C.motor.callback(None)
+				port.motor.callback(None)
 
 	def test_motor_callbacks_old(self):
-		hub.port.C.motor.callback(None)
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.callback(None)
 
-		global myflag
-		myflag = 0
-		def myfun(x):
-			global myflag
-			myflag=1
+				global myflag
+				myflag = 0
+				def myfun(x):
+					global myflag
+					myflag=1
 
-		assert hub.port.C.motor.callback() is None
-		hub.port.C.motor.callback(myfun)
-		assert callable(hub.port.C.motor.callback())
-		assert myflag==0
-		hub.port.C.motor.brake()
-		assert myflag==1
+				assert port.motor.callback() is None
+				port.motor.callback(myfun)
+				assert callable(port.motor.callback())
+				assert myflag==0
+				port.motor.brake()
+				assert myflag==1
 
-		hub.port.C.motor.callback(None)
+				port.motor.callback(None)
 
 	def test_motor_default_callbacks(self):
-		hub.port.C.motor.callback(None)
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.motor.callback(None)
 
-		mymock = mock.Mock()
-		mymock.method.assert_not_called()
-		hub.port.C.motor.default(callback=mymock.method)
-		mymock.method.assert_not_called()
-		hub.port.C.motor.brake()
-		mymock.method.assert_called_once()
+				mymock = mock.Mock()
+				mymock.method.assert_not_called()
+				port.motor.default(callback=mymock.method)
+				mymock.method.assert_not_called()
+				port.motor.brake()
+				mymock.method.assert_called_once()
 
-		hub.port.C.motor.callback(None)
+				port.motor.callback(None)
+
+	def test_pwm_values(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.pwm(100)
+				port.pwm(-100)
+				with self.assertRaises(ValueError):
+					port.pwm(101)
+				with self.assertRaises(ValueError):
+					port.pwm(-101)
+				port.pwm(0)
 
 
 
