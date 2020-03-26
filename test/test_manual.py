@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import numbers
 import os
 import random
 import select
@@ -105,6 +106,8 @@ class GeneralTestCase(unittest.TestCase):
 				for key in {'type'}:
 					with self.subTest(key=key):
 						self.assertIn(key,P.info().keys())
+				self.assertEqual(hub.port.ATTACHED,1)
+				self.assertEqual(hub.port.DETACHED,0)
 
 	@unittest.skip("Using Port mode not implemented")
 	def test_port_mode_implemented(self):
@@ -143,6 +146,7 @@ class MixedAttachedTestCase(unittest.TestCase):
 					assert 0 <= M['format']['type'] <= 3
 					assert 0 <= M['map_out'] <= 255
 					assert 0 <= M['map_in'] <= 255
+				self.assertIsNone(P.motor)
 
 	def test_motor_port_types(self):
 		ports = [hub.port.C, hub.port.D]
@@ -174,6 +178,21 @@ class MixedAttachedTestCase(unittest.TestCase):
 				self.assertIsInstance(P.info(), dict)
 				self.assertEqual(P.info().keys(),{'type'})
 				self.assertIsNone(P.device)
+				self.assertIsNone(P.motor)
+
+	def test_port_device_get(self):
+		devices = {hub.port.A.device, hub.port.C.device, hub.port.D.device}
+		for device in devices:
+			with self.subTest(device = device):
+				self.assertEqual(device.FORMAT_RAW,0)
+				self.assertEqual(device.FORMAT_PCT,1)
+				self.assertEqual(device.FORMAT_SI,2)
+				for get_format in {device.FORMAT_RAW, device.FORMAT_PCT, device.FORMAT_SI}:
+					with self.subTest(get_format = get_format):
+						self.assertIsInstance(device.get(get_format), list)
+						if len(device.get(get_format))>0:
+							self.assertIsInstance(device.get(get_format)[0], numbers.Real) # Apparently python thinks that floats are irrational
+
 
 # These tests must be done with a dummy attached to port A
 class DummyAttachedATestCase(unittest.TestCase):
@@ -255,7 +274,7 @@ class MotorAttachedCTestCase(unittest.TestCase):
 	def tearDown(self):
 		detachall()
 
-	def test_port_B_type_with_motor_connected(self):
+	def test_port_C_type_with_motor_connected(self):
 		P = hub.port.C
 		assert {'callback', 'device', 'info', 'mode', 'motor', 'pwm'}.issubset(dir(P)) 
 		self.assertIsInstance(P.info(), dict)
@@ -272,6 +291,34 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		for x in expected_values:
 			with self.subTest(msg='Checking that p1 is in hub.port.C.motor.default().keys()', p1=x):
 				self.assertIn(x,hub.port.C.motor.default().keys())
+
+	def test_motor_C_constants(self):
+		self.assertEqual(hub.port.C.motor.BUSY_MODE,0)
+		self.assertEqual(hub.port.C.motor.BUSY_MOTOR,1)
+		self.assertEqual(hub.port.C.motor.EVENT_COMPLETED,0)
+		self.assertEqual(hub.port.C.motor.EVENT_INTERRUPTED,1)
+		self.assertEqual(hub.port.C.motor.EVENT_STALL,2)
+		self.assertEqual(hub.port.C.motor.FORMAT_RAW,0)
+		self.assertEqual(hub.port.C.motor.FORMAT_PCT,1)
+		self.assertEqual(hub.port.C.motor.FORMAT_SI,2)
+		self.assertEqual(hub.port.C.motor.PID_SPEED,0)
+		self.assertEqual(hub.port.C.motor.PID_POSITION,1)
+		self.assertEqual(hub.port.C.motor.STOP_FLOAT,0)
+		self.assertEqual(hub.port.C.motor.STOP_BRAKE,1)
+		self.assertEqual(hub.port.C.motor.STOP_HOLD,2)
+
+	def test_motor_C_get(self):
+		for motor in {hub.port.C.motor}:
+			with self.subTest(motor = motor):
+				self.assertEqual(motor.FORMAT_RAW,0)
+				self.assertEqual(motor.FORMAT_PCT,1)
+				self.assertEqual(motor.FORMAT_SI,2)
+				for get_format in {motor.FORMAT_RAW, motor.FORMAT_PCT, motor.FORMAT_SI}:
+					with self.subTest(get_format = get_format):
+						self.assertIsInstance(motor.get(get_format), list)
+						if len(motor.get(get_format))>0:
+							self.assertIsInstance(motor.get(get_format)[0], numbers.Real) # Apparently python thinks that floats are irrational
+
 
 	def test_motor_C_basic_functionality_with_motor_connected(self):
 		hub.port.C.motor.preset(0)
@@ -296,6 +343,11 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		hub.port.C.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
 		self.assertIsInstance(hub.port.C.motor.pid(),tuple)
 		assert len(hub.port.C.motor.pid()) == 3
+
+	# This test fails atm, maybe FakeHat's motor state machine completes commands instantly?
+	def test_motor_busy(self):
+		hub.port.C.motor.run_for_time(1000, 127)
+		self.assertEqual(hub.port.C.motor.busy(hub.port.C.motor.BUSY_MOTOR),True)
 
 	def test_motor_callbacks(self):
 		hub.port.C.motor.callback(None)
@@ -326,6 +378,18 @@ class MotorAttachedCTestCase(unittest.TestCase):
 		assert myflag==0
 		hub.port.C.motor.brake()
 		assert myflag==1
+
+		hub.port.C.motor.callback(None)
+
+	def test_motor_default_callbacks(self):
+		hub.port.C.motor.callback(None)
+
+		mymock = mock.Mock()
+		mymock.method.assert_not_called()
+		hub.port.C.motor.default(callback=mymock.method)
+		mymock.method.assert_not_called()
+		hub.port.C.motor.brake()
+		mymock.method.assert_called_once()
 
 		hub.port.C.motor.callback(None)
 
