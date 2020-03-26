@@ -390,6 +390,80 @@ static int handle_port_value_single(uint8_t *buffer,
 }
 
 
+static int handle_port_value_combi(uint8_t *buffer,
+                                   uint16_t nbytes,
+                                   int *ppassback)
+{
+    int i, rv;
+    uint8_t port_id;
+    uint16_t entry_mask;
+
+    /* Assume nothing was waiting for these values */
+    *ppassback = 0;
+
+    /* PV(C) messages are at least 6 bytes long */
+    if (nbytes < 6 || buffer[2] != TYPE_PORT_VALUE_COMBINED)
+        return 0; /* Not for us */
+    if (buffer[1] != 0)
+    {
+        errno = EPROTO; /* Protocol error */
+        return -1;
+    }
+
+    port_id = buffer[3];
+    if (BITMAP_IS_SET(expecting_value_on_port, port_id))
+    {
+        BITMAP_CLEAR(expecting_value_on_port, port_id);
+        *ppassback = 1;
+    }
+    entry_mask = buffer[4] | (buffer[5] << 8);
+    buffer += 6;
+    nbytes -= 6;
+
+    for (i = 0; i < 16; i++)
+    {
+        if (nbytes == 0)
+        {
+            /* No more data, should there be? */
+            if (entry_mask != 0)
+            {
+                /* There should have been.  Complain */
+                errno = EPROTO;
+                return -1;
+            }
+            return 1; /* Packet has been handled */
+        }
+        if (nbytes < 2)
+        {
+            /* Less than the minimum possible for the protocol */
+            errno = EPROTO;
+            return -1;
+        }
+        if ((entry_mask & (1 << i)) != 0)
+        {
+            /* Expecting a value here */
+            if ((rv = port_new_combi_value(port_id, i, buffer, nbytes)) < 0)
+            {
+                errno = EPROTO;
+                return -1;
+            }
+            nbytes -= rv;
+            buffer += rv;
+            entry_mask &= ~(1 << i);
+        }
+    }
+
+    if (nbytes != 0)
+    {
+        errno = EPROTO;
+        return -1;
+    }
+
+    /* Packet has been handled */
+    return 1;
+}
+
+
 static int handle_output_feedback(uint8_t *buffer, uint16_t nbytes)
 {
     /* The Port Output Command Feedback message must be at least 5 bytes */
@@ -475,6 +549,12 @@ static int poll_i2c(void)
         return 1;
     }
     if ((rv = handle_port_value_single(buffer, nbytes, &passback)) < 0 ||
+        (rv > 0 && !passback))
+    {
+        free(buffer);
+        return (rv < 0) ? 0 : 1;
+    }
+    if ((rv = handle_port_value_combi(buffer, nbytes, &passback)) < 0 ||
         (rv > 0 && !passback))
     {
         free(buffer);

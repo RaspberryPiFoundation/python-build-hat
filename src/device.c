@@ -537,6 +537,22 @@ Device_mode(PyObject *self, PyObject *args)
         device->num_combi_modes = num_entries;
         device->current_mode = MODE_IS_COMBI;
 
+        /* Set up the list for handling input values */
+        {
+            PyObject *new_list = PyList_New(num_entries);
+            PyObject *old_list;
+            int i;
+
+            if (new_list == NULL)
+                return NULL;
+            for (i = 0; i < num_entries; i++)
+                PyList_SET_ITEM(new_list, i, Py_None);
+            old_list = device->values;
+            device->values = new_list;
+            Py_XDECREF(old_list);
+            device->is_unreported = 0;
+        }
+
         Py_RETURN_NONE;
     }
 
@@ -560,6 +576,71 @@ static float rescale_float(float value,
 static long rescale_long(long value, min_max_t *inrange, min_max_t *outrange)
 {
     return (long)(rescale_float((float)value, inrange, outrange) + 0.5);
+}
+
+
+static PyObject *convert_raw(PyObject *value, int format, mode_info_t *mode)
+{
+    if (PyLong_Check(value))
+    {
+        long long_value = PyLong_AsLong(value);
+
+        if (long_value == -1 && PyErr_Occurred() != NULL)
+            return NULL;
+
+        switch (format)
+        {
+            case DEVICE_FORMAT_PERCENT:
+                long_value = rescale_long(long_value,
+                                          &mode->raw,
+                                          &mode->percent);
+                break;
+
+            case DEVICE_FORMAT_SI:
+                long_value = rescale_long(long_value,
+                                          &mode->raw,
+                                          &mode->si);
+                break;
+
+            default:
+                break;
+        }
+        return PyLong_FromLong(long_value);
+    }
+    else if (PyFloat_Check(value))
+    {
+        float fvalue = (float)PyFloat_AsDouble(value);
+
+        if (fvalue == -1.0 && PyErr_Occurred() != NULL)
+            return NULL;
+
+        switch (format)
+        {
+            case DEVICE_FORMAT_PERCENT:
+                fvalue = rescale_float(fvalue,
+                                       &mode->raw,
+                                       &mode->percent);
+                break;
+
+            case DEVICE_FORMAT_SI:
+                fvalue = rescale_float(fvalue,
+                                       &mode->raw,
+                                       &mode->si);
+                break;
+
+            default:
+                break;
+        }
+        return PyFloat_FromDouble((double)fvalue);
+    }
+    else if (value == Py_None)
+    {
+        Py_RETURN_NONE;
+    }
+
+    /* Otherwise this is unexpected */
+    PyErr_SetString(cmd_get_exception(), "Invalid value");
+    return NULL;
 }
 
 
@@ -604,115 +685,68 @@ Device_get(PyObject *self, PyObject *args)
      * SI (2).
      */
 
-    /* Get the current mode */
-    if ((mode = port_get_mode(device->port, device->current_mode)) == NULL)
+    if (device->current_mode != MODE_IS_COMBI)
     {
-        if (PyErr_Occurred() == NULL)
+        /* Simple (single) mode */
+        /* Get the current mode data */
+        if ((mode = port_get_mode(device->port, device->current_mode)) == NULL)
         {
-            /* This shouldn't be possible unless the device detaches
-             * in mid call.
-             */
-            PyErr_SetString(cmd_get_exception(),
-                            "Unexpectedly detached device");
-        }
-        return NULL;
-    }
-    result_count = PyList_Size(device->values);
-    if (result_count != mode->format.datasets)
-    {
-        PyErr_SetString(cmd_get_exception(),
-                        "Device value length mismatch");
-        return NULL;
-    }
-
-    /* We wish to return a list with "mode->format->datasets" data
-     * values.
-     */
-    if ((results = PyList_New(mode->format.datasets)) == NULL)
-        return NULL;
-
-    /* device->values is a list containing result_count elements */
-    for (i = 0; i < result_count; i++)
-    {
-        PyObject *value = PyList_GetItem(device->values, i);
-        if (PyLong_Check(value))
-        {
-            long long_value = PyLong_AsLong(value);
-
-            if (long_value == -1 && PyErr_Occurred() == NULL)
+            if (PyErr_Occurred() == NULL)
             {
-                Py_DECREF(results);
-                return NULL;
+                /* This shouldn't be possible unless the device detaches
+                 * in mid call.
+                 */
+                PyErr_SetString(cmd_get_exception(),
+                                "Unexpectedly detached device");
             }
-            switch (format)
-            {
-                case DEVICE_FORMAT_PERCENT:
-                    long_value = rescale_long(long_value,
-                                              &mode->raw,
-                                              &mode->percent);
-                    break;
-
-                case DEVICE_FORMAT_SI:
-                    long_value = rescale_long(long_value,
-                                              &mode->raw,
-                                              &mode->si);
-                    break;
-
-                default:
-                    break;
-            }
-            value = PyLong_FromLong(long_value);
-            if (value == NULL)
-            {
-                Py_DECREF(results);
-                return NULL;
-            }
-            PyList_SET_ITEM(results, i, value);
-        }
-        else if (PyFloat_Check(value))
-        {
-            float fvalue = (float)PyFloat_AsDouble(value);
-
-            if (fvalue == -1.0 && PyErr_Occurred() == NULL)
-            {
-                Py_DECREF(results);
-                return NULL;
-            }
-            switch (format)
-            {
-                case DEVICE_FORMAT_PERCENT:
-                    fvalue = rescale_float(fvalue,
-                                           &mode->raw,
-                                           &mode->percent);
-                    break;
-
-                case DEVICE_FORMAT_SI:
-                    fvalue = rescale_float(fvalue,
-                                           &mode->raw,
-                                           &mode->si);
-                    break;
-
-                default:
-                    break;
-            }
-            value = PyFloat_FromDouble((double)fvalue);
-            if (value == NULL)
-            {
-                Py_DECREF(results);
-                return NULL;
-            }
-            PyList_SET_ITEM(results, i, value);
-        }
-        else if (value == Py_None)
-        {
-            Py_INCREF(Py_None);
-            PyList_SET_ITEM(results, i, Py_None);
-        }
-        else
-        {
-            PyErr_SetString(cmd_get_exception(), "Invalid value");
-            Py_DECREF(results);
             return NULL;
+        }
+        result_count = PyList_Size(device->values);
+        if (result_count != mode->format.datasets)
+        {
+            PyErr_SetString(cmd_get_exception(),
+                            "Device value length mismatch");
+            return NULL;
+        }
+
+        /* We wish to return a list with "mode->format->datasets" data
+         * values.
+         */
+        if ((results = PyList_New(mode->format.datasets)) == NULL)
+            return NULL;
+
+        /* device->values is a list containing result_count elements */
+        for (i = 0; i < result_count; i++)
+        {
+            PyObject *value = PyList_GetItem(device->values, i);
+            value = convert_raw(value, format, mode);
+            if (value == NULL)
+            {
+                Py_DECREF(results);
+                return NULL;
+            }
+            PyList_SET_ITEM(results, i, value);
+        }
+    }
+    else
+    {
+        /* Combination mode */
+        if ((results = PyList_New(device->num_combi_modes)) == NULL)
+            return NULL;
+        for (i = 0; i < device->num_combi_modes; i++)
+        {
+            PyObject *value;
+
+            mode = port_get_mode(device->port,
+                                 (device->combi_mode[i] >> 4) & 0x0f);
+            value = PyList_GetItem(device->values, i);
+            value = convert_raw(value, format, mode);
+            if (value == NULL)
+            {
+                Py_DECREF(results);
+                return NULL;
+            }
+            PyList_SET_ITEM(results, i, value);
         }
     }
 
@@ -804,6 +838,63 @@ PyObject *device_new_device(PyObject *port)
 }
 
 
+static int read_value(uint8_t format_type,
+                      uint8_t *buffer,
+                      uint16_t nbytes,
+                      PyObject **pvalue)
+{
+    *pvalue = NULL;
+    switch (format_type)
+    {
+        case FORMAT_8BIT:
+            if (nbytes < 1)
+                return -1;
+            if ((*pvalue = PyLong_FromLong(buffer[0])) == NULL)
+                return -1;
+            return 1;
+
+        case FORMAT_16BIT:
+            if (nbytes < 2)
+                return -1;
+            if ((*pvalue = PyLong_FromLong(buffer[0] |
+                                           (buffer[1] << 8))) == NULL)
+                return -1;
+            return 2;
+
+        case FORMAT_32BIT:
+            if (nbytes < 4)
+                return -1;
+            if ((*pvalue = PyLong_FromLong(buffer[0] |
+                                           (buffer[1] << 8) |
+                                           (buffer[2] << 16) |
+                                           (buffer[3] << 24))) == NULL)
+                return -1;
+            return 4;
+
+        case FORMAT_FLOAT:
+        {
+            uint32_t bytes;
+            float fvalue;
+
+            if (nbytes < 4)
+                return -1;
+            bytes = (buffer[0] |
+                     (buffer[1] << 8) |
+                     (buffer[2] << 16) |
+                     (buffer[3] << 24));
+            memcpy(&fvalue, &bytes, 4);
+            if ((*pvalue = PyFloat_FromDouble((double)fvalue)) == NULL)
+                return -1;
+            return 4;
+        }
+
+        default:
+            break;
+    }
+    return -1;
+}
+
+
 int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
 {
     DeviceObject *device = (DeviceObject *)self;
@@ -815,6 +906,11 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
 
     device->is_mode_busy = 0;
 
+    if (device->current_mode == MODE_IS_COMBI)
+        /* This must be some sort of race condition */
+        /* XXX: could process the value and discard to avoid confusion */
+        return -1;
+
     if ((mode = port_get_mode(device->port, device->current_mode)) == NULL)
         /* Can't get the mode info */
         return -1;
@@ -825,89 +921,85 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
 
     for (i = 0; i < mode->format.datasets; i++)
     {
-        value = NULL;
-        switch (mode->format.type)
+        int nread = read_value(mode->format.type, buffer, nbytes, &value);
+
+        if (nread < 0)
         {
-            case FORMAT_8BIT:
-                if (nbytes < 1)
-                {
-                    Py_DECREF(values);
-                    return -1;
-                }
-                if ((value = PyLong_FromLong(buffer[0])) == NULL)
-                {
-                    Py_DECREF(values);
-                    return -1;
-                }
-                buffer++;
-                nbytes--;
-                bytes_consumed++;
-                break;
-
-            case FORMAT_16BIT:
-                if (nbytes < 2)
-                {
-                    Py_DECREF(values);
-                    return -1;
-                }
-                if ((value = PyLong_FromLong(buffer[0] |
-                                             (buffer[1] << 8))) == NULL)
-                {
-                    Py_DECREF(values);
-                    return -1;
-                }
-                buffer += 2;
-                nbytes -= 2;
-                bytes_consumed += 2;
-                break;
-
-            case FORMAT_32BIT:
-                if (nbytes < 4)
-                {
-                    Py_DECREF(values);
-                    return -1;
-                }
-                if ((value = PyLong_FromLong(buffer[0] |
-                                             (buffer[1] << 8) |
-                                             (buffer[2] << 16) |
-                                             (buffer[3] << 24))) == NULL)
-                {
-                    Py_DECREF(values);
-                    return -1;
-                }
-                buffer += 4;
-                nbytes -= 4;
-                bytes_consumed += 4;
-                break;
-
-            case FORMAT_FLOAT:
-            {
-                uint32_t bytes;
-                float fvalue;
-
-                if (nbytes < 4)
-                {
-                    Py_DECREF(values);
-                    return -1;
-                }
-                bytes = (buffer[0] |
-                         (buffer[1] << 8) |
-                         (buffer[2] << 16) |
-                         (buffer[3] << 24));
-                memcpy(&fvalue, &bytes, 4);
-                if ((value = PyFloat_FromDouble((double)fvalue)) == NULL)
-                {
-                    Py_DECREF(values);
-                    return -1;
-                }
-                buffer += 4;
-                nbytes -= 4;
-                bytes_consumed += 4;
-                break;
-            }
+            Py_DECREF(values);
+            return -1;
         }
-
+        buffer += nread;
+        nbytes -= nread;
+        bytes_consumed += nread;
         PyList_SET_ITEM(values, i, value);
+    }
+
+    /* Swap the new data into place */
+    PyObject *old_values = device->values;
+    device->values = values;
+    Py_XDECREF(old_values);
+    device->is_unreported = 1;
+
+    return bytes_consumed;
+}
+
+
+int device_new_combi_value(PyObject *self,
+                           int entry,
+                           uint8_t *buffer,
+                           uint16_t nbytes)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    PyObject *values;
+    PyObject *value;
+    uint8_t mode_number;
+    mode_info_t *mode;
+    int bytes_consumed;
+    int i;
+
+    device->is_mode_busy = 0;
+
+    if (device->current_mode != MODE_IS_COMBI)
+        /* A combined value in a simple mode is probably a race */
+        /* XXX: could process the value and discard to avoid confusion */
+        return -1;
+
+    mode_number = (device->combi_mode[entry] >> 4) & 0x0f;
+    if ((mode = port_get_mode(device->port, mode_number)) == NULL)
+        /* Can't get the mode info */
+        return -1;
+
+    bytes_consumed = read_value(mode->format.type, buffer, nbytes, &value);
+    if (bytes_consumed < 0)
+        return -1;
+
+    /* This is not terribly efficient... */
+    if ((values = PyList_New(device->num_combi_modes)) == NULL)
+    {
+        Py_DECREF(value);
+        return -1;
+    }
+
+    for (i = 0; i < device->num_combi_modes; i++)
+    {
+        if (i == entry)
+        {
+            Py_INCREF(value); /* So we can do error recovery safely */
+            PyList_SET_ITEM(values, i, value);
+        }
+        else
+        {
+            PyObject *old_value = PyList_GetItem(device->values, i);
+
+            if (old_value == NULL)
+            {
+                Py_DECREF(values);
+                Py_DECREF(value);
+                return -1;
+            }
+            Py_INCREF(old_value);
+            PyList_SET_ITEM(values, i, old_value);
+        }
     }
 
     /* Swap the new data into place */

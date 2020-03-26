@@ -244,7 +244,8 @@ int cmd_get_port_value(uint8_t port_id)
         return -1;
 
     if (response[0] < 4 ||
-        response[2] != TYPE_PORT_VALUE_SINGLE || /* TODO: could be Combi */
+        (response[2] != TYPE_PORT_VALUE_SINGLE &&
+         response[2] != TYPE_PORT_VALUE_COMBINED) ||
         response[3] != port_id)
     {
         free(response);

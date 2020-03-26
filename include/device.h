@@ -22,6 +22,15 @@ extern PyObject *device_new_device(PyObject *port);
  */
 extern int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes);
 
+/* Parse an input buffer and update the stored values for a single
+ * mode/dataset combination from a Combi-mode value update.  Returns
+ * the number of bytse in the buffer consumed, or -1 on failure.
+ */
+extern int device_new_combi_value(PyObject *self,
+                                  int entry,
+                                  uint8_t *buffer,
+                                  uint16_t nbytes);
+
 /* Update internal state from the format information */
 extern int device_new_format(PyObject *self);
 

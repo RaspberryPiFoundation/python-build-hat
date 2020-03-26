@@ -1019,6 +1019,32 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
 
 
 /* Called from the background context */
+int port_new_combi_value(uint8_t port_id,
+                         int entry,
+                         uint8_t *buffer,
+                         uint16_t nbytes)
+{
+    /* Some or all of the buffer will be the values we want */
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    PortObject *port = (PortObject *)port_set->ports[port_id];
+    int rv;
+
+    if (port->device == Py_None)
+    {
+        /* See above */
+        rv = -1;
+    }
+    else
+    {
+        rv = device_new_combi_value(port->device, entry, buffer, nbytes);
+    }
+
+    PyGILState_Release(gstate);
+    return rv;
+}
+
+
+/* Called from the background context */
 int port_new_format(uint8_t port_id)
 {
     /* Don't need to call any Python functions off this */

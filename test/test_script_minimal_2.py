@@ -11,10 +11,10 @@ for i in range(10):
 	for i in range(20):
 		fakeHat.stdin.write(b'detach a\n')
 		fakeHat.stdin.flush()
-		time.sleep(0.1)
+		time.sleep(0.01)
 		fakeHat.stdin.write(b'attach a $motor\n')
 		fakeHat.stdin.flush()
-		time.sleep(0.1)
+		time.sleep(0.01)
 
 
 	# hub.port.A.motor.run_to_position(42, 100)
@@ -22,7 +22,7 @@ for i in range(10):
 	for i in range(360):
 		hub.port.A.motor.run_to_position(i, 100)
 
-
+print("Done")
 # sometimes I get:
 #
 # Traceback (most recent call last):

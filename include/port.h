@@ -54,6 +54,10 @@ extern int port_attach_port(uint8_t port_id,
                             uint8_t *fw_revision);
 extern int port_detach_port(uint8_t port_id);
 extern int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes);
+extern int port_new_combi_value(uint8_t port_id,
+                                int entry,
+                                uint8_t *buffer,
+                                uint16_t nbytes);
 extern int port_new_format(uint8_t port_id);
 extern int port_feedback_status(uint8_t port_id, uint8_t status);
 
