@@ -260,6 +260,16 @@ class DummyTestCase(unittest.TestCase):
 					port.pwm(-101)
 				port.pwm(0)
 
+	def test_combi_modes(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				port.device.mode([(0,0),(1,0),(1,2),(3,0)])
+				x = port.device.get()
+				self.assertIsInstance(x, list)
+				self.assertIsInstance(x[0],tuple)
+				self.assertEqual(len(x), 4)
+				self.assertEqual(len(x[0]),2)
+
 class PortDetachedTestCase(unittest.TestCase):
 	def setUp(self):
 		detachall()
