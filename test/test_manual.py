@@ -746,13 +746,21 @@ class MotorPairCDTestCase(unittest.TestCase):
 # Motor must be connected to port C
 class MemoryLeakTestCase(unittest.TestCase):
 	def setUp(self):
-		defaultsetup()
+		detachall()
 
 	def tearDown(self):
 		detachall()
 
 	def testMemoryLeaks(self):
 		startmemory = process.memory_info().rss
+		fakeHat.stdin.write(b'detach c\n')
+		fakeHat.stdin.write(b'detach d\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		fakeHat.stdin.write(b'attach c $motor\n')
+		fakeHat.stdin.write(b'attach d $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
 		hub.port.C.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
 		hub.port.C.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
 		hub.port.C.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
@@ -772,6 +780,14 @@ class MemoryLeakTestCase(unittest.TestCase):
 		pair.run_to_position(0, 127, 70)
 		pair.unpair()
 		onerunmemory = process.memory_info().rss
+		fakeHat.stdin.write(b'detach c\n')
+		fakeHat.stdin.write(b'detach d\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		fakeHat.stdin.write(b'attach c $motor\n')
+		fakeHat.stdin.write(b'attach d $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
 		hub.port.C.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
 		hub.port.C.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
 		hub.port.C.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
@@ -791,18 +807,6 @@ class MemoryLeakTestCase(unittest.TestCase):
 		pair.run_to_position(0, 127, 70)
 		pair.unpair()
 		tworunmemory = process.memory_info().rss
-		fakeHat.stdin.write(b'detach a\n')
-		fakeHat.stdin.flush()
-		time.sleep(0.1)
-		fakeHat.stdin.write(b'attach a $dummy\n')
-		fakeHat.stdin.flush()
-		time.sleep(0.1)
-		fakeHat.stdin.write(b'detach a\n')
-		fakeHat.stdin.flush()
-		time.sleep(0.1)
-		fakeHat.stdin.write(b'attach a $dummy\n')
-		fakeHat.stdin.flush()
-		time.sleep(0.1)
 		self.assertLessEqual(tworunmemory, onerunmemory)
 
 
