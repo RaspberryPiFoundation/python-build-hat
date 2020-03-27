@@ -82,10 +82,10 @@ class GeneralTestCase(unittest.TestCase):
 		self.assertIsInstance(hub.info(), dict)
 
 	def test_hub_info_keys_hw_version(self):
-		self.assertIn('hw_version',hub.info().keys())
+		self.assertIn('hardware_revision',hub.info().keys())
 
 	def test_hub_info_keys_fw_version(self):
-		self.assertIn('fw_version',hub.info().keys())
+		self.assertIn('firmware_revision',hub.info().keys())
 
 	def test_hub_status_type(self):
 		self.assertIsInstance(hub.info(), dict)
