@@ -218,36 +218,6 @@ class DummyTestCase(unittest.TestCase):
 				self.assertIsInstance(port.info()['modes'], list)
 				assert {'name', 'raw', 'pct', 'si', 'symbol', 'map_out', 'map_in', 'capability', 'format'}.issubset(port.info()['modes'][1].keys())
 
-	def test_port_device_mode_read(self):
-		for port in self.ports:
-			with self.subTest(port=port):
-				assert {'mode'}.issubset(dir(port.device))
-				try:
-					self.assertIsInstance(port.device.mode(), list)
-					self.assertIsInstance(port.device.mode()[0], tuple)
-					self.assertEqual(len(port.device.mode()[0]), 2)
-				except NotImplementedError:
-					self.fail('Mode not implemented')
-
-	def test_port_device_mode_set(self):
-		for port in self.ports:
-			with self.subTest(port=port):
-				assert {'mode'}.issubset(dir(port.device))
-				try:
-					self.assertIsInstance(port.device.mode(), list)
-					self.assertIsInstance(port.device.mode()[0], tuple)
-					self.assertEqual(len(port.device.mode()[0]), 2)
-					port.device.mode(1)
-					self.assertIsInstance(port.device.mode(), list)
-					self.assertIsInstance(port.device.mode()[0], tuple)
-					self.assertEqual(len(port.device.mode()[0]), 2)
-					port.device.mode([(3,4),(5,6)])
-					self.assertIsInstance(port.device.mode(), list)
-					self.assertIsInstance(port.mode()[0], tuple)
-					self.assertEqual(len(port.device.mode()[0]), 2)
-				except NotImplementedError:
-					self.fail('Mode not implemented')
-
 	def test_pwm_values(self):
 		for port in self.ports:
 			with self.subTest(port=port):
@@ -258,17 +228,6 @@ class DummyTestCase(unittest.TestCase):
 				with self.assertRaises(ValueError):
 					port.pwm(-101)
 				port.pwm(0)
-
-	@unittest.skip('dummy has no modes')
-	def test_combi_modes(self):
-		for port in self.ports:
-			with self.subTest(port=port):
-				port.device.mode([(0,0),(1,0),(1,2),(3,0)])
-				x = port.device.get()
-				self.assertIsInstance(x, list)
-				self.assertIsInstance(x[0],tuple)
-				self.assertEqual(len(x), 4)
-				self.assertEqual(len(x[0]),2)
 
 class PortDetachedTestCase(unittest.TestCase):
 	def setUp(self):
@@ -342,6 +301,18 @@ class MotorTestCase(unittest.TestCase):
 				self.assertIsInstance(x[0],tuple)
 				self.assertEqual(len(x), 4)
 				self.assertEqual(len(x[0]),2)
+
+	def test_port_device_mode_set(self):
+		for port in self.ports:
+			with self.subTest(port=port):
+				self.assertIn('mode',dir(port.device))
+				self.assertIsInstance(port.device.mode(), list)
+				self.assertIsInstance(port.device.mode()[0], tuple)
+				self.assertEqual(len(port.device.mode()[0]), 2)
+				port.device.mode(1)
+				self.assertIsInstance(port.device.mode(), list)
+				self.assertIsInstance(port.device.mode()[0], tuple)
+				self.assertEqual(len(port.device.mode()[0]), 2)
 
 	def test_motor_constants(self):
 		for port in self.ports:
