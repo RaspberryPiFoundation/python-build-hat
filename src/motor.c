@@ -467,9 +467,14 @@
             timeout with an appropriate exception.  It is easier to
             write that way, and better API design as well.
 
-            The original regards ``A.pair(B)`` and ``B.pair(A)`` as
-            different motor pairs.  This implementation regards them
-            as the same pair.  The latter is likely wrong.
+        .. note::
+
+            The module regards ``A.pair(B)`` and ``B.pair(A)`` as
+            different motor pairs, and will accept multiple pairings
+            of a single motor (i.e. ``A.pair(B)`` followed by
+            ``A.pair(C)`` is allowed).  Care should be taken not to
+            set up conflicting defaults; the results may be
+            surprising.
 
 */
 

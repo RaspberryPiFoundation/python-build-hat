@@ -1041,10 +1041,8 @@ PyObject *pair_get_pair(PyObject *primary, PyObject *secondary)
     for (i = 0; i < PAIR_COUNT; i++)
     {
         if (pairs[i] != NULL &&
-            ((pairs[i]->primary_id == primary_id &&
-              pairs[i]->secondary_id == secondary_id) ||
-             (pairs[i]->primary_id == secondary_id &&
-              pairs[i]->secondary_id == primary_id)))
+            pairs[i]->primary_id == primary_id &&
+            pairs[i]->secondary_id == secondary_id)
         {
             return (PyObject *)pairs[i];
         }
