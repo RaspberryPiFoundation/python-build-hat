@@ -79,9 +79,9 @@ This module provides access to the Shortcake hat.
 
         Returns a dictionary containing the following keys:
 
-        * ``fw_version`` : Firmware version as a string in the form
+        * ``firmware_revision`` : Firmware version as a string in the form
           ``MAJOR.MINOR.BUGFIX.BUILD``
-        * ``hw_version`` : Hardware version as a string in the form
+        * ``hardware_revision`` : Hardware version as a string in the form
           ``MAJOR.MINOR.BUGFIX.BUILD``
 
         .. note::
