@@ -16,6 +16,9 @@
 
 #include "queue.h"
 
+#ifdef DEBUG_I2C
+#include "debug-i2c.h"
+#endif
 
 typedef struct queue_item_s
 {
@@ -147,7 +150,13 @@ static int wait_on_sem_1ms(sem_t *semaphore)
     struct timespec timeout;
 
     if (clock_gettime(CLOCK_REALTIME, &timeout) < 0)
+    {
+#ifdef DEBUG_I2C
+        uint8_t debug[4] = { 4, 0xff, 0x07, 0x00 };
+        log_i2c(debug, -1);
+#endif
         return -1;
+    }
 
     timeout.tv_nsec += 1000000;
     if (timeout.tv_nsec >= 1000000000)
@@ -157,6 +166,11 @@ static int wait_on_sem_1ms(sem_t *semaphore)
     }
     if (sem_timedwait(semaphore, &timeout) < 0)
     {
+#ifdef DEBUG_I2C
+        uint8_t debug[4] = { 4, 0xff, 0x08 };
+        debug[3] = (uint8_t)errno & 0xff;
+        log_i2c(debug, -1);
+#endif
         if (errno == EINTR)
             return 0;
         else if (errno == ETIMEDOUT)
@@ -172,11 +186,24 @@ static int wait_on_sem_1s(sem_t *semaphore)
     struct timespec timeout;
 
     if (clock_gettime(CLOCK_REALTIME, &timeout) < 0)
+    {
+#ifdef DEBUG_I2C
+        uint8_t debug[4] = { 4, 0xff, 0x09, 0x00 };
+        log_i2c(debug, -1);
+#endif
         return -1;
+    }
 
     timeout.tv_sec++;
     if (sem_timedwait(semaphore, &timeout) < 0)
+    {
+#ifdef DEBUG_I2C
+        uint8_t debug[4] = { 4, 0xff, 0x0a };
+        debug[3] = (uint8_t)errno & 0xff;
+        log_i2c(debug, -1);
+#endif
         return (errno == EINTR) ? 0 : -1;
+    }
     return 0;
 }
 
@@ -187,15 +214,36 @@ static int get_item(queue_t *q, uint8_t **pbuffer, wait_fn_t wait)
     int rv;
 
     if ((rv = pthread_mutex_lock(&q->mutex)) != 0)
+    {
+#ifdef DEBUG_I2C
+        uint8_t debug[4] = { 4, 0xff, 0x02 };
+        debug[3] = (uint8_t)rv & 0xff;
+        log_i2c(debug, -1);
+#endif
         return rv;
+    }
 
     while (q->qtail == NULL)
     {
         /* Release the lock, then wait for a semaphore */
         if ((rv = pthread_mutex_unlock(&q->mutex)) != 0)
+        {
+#ifdef DEBUG_I2C
+            uint8_t debug[4] = { 4, 0xff, 0x03 };
+            debug[3] = (uint8_t)rv & 0xff;
+            log_i2c(debug, -1);
+#endif
             return rv; /* Not a good sign... */
+        }
         if ((rv = wait(&q->semaphore)) < 0)
+        {
+#ifdef DEBUG_I2C
+            uint8_t debug[4] = { 4, 0xff, 0x04 };
+            debug[3] = (uint8_t)rv & 0xff;
+            log_i2c(debug, -1);
+#endif
             return errno;
+        }
         else if (rv != 0)
         {
             /* Timeout (when permitted) */
@@ -207,7 +255,14 @@ static int get_item(queue_t *q, uint8_t **pbuffer, wait_fn_t wait)
          * which isn't really an error).
          */
         if ((rv = pthread_mutex_lock(&q->mutex)) != 0)
+        {
+#ifdef DEBUG_I2C
+            uint8_t debug[4] = { 4, 0xff, 0x05 };
+            debug[3] = (uint8_t)rv & 0xff;
+            log_i2c(debug, -1);
+#endif
             return rv;
+        }
     }
 
     /* We have the lock here and there is something on the queue */
@@ -221,6 +276,11 @@ static int get_item(queue_t *q, uint8_t **pbuffer, wait_fn_t wait)
     /* Release the lock */
     if ((rv = pthread_mutex_unlock(&q->mutex)) != 0)
     {
+#ifdef DEBUG_I2C
+        uint8_t debug[4] = { 4, 0xff, 0x06 };
+        debug[3] = (uint8_t)rv & 0xff;
+        log_i2c(debug, -1);
+#endif
         free(item->buffer);
         free(item);
         return rv;
@@ -250,9 +310,22 @@ int queue_get(uint8_t **pbuffer)
 
     if (rv != 0)
     {
+#ifdef DEBUG_I2C
+        uint8_t debug[4] = { 4, 0xff, 0x00 };
+        debug[3] = (uint8_t)rv & 0xff;
+        log_i2c(debug, -1);
+#endif
         errno = rv;
         PyErr_SetFromErrno(PyExc_OSError);
     }
+    /* XXX: handle timeouts! */
+#ifdef DEBUG_I2C
+    else if (*pbuffer == NULL)
+    {
+        uint8_t debug[4] = { 4, 0xff, 0x01, 0x00 };
+        log_i2c(debug, -1);
+    }
+#endif
     return rv;
 }
 

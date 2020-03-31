@@ -17,7 +17,7 @@
 typedef struct debug_log_s
 {
     struct debug_log_s *next;
-    time_t timestamp;
+    clock_t timestamp;
     int direction;
     size_t nbytes;
     uint8_t *buffer;
@@ -71,7 +71,7 @@ void log_i2c(uint8_t *buffer, int direction)
         return;
     }
     item->next = NULL;
-    item->timestamp = time(NULL);
+    item->timestamp = clock();
     item->direction = direction;
     item->nbytes = nbytes;
     memcpy(item->buffer, buffer, nbytes);
@@ -120,7 +120,10 @@ void log_i2c_dump(void)
         debug_log_head = item->next;
         pthread_mutex_unlock(&mutex);
 
-        printf("%12lu %c", item->timestamp, item->direction ? '>' : '<');
+        printf("%12.2f %c",
+               1000.0 * item->timestamp / CLOCKS_PER_SEC,
+               (item->direction < 0) ? '!' :
+               item->direction ? '>' : '<');
         for (i = 0; i < item->nbytes; i++)
         {
             printf(" %02x", item->buffer[i]);
