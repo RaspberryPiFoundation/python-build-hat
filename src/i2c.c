@@ -4,7 +4,7 @@
  *
  * I2C communications handling
  *
- * This takes place in a separate OS thread (not Python thread!) so
+ * This takes place in separate OS threads (not Python threads!) so
  * error reporting is not as easy as you might hope.
  */
 
@@ -20,6 +20,8 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <poll.h>
+#include <sys/eventfd.h>
 
 #include <linux/i2c-dev.h>
 #include <i2c/smbus.h>
@@ -45,10 +47,13 @@
 #define VALUE_PSEUDOFILE GPIO_DIRECTORY "/value"
 
 static int gpio_fd = -1;
+static int gpio_state = 0;
 #endif /* DEBUG_I2C */
 
 static int i2c_fd = -1;
-static pthread_t comms_thread;
+static int rx_event_fd = -1;
+static pthread_t comms_rx_thread;
+static pthread_t comms_tx_thread;
 static int shutdown = 0;
 
 
@@ -92,6 +97,19 @@ static inline uint32_t extract_uint32(uint8_t *buffer)
 
 
 #ifndef USE_DUMMY_I2C
+static int read_wake_gpio(void)
+{
+    char buffer;
+
+    if (lseek(gpio_fd, 0, SEEK_SET) == (off_t)-1 ||
+        read(gpio_fd, &buffer, 1) < 0)
+    {
+        return -1;
+    }
+    gpio_state =  (buffer == '1') ? 1 : 0;
+}
+
+
 static int open_wake_gpio(void)
 {
     int fd;
@@ -130,82 +148,125 @@ static int open_wake_gpio(void)
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
+    /* ...and read it */
+    if (read_wake_gpio() < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
 
     return 0;
 }
+#endif
 
-static int read_wake_gpio(void)
+
+static void report_comms_error(void)
 {
-    char buffer;
+    /* XXX: Figure out something to do here */
+}
 
-    if (lseek(gpio_fd, 0, SEEK_SET) == (off_t)-1 ||
-        read(gpio_fd, &buffer, 1) < 0)
+
+static void signal_rx_shutdown(void)
+{
+    uint64_t value = 1;
+    (void)write(rx_event_fd, (uint8_t *)&value, 8);
+}
+
+
+static void read_rx_event(void)
+{
+    uint64_t value;
+
+    /* We only care about reading to kill the poll flag */
+    (void)read(rx_event_fd, (uint8_t *)&value, 8);
+}
+
+
+#ifdef USE_DUMMY_I2C
+static int poll_for_rx(void)
+{
+    struct pollfd pfds[2];
+
+    pfds[0].fd = i2c_fd;
+    pfds[0].events = POLLIN;
+    pfds[0].revents = 0;
+    pfds[1].fd = rx_event_fd;
+    pfds[1].events = POLLIN;
+    pfds[1].revents = 0;
+
+    if (poll(pfds, 2, -1) < 0)
     {
-        return -1;
+        report_comms_error();
+        return 0;
     }
-    return (buffer == '1');
+    if ((pfds[1].revents & POLLIN) != 0)
+        read_rx_event();
+    return pfds[0].revents & POLLIN;
+}
+#else /* !USE_DUMMY_I2C */
+static int poll_for_rx(void)
+{
+    struct pollfd pfds[2];
+    int rv;
+
+    /* First check if the gpio has changed */
+    pfds[0].fd = gpio_fd;
+    pfds[0].events = POLLIN;
+    pfds[0].revents = 0;
+    if ((rv = poll, pfds, 1, 0) < 0)
+    {
+        report_comms_error();
+        return 0;
+    }
+    else if (rv != 0)
+    {
+        /* Yes it has.  Read the new value */
+        if (read_wake_gpio() < 0)
+            report_comms_error();
+        /* Always return, in case there is more */
+        return 0;
+    }
+
+    /* If the GPIO is raised, keep reading */
+    if (gpio_state)
+        return 1;
+
+    /* Otherwise wait for a GPIO state change or an event */
+    pfds[0].fd = gpio_fd;
+    pfds[0].events = POLLIN;
+    pfds[0].revents = 0;
+    pfds[1].fd = rx_event_fd;
+    pfds[1].events = POLLIN;
+    pfds[1].revents = 0;
+
+    if ((rv = poll(pfds, 2, -1)) < 0)
+    {
+        report_comms_error();
+        return 0;
+    }
+    if ((pfds[1].revents & POLLIN) != 0)
+        read_rx_event();
+    if ((pfds[2].revents & POLLIN) != 0)
+        if (read_wake_gpio() < 0)
+            report_comms_error();
+    /* Loop for another check just in case */
+    return 0;
 }
 #endif
 
 
-static void report_comms_error(int rv)
-{
-    /* Raise an exception in the comms thread */
-    PyGILState_STATE gstate = PyGILState_Ensure();
-
-    errno = rv;
-    PyErr_SetFromErrno(PyExc_IOError);
-    PyGILState_Release(gstate);
-}
-
-
-/* Returns 1 for success, 0 for failure */
-static int send_command(uint8_t *buffer)
-{
-    size_t nbytes;
-
-#ifndef USE_DUMMY_I2C
-    if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
-        return 0;
-#endif
-
-    /* Is this a Port Info request asking for the value? */
-    if (buffer[2] == TYPE_PORT_INFO_REQ &&
-        buffer[4] == PORT_INFO_VALUE)
-    {
-        BITMAP_SET(expecting_value_on_port, buffer[3]);
-    }
-
-    /* Construct the buffer length */
-    nbytes = buffer[0];
-    if (nbytes >= 0x80)
-        nbytes = (nbytes & 0x7f) | (buffer[1] << 7);
-    if (write(i2c_fd, buffer, nbytes) < 0)
-        return 0;
-    return 1;
-}
-
-
-/* Returns 0 for success, -1 for I2C failure, -2 for out of memory */
 static int read_message(uint8_t **pbuffer)
 {
     size_t nbytes;
     uint8_t byte;
     uint8_t *buffer;
     int offset = 1;
-#ifndef USE_DUMMY_I2C
-    int rv;
-#endif
 
     *pbuffer = NULL;
 
 #ifndef USE_DUMMY_I2C
     if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
-        return 0;
-    if ((rv = read_wake_gpio()) < 0)
         return -1;
-    else if (rv == 0)
-        return 0; /* Nothing to read */
 #endif
 
     /* Read in the length */
@@ -221,7 +282,10 @@ static int read_message(uint8_t **pbuffer)
     }
 
     if ((buffer = malloc(nbytes)) == NULL)
-        return -2;
+    {
+        errno = ENOMEM;
+        return -1;
+    }
     buffer[0] = nbytes & 0x7f;
     if (nbytes >= 0x80)
     {
@@ -240,12 +304,14 @@ static int read_message(uint8_t **pbuffer)
 }
 
 
-/* NB: returns -1 on error (with errno set), 1 if the message has
- * been handled, and 0 if another handler should look at it.
+/* The handle_ functions return -1 on error (with errno set), 1 if the
+ * message has been handled, and 0 if another handler should look at
+ * it.
  */
+
 static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
 {
-    /* Hab Attacked I/O messages are at least 5 bytes long */
+    /* Hub Attacked I/O messages are at least 5 bytes long */
     if (nbytes < 5 || buffer[2] != TYPE_HUB_ATTACHED_IO)
         return 0; /* Not for us */
     if (buffer[1] != 0)
@@ -317,7 +383,7 @@ static int handle_port_format_single(uint8_t *buffer, uint16_t nbytes)
 
     /* PF(S) messages are 10 bytes long */
     if (nbytes < 10 || buffer[2] != TYPE_PORT_FORMAT_SINGLE)
-        return 0; /* NOt for us */
+        return 0; /* Not for us */
 
     if (buffer[1] != 0)
     {
@@ -330,8 +396,9 @@ static int handle_port_format_single(uint8_t *buffer, uint16_t nbytes)
         errno = EPROTO;
         return -1;
     }
-    /* We still want to pass this on */
-    return 0;
+
+    /* We still want to pass this on, but deal with that in the caller */
+    return 1;
 }
 
 
@@ -509,107 +576,150 @@ static int handle_output_feedback(uint8_t *buffer, uint16_t nbytes)
 }
 
 
-/* Returns 1 on success, 0 on failure */
-static int poll_i2c(void)
+static int handle_immediate(uint8_t *buffer, uint16_t nbytes)
 {
-    uint8_t *buffer;
     int rv;
-    int passback;
-    uint16_t nbytes;
-
-    if ((rv = read_message(&buffer)) < 0)
-    {
-        if (rv == -2)
-            errno = ENOMEM;
-        return 0;
-    }
-    if (buffer == NULL)
-        return 1;
-
-#ifdef DEBUG_I2C
-    log_i2c(buffer, 0);
-#endif
-
-    nbytes = buffer[0];
-    if (nbytes >= 0x80)
-    {
-        buffer++;
-        nbytes = (nbytes & 0x7f) | (buffer[0] << 7);
-    }
+    int passback = 0;
 
     /* Is this something to deal with immediately? */
     if ((rv = handle_attached_io_message(buffer, nbytes)) != 0)
+        return rv;
+
+    if ((rv = handle_port_format_single(buffer, nbytes)) != 0)
     {
-        free(buffer);
-        return (rv < 0) ? 0 : 1;
+        /* We still want to pass this to the foreground if valid */
+        return (rv < 0) ? rv : 0;
     }
-    if ((rv = handle_port_format_single(buffer, nbytes)) < 0)
-    {
-        free(buffer);
-        return 1;
-    }
+
     if ((rv = handle_port_value_single(buffer, nbytes, &passback)) < 0 ||
         (rv > 0 && !passback))
     {
-        free(buffer);
-        return (rv < 0) ? 0 : 1;
+        return rv;
     }
-    if ((rv = handle_port_value_combi(buffer, nbytes, &passback)) < 0 ||
-        (rv > 0 && !passback))
+    else if (rv > 0)
     {
-        free(buffer);
-        return (rv < 0) ? 0 : 1;
-    }
-    if ((rv = handle_output_feedback(buffer, nbytes)) < 0)
-    {
-        free(buffer);
-        return 1;
-    }
-
-    if (queue_return_buffer(buffer) < 0)
-    {
-        free(buffer);
+        /* Handled, but pass to foreground */
         return 0;
     }
 
-    return 1;
+    if ((rv = handle_port_value_combi(buffer, nbytes, &passback)) < 0 ||
+        (rv > 0 && !passback))
+    {
+        return rv;
+    }
+    else if (rv > 0)
+    {
+        /* Handled, but pass to foreground */
+        return 0;
+    }
+
+    if ((rv = handle_output_feedback(buffer, nbytes)) != 0)
+        return rv;
+
+    return 0; /* Nothing interesting here, guv */
 }
 
 
-/* Thread function for background I2C communications */
-static void *run_comms(void *args __attribute__((unused)))
+/* Thread function for background I2C reception */
+static void *run_comms_rx(void *args __attribute__((unused)))
 {
     uint8_t *buffer;
     int rv;
-    int running = 1;
+    uint16_t nbytes;
 
-    while (running && !shutdown)
+    while (!shutdown)
     {
-        if ((buffer = queue_check_background()) == NULL &&
-            (rv = queue_check(&buffer)) != 0)
+        if (poll_for_rx() != 0)
         {
-            report_comms_error(rv);
-            running = 0;
-        }
-        else
-        {
-            if (buffer != NULL)
+            if (read_message(&buffer) < 0)
             {
+                report_comms_error();
+                continue;
+            }
+            if (buffer == NULL)
+                continue; /* Nothing to do */
+
 #ifdef DEBUG_I2C
-                log_i2c(buffer, 1);
+            log_i2c(buffer, 0);
 #endif
-                running = send_command(buffer);
+
+            nbytes = buffer[0];
+            if (nbytes >= 0x80)
+            {
+                buffer++;
+                nbytes = (nbytes & 0x7f) | (buffer[0] << 7);
+            }
+
+            if ((rv = handle_immediate(buffer, nbytes)) < 0)
+            {
+                free(buffer);
+                report_comms_error();
+            }
+            else if (rv > 0)
+            {
+                /* Buffer should not be passed to foreground */
                 free(buffer);
             }
-            if (running)
-                running = poll_i2c();
-            if (!running)
-                report_comms_error(errno);
+            else if (queue_return_buffer(buffer) < 0)
+            {
+                free(buffer);
+                report_comms_error();
+            }
         }
     }
 
     return NULL;
 }
+
+
+/* Thread function for background I2C reception */
+static void *run_comms_tx(void *args __attribute__((unused)))
+{
+    size_t nbytes;
+    uint8_t *buffer;
+    int rv;
+
+    while (!shutdown)
+    {
+        if ((rv = queue_check(&buffer)) < 0)
+        {
+            report_comms_error();
+        }
+        else if (buffer != NULL)
+        {
+#ifdef DEBUG_I2C
+            log_i2c(buffer, 1);
+#endif
+
+#ifndef USE_DUMMY_I2C
+            if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
+            {
+                report_comms_error();
+                free(buffer);
+                continue;
+            }
+#endif
+
+            /* This is the Port Info request asking for the value? */
+            if (buffer[2] == TYPE_PORT_INFO_REQ &&
+                buffer[4] == PORT_INFO_VALUE)
+            {
+                BITMAP_SET(expecting_value_on_port, buffer[3]);
+            }
+
+            /* Construct the buffer length */
+            nbytes = buffer[0];
+            if (nbytes >= 0x80)
+                nbytes = (nbytes & 0x7f) | (buffer[1] << 7);
+            if (write(i2c_fd, buffer, nbytes) < 0)
+                report_comms_error();
+            free(buffer);
+        }
+    }
+
+    return NULL;
+}
+
 
 
 /* Open the I2C bus, select the Hat as the device to communicate with,
@@ -645,21 +755,59 @@ int i2c_open_hat(void)
     }
 #endif /* DEBUG_I2C */
 
-    /* Initialise thread work queue */
+    /* Initialise thread work queues */
     if ((rv = queue_init()) != 0)
     {
         errno = rv;
+#ifndef USE_DUMMY_I2C
+        close(gpio_fd);
+#endif
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
         return -1;
     }
-    if (!PyEval_ThreadsInitialized())
-        PyEval_InitThreads();
-    if ((rv = pthread_create(&comms_thread, NULL, run_comms, NULL)) != 0)
+
+    /* Create the event for signalling to the receiver */
+    if ((rx_event_fd = eventfd(0, 0)) == -1)
     {
         errno = rv;
+#ifndef USE_DUMMY_I2C
+        close(gpio_fd);
+#endif
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
+        return -1;
+    }
+
+    /* Start the Rx and Tx threads */
+    if (!PyEval_ThreadsInitialized())
+        PyEval_InitThreads();
+    if ((rv = pthread_create(&comms_rx_thread, NULL, run_comms_rx, NULL)) != 0)
+    {
+        errno = rv;
+#ifndef USE_DUMMY_I2C
+        close(gpio_fd);
+#endif
+        close(rx_event_fd);
+        PyErr_SetFromErrno(PyExc_IOError);
+        close(i2c_fd);
+        return -1;
+    }
+    if ((rv = pthread_create(&comms_tx_thread, NULL, run_comms_tx, NULL)) != 0)
+    {
+        shutdown = 1;
+        signal_rx_shutdown();
+        pthread_join(comms_rx_thread, NULL);
+
+        errno = rv;
+        PyErr_SetFromErrno(PyExc_IOError);
+
+#ifndef USE_DUMMY_I2C
+        close(gpio_fd);
+#endif
+        close(rx_event_fd);
+        close(i2c_fd);
+        i2c_fd = -1;
         return -1;
     }
 
@@ -673,18 +821,23 @@ int i2c_close_hat(void)
 {
     /* Kill comms thread */
     shutdown = 1;
-    pthread_join(comms_thread, NULL);
+    signal_rx_shutdown();
+    queue_shutdown(); /* Kicks the tx thread */
+    pthread_join(comms_rx_thread, NULL);
+    pthread_join(comms_tx_thread, NULL);
 
-    if (close(i2c_fd) < 0)
+    if (close(i2c_fd) < 0 ||
+        close(rx_event_fd) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
     i2c_fd = -1;
+    rx_event_fd = -1;
+
 #ifndef USE_DUMMY_I2C
     close(gpio_fd);
 #endif
 
     return 0;
 }
-
