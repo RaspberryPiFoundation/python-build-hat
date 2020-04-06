@@ -157,6 +157,11 @@ static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
 
     if (queue_get(&response) != 0)
         return NULL; /* Python exception already raised */
+    if (response == NULL)
+    {
+        PyErr_Format(hub_protocol_error, "Tx timeout");
+        return NULL;
+    }
 
     /* `response` is dynamically allocated and now our responsibility */
     if (response[1] != 0x00)
