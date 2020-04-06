@@ -75,6 +75,11 @@ This module provides access to the Shortcake hat.
 
         The collection of ports on the Shortcake hat.
 
+    .. py:exception:: HubProtocolError
+
+        A copy of the module's HubProtocolError attribute, for
+        convenience when the module namespace is not available.
+
     .. py:method:: info() -> dict
 
         Returns a dictionary containing the following keys:
@@ -130,6 +135,7 @@ typedef struct
 {
     PyObject_HEAD
     PyObject *ports;
+    PyObject *exception;
 } HubObject;
 
 
@@ -137,6 +143,7 @@ static int
 Hub_traverse(HubObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->ports);
+    Py_VISIT(self->exception);
     return 0;
 }
 
@@ -145,6 +152,7 @@ static int
 Hub_clear(HubObject *self)
 {
     Py_CLEAR(self->ports);
+    Py_CLEAR(self->exception);
     return 0;
 }
 
@@ -172,6 +180,8 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_DECREF(self);
         return NULL;
     }
+    Py_INCREF(Py_None);
+    self->exception = Py_None;
     if (i2c_open_hat() < 0)
     {
         Py_DECREF(self);
@@ -201,10 +211,25 @@ Hub_get_port(HubObject *self, void *closure)
     return self->ports;
 }
 
+/* Ditto the protocol exception */
+static PyObject *
+Hub_get_exception(HubObject *self, void *closure)
+{
+    Py_INCREF(self->exception);
+    return self->exception;
+}
+
 
 static PyGetSetDef Hub_getsetters[] =
 {
     { "port", (getter)Hub_get_port, NULL, "Ports connected to the hub", NULL },
+    {
+        "HubProtocolError",
+        (getter)Hub_get_exception,
+        NULL,
+        "The internal protocol error",
+        NULL
+    },
     { NULL }
 };
 
@@ -383,5 +408,7 @@ PyInit_hub(void)
         Py_DECREF(hub);
         return NULL;
     }
+    ((HubObject *)hub_obj)->exception = cmd_get_exception();
+    Py_INCREF(((HubObject *)hub_obj)->exception);
     return hub;
 }
