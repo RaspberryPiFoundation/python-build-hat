@@ -24,7 +24,7 @@ if __name__ == "__main__":
 # Fake Hat for testing purposes
 fakeHat = subprocess.Popen(fake_hat_binary, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(0.5) # Sometimes FakeHat taks a little while to initialise
-from hub import hub # isort:skip
+from hub import hub, HubProtocolError # isort:skip
 time.sleep(0.5)
 
 def defaultsetup():
@@ -56,6 +56,57 @@ class portAttachDetachTestCase(unittest.TestCase):
 		time.sleep(2)
 		for i in range(360):
 			hub.port.A.motor.run_to_position(i, 100)
+
+	def test_device_invalidated_on_detach(self):
+		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.write(b'attach a $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		port = hub.port.A
+		device = hub.port.A.device
+		port.info()
+		device.get()
+		hub.port.A.device.get()
+		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		port.info()
+		with self.assertRaises(HubProtocolError):
+			device.get()
+		self.assertIsNone(hub.port.A.device)
+		fakeHat.stdin.write(b'attach a $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		port.info()
+		with self.assertRaises(HubProtocolError):
+			device.get()
+		hub.port.A.device.get()
+
+	def test_motor_invalidated_on_detach(self):
+		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.write(b'attach a $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		port = hub.port.A
+		motor = hub.port.A.motor
+		port.info()
+		motor.get()
+		hub.port.A.motor.get()
+		fakeHat.stdin.write(b'detach a\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		port.info()
+		with self.assertRaises(HubProtocolError):
+			motor.get()
+		self.assertIsNone(hub.port.A.motor)
+		fakeHat.stdin.write(b'attach a $motor\n')
+		fakeHat.stdin.flush()
+		time.sleep(0.1)
+		port.info()
+		with self.assertRaises(HubProtocolError):
+			motor.get()
+		hub.port.A.motor.get()
+
 
 # These tests should pass regardless of the state of the hat
 class GeneralTestCase(unittest.TestCase):

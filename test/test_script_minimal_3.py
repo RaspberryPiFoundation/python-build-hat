@@ -43,6 +43,8 @@ time.sleep(0.5)
 fakeHat.stdin.write(b'attach a $motor\n')
 fakeHat.stdin.flush()
 
+port = hub.port.A
+
 time.sleep(0.1)
 port.motor.get() # this is where the timeout occurs
 
