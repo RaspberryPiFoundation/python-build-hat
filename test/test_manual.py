@@ -340,7 +340,6 @@ class MotorTestCase(unittest.TestCase):
 					with self.subTest(msg='Checking that p1 is in port.motor.default().keys()', p1=x):
 						self.assertIn(x,port.motor.default().keys())
 
-	@unittest.skip('Somehow this causes timeouts in other tests')
 	def test_combi_modes(self):
 		for port in self.ports:
 			with self.subTest(port=port):
@@ -349,9 +348,7 @@ class MotorTestCase(unittest.TestCase):
 				port.device.mode([(2,0),(3,0)])
 				x = port.device.get()
 				self.assertIsInstance(x, list)
-				self.assertIsInstance(x[0],tuple)
-				self.assertEqual(len(x), 4)
-				self.assertEqual(len(x[0]),2)
+				self.assertEqual(len(x), 2)
 
 	def test_port_device_mode_set(self):
 		for port in self.ports:
