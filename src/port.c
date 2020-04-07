@@ -750,9 +750,12 @@ int port_detach_port(uint8_t port_id)
 
     pair_detach_subport(port_id);
 
+    device_detach(port->device);
     Py_XDECREF(port->device);
     port->device = Py_None;
     Py_INCREF(Py_None);
+
+    motor_detach(port->motor);
     Py_XDECREF(port->motor);
     port->motor = Py_None;
     Py_INCREF(Py_None);

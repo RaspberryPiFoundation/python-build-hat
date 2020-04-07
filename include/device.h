@@ -48,5 +48,8 @@ extern int device_set_port_busy(PyObject *self, uint8_t is_busy);
 /* Check if the device is busy as a motor or with mode changes */
 extern PyObject *device_is_busy(PyObject *self, int type);
 
+/* Mark the device as detached from the port */
+extern void device_detach(PyObject *self);
+
 
 #endif /* RPI_STRAWBERRY_DEVICE_H_INCLUDED */

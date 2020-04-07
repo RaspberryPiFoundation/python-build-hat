@@ -197,6 +197,7 @@ typedef struct
 
 #define DO_FLAGS_GOT_MODE_INFO 0x01
 #define DO_FLAGS_COMBINABLE    0x02
+#define DO_FLAGS_DETACHED      0x80
 
 #define DEVICE_FORMAT_RAW     0
 #define DEVICE_FORMAT_PERCENT 1
@@ -297,6 +298,12 @@ Device_pwm(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "i:pwm", &pwm_level))
         return NULL;
 
+    if ((device->flags & DO_FLAGS_DETACHED) != 0)
+    {
+        PyErr_SetString(cmd_get_exception(), "Device is detached");
+        return NULL;
+    }
+
     /* Check the pwm value is within range */
     if (pwm_level < -100 || (pwm_level > 100 && pwm_level != 127))
     {
@@ -382,6 +389,11 @@ Device_mode(PyObject *self, PyObject *args)
     PyObject *arg1 = NULL;
     PyObject *arg2 = NULL;
 
+    if ((device->flags & DO_FLAGS_DETACHED) != 0)
+    {
+        PyErr_SetString(cmd_get_exception(), "Device is detached");
+        return NULL;
+    }
     if (!PyArg_ParseTuple(args, "|OO:mode", &arg1, &arg2))
         return NULL;
 
@@ -742,6 +754,12 @@ Device_get(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "|O:get", &arg1))
         return NULL;
+
+    if ((device->flags & DO_FLAGS_DETACHED) != 0)
+    {
+        PyErr_SetString(cmd_get_exception(), "Device is detached");
+        return NULL;
+    }
 
     if (arg1 != NULL)
     {
@@ -1303,4 +1321,13 @@ PyObject *device_is_busy(PyObject *self, int type)
 
     PyErr_Format(PyExc_ValueError, "Invalid busy type %d\n", type);
     return NULL;
+}
+
+
+void device_detach(PyObject *self)
+{
+    DeviceObject *device = (DeviceObject *)self;
+
+    if (device != NULL && self != Py_None)
+        device->flags |= DO_FLAGS_DETACHED;
 }

@@ -485,6 +485,7 @@ typedef struct
     PyObject_HEAD
     PyObject *port;
     PyObject *device;
+    int is_detached;
     uint32_t default_speed;
     uint32_t default_max_power;
     uint32_t default_acceleration;
@@ -643,6 +644,8 @@ Motor_init(MotorObject *self, PyObject *args, PyObject *kwds)
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", kwlist, &port, &device))
         return -1;
 
+    self->is_detached = 0;
+
     tmp = self->port;
     Py_INCREF(port);
     self->port = port;
@@ -684,10 +687,16 @@ static PyObject *
 Motor_get(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
-    PyObject *get_fn = PyObject_GetAttrString(motor->device, "get");
+    PyObject *get_fn;
     PyObject *result;
 
-    if (get_fn == NULL)
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
+
+    if ((get_fn = PyObject_GetAttrString(motor->device, "get")) == NULL)
         return NULL;
     result = PyObject_CallObject(get_fn, args);
     Py_DECREF(get_fn);
@@ -699,10 +708,16 @@ static PyObject *
 Motor_mode(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
-    PyObject *mode_fn = PyObject_GetAttrString(motor->device, "mode");
+    PyObject *mode_fn;
     PyObject *result;
 
-    if (mode_fn == NULL)
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
+
+    if ((mode_fn = PyObject_GetAttrString(motor->device, "mode")) == NULL)
         return NULL;
     result = PyObject_CallObject(mode_fn, args);
     Py_DECREF(mode_fn);
@@ -714,10 +729,16 @@ static PyObject *
 Motor_pwm(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
-    PyObject *pwm_fn = PyObject_GetAttrString(motor->port, "pwm");
+    PyObject *pwm_fn;
     PyObject *result;
 
-    if (pwm_fn == NULL)
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
+
+    if ((pwm_fn = PyObject_GetAttrString(motor->port, "pwm")) == NULL)
         return NULL;
     result = PyObject_CallObject(pwm_fn, args);
     Py_DECREF(pwm_fn);
@@ -729,6 +750,12 @@ static PyObject *
 Motor_float(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
 
     /* float() is equivalent to pwm(0) */
 
@@ -743,6 +770,12 @@ static PyObject *
 Motor_brake(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
 
     /* brake() is equivalent to pwm(127) */
 
@@ -759,6 +792,12 @@ Motor_hold(PyObject *self, PyObject *args)
     MotorObject *motor = (MotorObject *)self;
     int max_power = 100;
     uint8_t use_profile = 0;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "|i", &max_power))
         return NULL;
@@ -789,6 +828,12 @@ Motor_busy(PyObject *self, PyObject *args)
     MotorObject *motor = (MotorObject *)self;
     int type;
 
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
+
     if (!PyArg_ParseTuple(args, "i", &type))
         return NULL;
 
@@ -801,6 +846,12 @@ Motor_preset(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
     int32_t position;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "i", &position))
         return NULL;
@@ -830,6 +881,12 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
     uint32_t pid[3];
     int stall = motor->default_stall;
     PyObject *callback = NULL;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
 
     /* If we have no parameters, return a dictionary of defaults.
      * To determine that, we need to inspect the tuple `args` and
@@ -936,6 +993,12 @@ Motor_callback(PyObject *self, PyObject *args)
     MotorObject *motor = (MotorObject *)self;
     PyObject *callable = NULL;
 
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
+
     if (!PyArg_ParseTuple(args, "|O:callback", &callable))
         return NULL;
 
@@ -972,6 +1035,12 @@ Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
     uint32_t decel = motor->default_deceleration;
     int stall = motor->default_stall;
     uint8_t use_profile = 0;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
 
     if (PyArg_ParseTupleAndKeywords(args, kwds,
                                     "i|IIIp:run_at_speed", kwlist,
@@ -1015,6 +1084,12 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
     uint32_t stop = MOTOR_STOP_USE_DEFAULT;
     uint8_t use_profile = 0;
     int parsed_stop;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
 
     if (PyArg_ParseTupleAndKeywords(args, kwds,
                                     "ii|IIIIp:run_for_degrees", kwlist,
@@ -1065,6 +1140,12 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     uint8_t use_profile = 0;
     int parsed_stop;
 
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
+
     if (PyArg_ParseTupleAndKeywords(args, kwds,
                                     "ii|IIIIp:run_to_position", kwlist,
                                     &position, &speed, &power, &stop,
@@ -1114,6 +1195,12 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
     uint8_t use_profile = 0;
     int parsed_stop;
 
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
+
     if (PyArg_ParseTupleAndKeywords(args, kwds,
                                     "Ii|IIIIp:run_for_time", kwlist,
                                     &time, &speed, &power, &stop,
@@ -1149,6 +1236,12 @@ static PyObject *
 Motor_pid(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
 
     /* If we have no parameters, return a tuple of the values */
     if (PyTuple_Size(args) == 0)
@@ -1434,4 +1527,13 @@ int motor_callback(PyObject *self, int event)
     PyGILState_Release(gstate);
 
     return rv;
+}
+
+
+void motor_detach(PyObject *self)
+{
+    MotorObject *motor = (MotorObject *)self;
+
+    if (motor != NULL && self != Py_None)
+        motor->is_detached = 1;
 }
