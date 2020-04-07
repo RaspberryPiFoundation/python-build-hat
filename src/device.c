@@ -178,14 +178,25 @@ typedef struct
     PyObject_HEAD
     PyObject *port;
     PyObject *values;
-    int current_mode;
-    uint8_t is_unreported;
-    uint8_t is_mode_busy;
-    uint8_t is_motor_busy;
-    uint8_t num_combi_modes;
-    uint8_t combi_mode[MAX_DATASETS];
+    PyObject *hw_revision;
+    PyObject *fw_revision;
+    int      current_mode;
+    uint8_t  flags;
+    uint8_t  num_modes;
+    uint16_t type_id;
+    uint16_t input_mode_mask;
+    uint16_t output_mode_mask;
+    uint8_t  is_unreported;
+    uint8_t  is_mode_busy;
+    uint8_t  is_motor_busy;
+    uint8_t  num_combi_modes;
+    uint8_t  combi_mode[MAX_DATASETS];
+    combi_mode_t combi_modes;
+    mode_info_t modes[16];
 } DeviceObject;
 
+#define DO_FLAGS_GOT_MODE_INFO 0x01
+#define DO_FLAGS_COMBINABLE    0x02
 
 #define DEVICE_FORMAT_RAW     0
 #define DEVICE_FORMAT_PERCENT 1
@@ -237,6 +248,7 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->port = Py_None;
         Py_INCREF(Py_None);
         self->current_mode = 0;
+        self->flags = 0;
         self->is_unreported = 0;
         self->is_mode_busy = 0;
         self->is_motor_busy = 0;
@@ -301,6 +313,68 @@ Device_pwm(PyObject *self, PyObject *args)
 }
 
 
+static int
+get_mode_info(DeviceObject *device, uint8_t port_id)
+{
+    port_modes_t mode;
+    int i;
+
+    if (cmd_get_port_modes(port_id, &mode) < 0)
+        return -1;
+    device->input_mode_mask = mode.input_mode_mask;
+    device->output_mode_mask = mode.output_mode_mask;
+    device->num_modes = mode.count;
+    if ((mode.capabilities & CAP_MODE_COMBINABLE) != 0)
+    {
+        combi_mode_t combi_modes;
+
+        device->flags |= DO_FLAGS_COMBINABLE;
+        if (cmd_get_combi_modes(port_id, combi_modes) < 0)
+            return -1;
+        memcpy(device->combi_modes, combi_modes, sizeof(combi_mode_t));
+    }
+
+    for (i = 0; i < device->num_modes; i++)
+    {
+        mode_info_t *mode = &device->modes[i];
+
+        if (cmd_get_mode_name(port_id, i, mode->name) < 0 ||
+            cmd_get_mode_raw(port_id, i,
+                             &mode->raw.min,
+                             &mode->raw.max) < 0 ||
+            cmd_get_mode_percent(port_id, i,
+                                 &mode->percent.min,
+                                 &mode->percent.max) < 0 ||
+            cmd_get_mode_si(port_id, i,
+                            &mode->si.min,
+                            &mode->si.max) < 0 ||
+            cmd_get_mode_symbol(port_id, i, mode->symbol) < 0 ||
+            cmd_get_mode_mapping(port_id, i,
+                                 &mode->input_mapping,
+                                 &mode->output_mapping) < 0 ||
+            cmd_get_mode_capability(port_id, i,
+                                    mode->capability) < 0 ||
+            cmd_get_mode_format(port_id, i, &mode->format) < 0)
+        {
+            return -1;
+        }
+    }
+
+    device->flags |= DO_FLAGS_GOT_MODE_INFO;
+    return 0;
+}
+
+
+static int
+ensure_mode_info(DeviceObject *device)
+{
+    if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
+        return get_mode_info(device, port_get_id(device->port));
+
+    return 0;
+}
+
+
 static PyObject *
 Device_mode(PyObject *self, PyObject *args)
 {
@@ -319,8 +393,11 @@ Device_mode(PyObject *self, PyObject *args)
         if (device->current_mode != MODE_IS_COMBI)
         {
             /* Return the current mode and dataset(s) */
-            mode_info_t *mode = port_get_mode(device->port,
-                                              device->current_mode);
+            mode_info_t *mode;
+
+            if (ensure_mode_info(device) < 0)
+                return NULL;
+            mode = &device->modes[device->current_mode];
 
             if (mode == NULL)
             {
@@ -373,29 +450,26 @@ Device_mode(PyObject *self, PyObject *args)
     else if (PyLong_Check(arg1))
     {
         int mode = PyLong_AsLong(arg1);
-        int check;
         mode_info_t *mode_info;
 
         /* Check the type conversion worked */
         if (PyErr_Occurred() != NULL)
             return NULL;
 
-        check = port_check_mode(device->port, mode);
-        if (check == 0)
+        if (ensure_mode_info(device) < 0)
+            return NULL;
+        if (mode < 0 || mode >= device->num_modes)
         {
             PyErr_SetString(PyExc_ValueError, "Invalid mode number");
             return NULL;
         }
-        else if (check < 0)
-            return NULL; /* Exception already set */
 
         if (cmd_set_mode(port_get_id(device->port), mode) < 0)
             return NULL;
         device->current_mode = mode;
 
         /* Set up list for handling input values */
-        if ((mode_info = port_get_mode(device->port, mode)) == NULL)
-            return NULL;
+        mode_info = &device->modes[mode];
         if (mode_info->format.datasets != PyList_Size(device->values))
         {
             /* Need to resize the list */
@@ -464,7 +538,6 @@ Device_mode(PyObject *self, PyObject *args)
         int num_entries;
         int combi_index;
         uint16_t mode_map = 0;
-        int rv;
 
         if ((num_entries = PyList_Size(arg1)) > MAX_DATASETS)
         {
@@ -501,10 +574,12 @@ Device_mode(PyObject *self, PyObject *args)
             if ((dataset = PyLong_AsLong(dataset_obj)) == -1 &&
                 PyErr_Occurred() != NULL)
                 return NULL;
-            if ((rv = port_check_mode_and_dataset(device->port,
-                                                  mode, dataset)) < 0)
+            if (ensure_mode_info(device) < 0)
                 return NULL;
-            else if (rv == 0)
+            if (mode < 0 ||
+                mode >= device->num_modes ||
+                dataset < 0 ||
+                dataset >= device->modes[mode].format.datasets)
             {
                 PyErr_Format(PyExc_ValueError,
                              "Invalid mode/dataset combination (%d/%d)",
@@ -518,12 +593,23 @@ Device_mode(PyObject *self, PyObject *args)
         }
 
         /* Check if this combination is permitted */
-        if ((combi_index = port_check_mode_combinations(device->port,
-                                                        mode_map)) < 0)
+        if (ensure_mode_info(device) < 0)
+            return NULL;
+        for (combi_index = 0; combi_index < MAX_COMBI_MODES; combi_index++)
         {
-            /* Check if we need to raise an exception */
-            if (combi_index == -1)
+            if (device->combi_modes[combi_index] == 0)
+            {
+                /* We haven't found a match */
                 PyErr_SetString(PyExc_ValueError, "Invalid mode combination");
+                return NULL;
+            }
+            if ((device->combi_modes[combi_index] & mode_map) == mode_map)
+                break; /* Yes, this combination is permitted */
+        }
+        if (combi_index == MAX_COMBI_MODES)
+        {
+            /* We haven't found a match */
+            PyErr_SetString(PyExc_ValueError, "Invalid mode combination");
             return NULL;
         }
 
@@ -674,7 +760,7 @@ Device_get(PyObject *self, PyObject *args)
 
     if (!device->is_unreported)
     {
-        if (port_ensure_mode_info(device->port) < 0 ||
+        if (ensure_mode_info(device) < 0 ||
             cmd_get_port_value(port_get_id(device->port)) < 0)
         {
             return NULL;
@@ -689,18 +775,9 @@ Device_get(PyObject *self, PyObject *args)
     {
         /* Simple (single) mode */
         /* Get the current mode data */
-        if ((mode = port_get_mode(device->port, device->current_mode)) == NULL)
-        {
-            if (PyErr_Occurred() == NULL)
-            {
-                /* This shouldn't be possible unless the device detaches
-                 * in mid call.
-                 */
-                PyErr_SetString(cmd_get_exception(),
-                                "Unexpectedly detached device");
-            }
+        if (ensure_mode_info(device) < 0)
             return NULL;
-        }
+        mode = &device->modes[device->current_mode];
         result_count = PyList_Size(device->values);
         if (result_count != mode->format.datasets)
         {
@@ -736,9 +813,11 @@ Device_get(PyObject *self, PyObject *args)
         for (i = 0; i < device->num_combi_modes; i++)
         {
             PyObject *value;
+            uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
 
-            mode = port_get_mode(device->port,
-                                 (device->combi_mode[i] >> 4) & 0x0f);
+            if (ensure_mode_info(device) < 0)
+                return NULL;
+            mode = &device->modes[mode_number];
             value = PyList_GetItem(device->values, i);
             value = convert_raw(value, format, mode);
             if (value == NULL)
@@ -832,9 +911,182 @@ void device_demodinit(void)
 }
 
 
-PyObject *device_new_device(PyObject *port)
+PyObject *device_new_device(PyObject *port,
+                            uint16_t type_id,
+                            uint8_t *hw_revision,
+                            uint8_t *fw_revision)
 {
-    return PyObject_CallFunctionObjArgs((PyObject *)&DeviceType, port, NULL);
+    PyObject *self;
+    DeviceObject *device;
+    PyObject *version;
+
+    self = PyObject_CallFunctionObjArgs((PyObject *)&DeviceType, port, NULL);
+    if (self == NULL)
+        return NULL;
+    device = (DeviceObject *)self;
+    device->type_id = type_id;
+
+    version = cmd_version_as_unicode(hw_revision);
+    Py_XDECREF(device->hw_revision);
+    device->hw_revision = version;
+
+    version = cmd_version_as_unicode(fw_revision);
+    Py_XDECREF(device->fw_revision);
+    device->fw_revision = version;
+
+    return self;
+}
+
+
+PyObject *device_get_info(PyObject *self, uint8_t port_id)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    PyObject *results;
+    PyObject *mode_list;
+    int i;
+
+    if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
+    {
+        if (get_mode_info(device, port_id) < 0)
+            return NULL;
+    }
+
+    /* XXX: missing the "speed" key */
+    results = Py_BuildValue("{sisOsO}",
+                            "type", device->type_id,
+                            "fw_version", device->fw_revision,
+                            "hw_version", device->hw_revision);
+    if (results == NULL)
+        return NULL;
+
+    if ((mode_list = PyList_New(0)) == NULL)
+    {
+        Py_DECREF(results);
+        return NULL;
+    }
+
+    for (i = 0; i < device->num_modes; i++)
+    {
+        PyObject *mode_entry;
+
+        /* The "mode number" used for mode accesses is in fact the
+         * index of the mode in the mode list.
+         */
+        mode_entry = Py_BuildValue(
+            "{sss(ff)s(ff)s(ff)sssBsBsy#s{sBsBsBsB}}",
+            "name",
+            device->modes[i].name,
+            "raw",
+            device->modes[i].raw.min,
+            device->modes[i].raw.max,
+            "pct",
+            device->modes[i].percent.min,
+            device->modes[i].percent.max,
+            "si",
+            device->modes[i].si.min,
+            device->modes[i].si.max,
+            "symbol",
+            device->modes[i].symbol,
+            "map_out",
+            device->modes[i].output_mapping,
+            "map_in",
+            device->modes[i].input_mapping,
+            "capability",
+            device->modes[i].capability, 6,
+            "format",
+            "datasets",
+            device->modes[i].format.datasets,
+            "figures",
+            device->modes[i].format.figures,
+            "decimals",
+            device->modes[i].format.decimals,
+            "type",
+            device->modes[i].format.type);
+        if (mode_entry == NULL)
+        {
+            Py_DECREF(mode_list);
+            Py_DECREF(results);
+            return NULL;
+        }
+        if (PyList_Append(mode_list, mode_entry) < 0)
+        {
+            Py_DECREF(mode_entry);
+            Py_DECREF(mode_list);
+            Py_DECREF(results);
+            return NULL;
+        }
+    }
+    if (PyDict_SetItemString(results, "modes", mode_list) < 0)
+    {
+        Py_DECREF(mode_list);
+        Py_DECREF(results);
+        return NULL;
+    }
+
+    if ((device->flags & DO_FLAGS_COMBINABLE) != 0)
+    {
+        /* First count the number of valid entries */
+        int combi_count;
+
+        for (i = 0; i < 8; i++)
+            if (device->combi_modes[i] == 0)
+                break;
+
+        if (i == 0)
+        {
+            device->flags &= ~DO_FLAGS_COMBINABLE;
+            if ((mode_list = PyTuple_New(0)) == NULL)
+            {
+                Py_DECREF(results);
+                return NULL;
+            }
+        }
+        else
+        {
+            combi_count = i;
+            if ((mode_list = PyTuple_New(combi_count)) == NULL)
+            {
+                Py_DECREF(results);
+                return NULL;
+            }
+            for (i = 0; i < combi_count; i++)
+            {
+                PyObject *combination =
+                    PyLong_FromUnsignedLong(device->combi_modes[i]);
+
+                if (combination == NULL)
+                {
+                    Py_DECREF(results);
+                    Py_DECREF(mode_list);
+                    return NULL;
+                }
+                if (PyTuple_SetItem(mode_list, i, combination) < 0)
+                {
+                    Py_DECREF(results);
+                    Py_DECREF(mode_list);
+                    Py_DECREF(combination);
+                    return NULL;
+                }
+            }
+        }
+    }
+    else
+    {
+        if ((mode_list = PyTuple_New(0)) == NULL)
+        {
+            Py_DECREF(results);
+            return NULL;
+        }
+    }
+    if (PyDict_SetItemString(results, "combi_modes", mode_list) < 0)
+    {
+        Py_DECREF(mode_list);
+        Py_DECREF(results);
+        return NULL;
+    }
+
+
+    return results;
 }
 
 
@@ -911,9 +1163,9 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
         /* XXX: could process the value and discard to avoid confusion */
         return -1;
 
-    if ((mode = port_get_mode(device->port, device->current_mode)) == NULL)
-        /* Can't get the mode info */
+    if (ensure_mode_info(device) < 0)
         return -1;
+    mode = &device->modes[device->current_mode];
 
     /* Construct the list to contain these results */
     if ((values = PyList_New(mode->format.datasets)) == NULL)
@@ -965,9 +1217,7 @@ int device_new_combi_value(PyObject *self,
         return -1;
 
     mode_number = (device->combi_mode[entry] >> 4) & 0x0f;
-    if ((mode = port_get_mode(device->port, mode_number)) == NULL)
-        /* Can't get the mode info */
-        return -1;
+    mode = &device->modes[mode_number];
 
     bytes_consumed = read_value(mode->format.type, buffer, nbytes, &value);
     if (bytes_consumed < 0)

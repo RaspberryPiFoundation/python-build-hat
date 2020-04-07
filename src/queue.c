@@ -201,6 +201,14 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
             *pbuffer = NULL;
             return 0;
         }
+        else
+        {
+            /* Read the event to clear it */
+            uint64_t dummy;
+            int rv;
+            if ((rv = read(q->eventfd, (uint8_t *)&dummy, 8)) != 8)
+                return rv;
+        }
 
         /* Relock the mutex and see if that event was for something
          * we've already taken (or EINTR, which isn't really an error)

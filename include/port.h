@@ -63,16 +63,6 @@ extern int port_feedback_status(uint8_t port_id, uint8_t status);
 
 extern int port_get_id(PyObject *port);
 extern PyObject *port_get_device(PyObject *port);
-
-extern int port_ensure_mode_info(PyObject *port);
-extern mode_info_t *port_get_mode(PyObject *port, int mode);
-extern int port_check_mode(PyObject *port, int mode);
-extern int port_check_mode_and_dataset(PyObject *port, int mode, int dataset);
-
-/* Returns the combination index if found, -1 if not found, or -2 if
- * an error has occurred and an exception has been raised.
- */
-extern int port_check_mode_combinations(PyObject *port, uint16_t mode_map);
 extern PyObject *ports_get_value_dict(PyObject *portset);
 extern PyObject *port_get_motor(PyObject *port);  /* Returns new reference */
 

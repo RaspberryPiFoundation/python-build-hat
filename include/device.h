@@ -15,7 +15,15 @@ extern int device_modinit(void);
 extern void device_demodinit(void);
 
 /* Create a new Device class object for attaching to a port */
-extern PyObject *device_new_device(PyObject *port);
+extern PyObject *device_new_device(PyObject *port,
+                                   uint16_t type_id,
+                                   uint8_t *hw_revision,
+                                   uint8_t *fw_revision);
+
+/* Returns the dictionary of device information, or NULL on failure
+ * with a Python exception already raised.
+ */
+extern PyObject *device_get_info(PyObject *self, uint8_t port_id);
 
 /* Parse an input buffer and update the stored values.  Returns the number
  * of bytes in the buffer consumed, or -1 on failure.
@@ -24,7 +32,7 @@ extern int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes);
 
 /* Parse an input buffer and update the stored values for a single
  * mode/dataset combination from a Combi-mode value update.  Returns
- * the number of bytse in the buffer consumed, or -1 on failure.
+ * the number of bytes in the buffer consumed, or -1 on failure.
  */
 extern int device_new_combi_value(PyObject *self,
                                   int entry,
