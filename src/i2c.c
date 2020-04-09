@@ -107,6 +107,7 @@ static int read_wake_gpio(void)
         return -1;
     }
     gpio_state =  (buffer == '1') ? 1 : 0;
+    return 0;
 }
 
 
@@ -166,19 +167,23 @@ static void report_comms_error(void)
 }
 
 
-static void signal_rx_shutdown(void)
+static int signal_rx_shutdown(void)
 {
     uint64_t value = 1;
-    (void)write(rx_event_fd, (uint8_t *)&value, 8);
+    if (write(rx_event_fd, (uint8_t *)&value, 8) < 0)
+        return -1;
+    return 0;
 }
 
 
-static void read_rx_event(void)
+static int read_rx_event(void)
 {
     uint64_t value;
 
     /* We only care about reading to kill the poll flag */
-    (void)read(rx_event_fd, (uint8_t *)&value, 8);
+    if (read(rx_event_fd, (uint8_t *)&value, 8) < 0)
+        return -1;
+    return 0;
 }
 
 
@@ -213,7 +218,7 @@ static int poll_for_rx(void)
     pfds[0].fd = gpio_fd;
     pfds[0].events = POLLIN;
     pfds[0].revents = 0;
-    if ((rv = poll, pfds, 1, 0) < 0)
+    if ((rv = poll(pfds, 1, 0)) < 0)
     {
         report_comms_error();
         return 0;
@@ -246,7 +251,7 @@ static int poll_for_rx(void)
     }
     if ((pfds[1].revents & POLLIN) != 0)
         read_rx_event();
-    if ((pfds[2].revents & POLLIN) != 0)
+    if ((pfds[0].revents & POLLIN) != 0)
         if (read_wake_gpio() < 0)
             report_comms_error();
     /* Loop for another check just in case */
