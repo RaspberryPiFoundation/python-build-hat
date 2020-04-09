@@ -42,7 +42,10 @@
 
 #ifndef USE_DUMMY_I2C
 #define I2C_GPIO_NUMBER "5"
-#define GPIO_DIRECTORY "/sys/class/gpio/gpio" I2C_GPIO_NUMBER
+#define BASE_DIRECTORY "/sys/class/gpio"
+#define EXPORT_PSEUDOFILE BASE_DIRECTORY "/export"
+#define UNEXPORT_PSEUDOFILE BASE_DIRECTORY "/unexport"
+#define GPIO_DIRECTORY BASE_DIRECTORY "/gpio" I2C_GPIO_NUMBER
 #define DIRECTION_PSEUDOFILE GPIO_DIRECTORY "/direction"
 #define VALUE_PSEUDOFILE GPIO_DIRECTORY "/value"
 
@@ -118,7 +121,7 @@ static int open_wake_gpio(void)
     const char *direction = "in";
 
     /* First export the GPIO */
-    if ((fd = open("/sys/class/gpio/export", O_WRONLY)) < 0)
+    if ((fd = open(EXPORT_PSEUDOFILE, O_WRONLY)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
@@ -157,6 +160,25 @@ static int open_wake_gpio(void)
     }
 
     return 0;
+}
+
+
+static void close_wake_gpio(void)
+{
+    int fd;
+    const char *unexport = I2C_GPIO_NUMBER;
+
+    if (gpio_fd == -1)
+        return;
+
+    close(gpio_fd);
+    gpio_fd = -1;
+
+    if ((fd = open(UNEXPORT_PSEUDOFILE, O_WRONLY)) < 0)
+        return;
+    if (write(fd, unexport, strlen(unexport)) < 0)
+        fprintf(stderr, "Error unexporting wake GPIO");
+    close(fd);
 }
 #endif
 
@@ -765,7 +787,7 @@ int i2c_open_hat(void)
     {
         errno = rv;
 #ifndef USE_DUMMY_I2C
-        close(gpio_fd);
+        close_wake_gpio();
 #endif
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
@@ -777,7 +799,7 @@ int i2c_open_hat(void)
     {
         errno = rv;
 #ifndef USE_DUMMY_I2C
-        close(gpio_fd);
+        close_wake_gpio();
 #endif
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
@@ -791,7 +813,7 @@ int i2c_open_hat(void)
     {
         errno = rv;
 #ifndef USE_DUMMY_I2C
-        close(gpio_fd);
+        close_wake_gpio();
 #endif
         close(rx_event_fd);
         PyErr_SetFromErrno(PyExc_IOError);
@@ -808,7 +830,7 @@ int i2c_open_hat(void)
         PyErr_SetFromErrno(PyExc_IOError);
 
 #ifndef USE_DUMMY_I2C
-        close(gpio_fd);
+        close_wake_gpio();
 #endif
         close(rx_event_fd);
         close(i2c_fd);
@@ -841,7 +863,7 @@ int i2c_close_hat(void)
     rx_event_fd = -1;
 
 #ifndef USE_DUMMY_I2C
-    close(gpio_fd);
+    close_wake_gpio();
 #endif
 
     return 0;
