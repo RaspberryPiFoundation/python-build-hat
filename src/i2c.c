@@ -114,6 +114,19 @@ static int read_wake_gpio(void)
 }
 
 
+static void unexport_gpio(void)
+{
+    int fd;
+    const char *unexport = I2C_GPIO_NUMBER;
+
+    if ((fd = open(UNEXPORT_PSEUDOFILE, O_WRONLY)) < 0)
+        return;
+    if (write(fd, unexport, strlen(unexport)) < 0)
+        fprintf(stderr, "Error unexporting wake GPIO");
+    close(fd);
+}
+
+
 static int open_wake_gpio(void)
 {
     int fd;
@@ -129,6 +142,7 @@ static int open_wake_gpio(void)
     if (write(fd, export, strlen(export)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
+        close(fd);
         return -1;
     }
     close(fd);
@@ -142,6 +156,8 @@ static int open_wake_gpio(void)
     if (write(fd, direction, 2) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
+        close(fd);
+        unexport_gpio();
         return -1;
     }
     close(fd);
@@ -150,12 +166,16 @@ static int open_wake_gpio(void)
     if ((gpio_fd = open(VALUE_PSEUDOFILE, O_RDWR)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
+        unexport_gpio();
         return -1;
     }
     /* ...and read it */
     if (read_wake_gpio() < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
+        close(gpio_fd);
+        gpio_fd = -1;
+        unexport_gpio();
         return -1;
     }
 
@@ -165,20 +185,12 @@ static int open_wake_gpio(void)
 
 static void close_wake_gpio(void)
 {
-    int fd;
-    const char *unexport = I2C_GPIO_NUMBER;
-
     if (gpio_fd == -1)
         return;
 
     close(gpio_fd);
     gpio_fd = -1;
-
-    if ((fd = open(UNEXPORT_PSEUDOFILE, O_WRONLY)) < 0)
-        return;
-    if (write(fd, unexport, strlen(unexport)) < 0)
-        fprintf(stderr, "Error unexporting wake GPIO");
-    close(fd);
+    unexport_gpio();
 }
 #endif
 
