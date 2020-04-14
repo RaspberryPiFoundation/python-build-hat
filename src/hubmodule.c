@@ -394,7 +394,6 @@ PyInit_hub(void)
     }
 
     hub_obj = PyObject_CallObject((PyObject *)&HubType, NULL);
-    Py_XINCREF(hub_obj);
     if (PyModule_AddObject(hub, "hub", hub_obj) < 0)
     {
         Py_XDECREF(hub_obj);
