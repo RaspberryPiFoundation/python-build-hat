@@ -144,9 +144,13 @@ static int open_wake_gpio(void)
     }
     if (write(fd, export, strlen(export)) < 0)
     {
-        PyErr_SetFromErrno(PyExc_IOError);
-        close(fd);
-        return -1;
+        /* EBUSY implies the GPIO is already exported.  Let it through */
+	if (errno != EBUSY)
+        {
+            PyErr_SetFromErrno(PyExc_IOError);
+            close(fd);
+            return -1;
+        }
     }
     close(fd);
 
