@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <poll.h>
 #include <sys/eventfd.h>
+#include <time.h>
 
 #include <linux/i2c-dev.h>
 #include <i2c/smbus.h>
@@ -132,6 +133,8 @@ static int open_wake_gpio(void)
     int fd;
     const char *export = I2C_GPIO_NUMBER;
     const char *direction = "in";
+    struct timespec timeout = { 0, 50000000 }; /* 50ms */
+    struct timespec remaining;
 
     /* First export the GPIO */
     if ((fd = open(EXPORT_PSEUDOFILE, O_WRONLY)) < 0)
@@ -147,10 +150,17 @@ static int open_wake_gpio(void)
     }
     close(fd);
 
+    /* Give Linux a moment to get its act together */
+    while (nanosleep(&timeout, &remaining) < 0 && errno == EINTR)
+    {
+        timeout = remaining;
+    }
+
     /* Now set the direction */
     if ((fd = open(DIRECTION_PSEUDOFILE, O_WRONLY)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
+        unexport_gpio();
         return -1;
     }
     if (write(fd, direction, 2) < 0)
