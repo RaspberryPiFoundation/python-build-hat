@@ -875,14 +875,16 @@ int i2c_close_hat(void)
     pthread_join(comms_rx_thread, NULL);
     pthread_join(comms_tx_thread, NULL);
 
-    if (close(i2c_fd) < 0 ||
-        close(rx_event_fd) < 0)
+    if (i2c_fd != -1)
     {
-        PyErr_SetFromErrno(PyExc_IOError);
-        return -1;
+        close(i2c_fd);
+        i2c_fd = -1;
     }
-    i2c_fd = -1;
-    rx_event_fd = -1;
+    if (rx_event_fd != -1)
+    {
+        close(rx_event_fd);
+        rx_event_fd = -1;
+    }
 
 #ifndef USE_DUMMY_I2C
     close_wake_gpio();
