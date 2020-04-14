@@ -14,7 +14,7 @@ preferred format requires the sphinx package, and optionally (for
 RTD-styling) sphinx_rtd_theme package.  To install them:
 
     pip install sphinx
-    pip isntall sphinx_rtd_theme
+    pip install sphinx_rtd_theme
 
 then to build the documentation as HTML:
 
