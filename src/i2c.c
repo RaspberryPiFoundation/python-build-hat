@@ -39,7 +39,7 @@
 
 
 #define I2C_DEVICE_NAME "/dev/i2c-1"
-#define HAT_ADDRESS 0x10 /* TODO: replace with the right number */
+#define HAT_ADDRESS 0x12
 
 #ifndef USE_DUMMY_I2C
 #define I2C_GPIO_NUMBER "5"
@@ -264,7 +264,7 @@ static int poll_for_rx(void)
 
     /* First check if the gpio has changed */
     pfds[0].fd = gpio_fd;
-    pfds[0].events = POLLIN;
+    pfds[0].events = POLLPRI;
     pfds[0].revents = 0;
     if ((rv = poll(pfds, 1, 0)) < 0)
     {
