@@ -48,6 +48,7 @@
 #define UNEXPORT_PSEUDOFILE BASE_DIRECTORY "/unexport"
 #define GPIO_DIRECTORY BASE_DIRECTORY "/gpio" I2C_GPIO_NUMBER
 #define DIRECTION_PSEUDOFILE GPIO_DIRECTORY "/direction"
+#define INTERRUPT_PSEUDOFILE GPIO_DIRECTORY "/edge"
 #define VALUE_PSEUDOFILE GPIO_DIRECTORY "/value"
 
 static int gpio_fd = -1;
@@ -133,6 +134,7 @@ static int open_wake_gpio(void)
     int fd;
     const char *export = I2C_GPIO_NUMBER;
     const char *direction = "in";
+    const char *edge = "both";
     struct timespec timeout = { 0, 50000000 }; /* 50ms */
     struct timespec remaining;
 
@@ -175,6 +177,21 @@ static int open_wake_gpio(void)
         return -1;
     }
     close(fd);
+
+    /* ...and the interrupt generation */
+    if ((fd = open(INTERRUPT_PSEUDOFILE, O_WRONLY)) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        unexport_gpio();
+        return -1;
+    }
+    if (write(fd, edge, 4) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        close(fd);
+        unexport_gpio();
+        return -1;
+    }
 
     /* Finally open the GPIO for reading */
     if ((gpio_fd = open(VALUE_PSEUDOFILE, O_RDWR)) < 0)
@@ -286,7 +303,7 @@ static int poll_for_rx(void)
 
     /* Otherwise wait for a GPIO state change or an event */
     pfds[0].fd = gpio_fd;
-    pfds[0].events = POLLIN;
+    pfds[0].events = POLLPRI;
     pfds[0].revents = 0;
     pfds[1].fd = rx_event_fd;
     pfds[1].events = POLLIN;
@@ -299,7 +316,7 @@ static int poll_for_rx(void)
     }
     if ((pfds[1].revents & POLLIN) != 0)
         read_rx_event();
-    if ((pfds[0].revents & POLLIN) != 0)
+    if ((pfds[0].revents & POLLPRI) != 0)
         if (read_wake_gpio() < 0)
             report_comms_error();
     /* Loop for another check just in case */
@@ -342,6 +359,7 @@ static int read_message(uint8_t **pbuffer)
     buffer[0] = nbytes & 0x7f;
     if (nbytes >= 0x80)
     {
+        buffer[0] |= 0x80;
         buffer[1] = (nbytes >> 7) & 0xff;
         offset = 2;
     }
