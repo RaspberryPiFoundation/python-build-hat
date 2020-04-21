@@ -144,7 +144,7 @@ static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
         buffer[i] = va_arg(args, int);
     va_end(args);
 
-    if (queue_add_buffer(buffer) != 0)
+    if (queue_clear_responses() != 0 || queue_add_buffer(buffer) != 0)
     {
         /* Exception already raised */
         free(buffer);
@@ -1177,7 +1177,7 @@ int cmd_write_mode_data(uint8_t port_id,
     buffer[6+offset] = mode;
     memcpy(buffer + 7 + offset, bytes, nbytes);
 
-    if (queue_add_buffer(buffer) != 0)
+    if (queue_clear_responses() != 0 || queue_add_buffer(buffer) != 0)
     {
         /* Exception already raised */
         free(buffer);
@@ -1422,7 +1422,7 @@ int cmd_set_combi_mode(uint8_t port_id,
     buffer[5] = combi_index;
     memcpy(buffer+6, modes, num_modes);
 
-    if (queue_add_buffer(buffer) != 0)
+    if (queue_clear_responses() != 0 || queue_add_buffer(buffer) != 0)
     {
         /* Exception already raised */
         free(buffer);

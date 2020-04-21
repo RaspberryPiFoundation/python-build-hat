@@ -25,6 +25,15 @@ extern int queue_init(void);
  */
 extern int queue_add_buffer(uint8_t *buffer);
 
+/* Discard all the packets currently queued to be read by the
+ * foreground (presumably because they are all stale somehow).
+ *
+ * Returns 0 on success, a standard errno on failure.  On failure, a
+ * Python exception will have been raised, so no further exception
+ * handling is required.
+ */
+extern int queue_clear_responses(void);
+
 /* Send a buffer to the forground thread (from comms Rx thread)
  *
  * As for queue_add_buffer(), `buffer` must be dynamically allocated

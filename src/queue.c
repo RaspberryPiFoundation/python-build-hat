@@ -37,8 +37,6 @@ typedef struct queue_s
     int eventfd;
 } queue_t;
 
-//typedef int (*wait_fn_t)(sem_t *semaphore);
-
 
 static queue_t to_i2c_q;
 static queue_t from_i2c_q;
@@ -133,6 +131,42 @@ int queue_add_buffer(uint8_t *buffer)
         PyErr_SetFromErrno(PyExc_OSError);
     }
     return rv;
+}
+
+
+/* Foreground clearing queue from Rx thread */
+int queue_clear_responses(void)
+{
+    queue_item_t *item;
+    int rv;
+
+    if ((rv = pthread_mutex_lock(&from_i2c_q.mutex)) != 0)
+    {
+        errno = rv;
+        PyErr_SetFromErrno(PyExc_OSError);
+        return rv;
+    }
+
+    while (from_i2c_q.qtail != NULL)
+    {
+        item = from_i2c_q.qtail;
+        from_i2c_q.qtail = item->prev;
+        if (from_i2c_q.qtail == NULL)
+            from_i2c_q.qhead = NULL;
+        else
+            from_i2c_q.qtail->next = NULL;
+        free(item->buffer);
+        free(item);
+    }
+
+    if ((rv = pthread_mutex_unlock(&from_i2c_q.mutex)) != 0)
+    {
+        errno = rv;
+        PyErr_SetFromErrno(PyExc_OSError);
+        return rv;
+    }
+
+    return 0;
 }
 
 
