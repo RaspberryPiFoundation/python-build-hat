@@ -17,9 +17,8 @@
 
 #include "queue.h"
 
-#ifdef DEBUG_I2C
 #include "debug-i2c.h"
-#endif
+
 
 typedef struct queue_item_s
 {
@@ -180,8 +179,10 @@ int queue_return_buffer(uint8_t *buffer)
         return ENOMEM;
     item->buffer = buffer;
 
+    DEBUG0(QUEUE, RETURNING_BUFFER);
     if ((rv = push(&from_i2c_q, item)) != 0)
         free(item);
+    DEBUG0(QUEUE, RETURNED_BUFFER);
     return rv;
 }
 
@@ -190,15 +191,15 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
 {
     int rv;
     queue_item_t *item;
+#ifdef DEBUG_I2C
+    int is_tx_thread = (timeout == -1);
+#endif
 
     /* First check if there's already something on the queue */
+    DEBUG1(QUEUE, GET_LOCKING, is_tx_thread);
     if ((rv = pthread_mutex_lock(&q->mutex)) != 0)
     {
-#ifdef DEBUG_I2C
-        uint8_t debug[4] = { 4, 0xff, 0x00 };
-        debug[3] = (uint8_t)rv & 0xff;
-        log_i2c(debug, -1);
-#endif
+        DEBUG0(QUEUE, GET_LOCK_FAILED);
         return rv;
     }
 
@@ -209,24 +210,28 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
         /* Nothing on the queue.  Release the lock and wait */
         if ((rv = pthread_mutex_unlock(&q->mutex)) != 0)
         {
-#ifdef DEBUG_I2C
-            uint8_t debug[4] = { 4, 0xff, 0x01 };
-            debug[3] = (uint8_t)rv & 0xff;
-            log_i2c(debug, -1);
-#endif
+            DEBUG0(QUEUE, GET_LOOP_UNLOCK_FAILED);
             return rv;
         }
 
+        DEBUG1(QUEUE, GET_POLLING, is_tx_thread);
         pfds[0].fd = q->eventfd;
         pfds[0].events = POLLIN;
         pfds[0].revents = 0;
-        if ((rv = poll(pfds, 1, timeout)) < 0)
+        /* Release the GIL around the potentially long action */
+        if (PyGILState_Check())
         {
-#ifdef DEBUG_I2C
-            uint8_t debug[4] = { 4, 0xff, 0x02 };
-            debug[3] = (uint8_t)rv & 0xff;
-            log_i2c(debug, -1);
-#endif
+            Py_BEGIN_ALLOW_THREADS
+            rv = poll(pfds, 1, timeout);
+            Py_END_ALLOW_THREADS
+        }
+        else
+        {
+            rv = poll(pfds, 1, timeout);
+        }
+        if (rv < 0)
+        {
+            DEBUG0(QUEUE, GET_POLL_FAILED);
             return rv;
         }
         else if (rv == 0 || shutdown)
@@ -247,13 +252,10 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
         /* Relock the mutex and see if that event was for something
          * we've already taken (or EINTR, which isn't really an error)
          */
+        DEBUG1(QUEUE, GET_RELOCKING, is_tx_thread);
         if ((rv = pthread_mutex_lock(&q->mutex)) != 0)
         {
-#ifdef DEBUG_I2C
-            uint8_t debug[4] = { 4, 0xff, 0x03 };
-            debug[3] = (uint8_t)rv & 0xff;
-            log_i2c(debug, -1);
-#endif
+            DEBUG0(QUEUE, GET_LOOP_LOCK_FAILED);
             return rv;
         }
     }
@@ -275,13 +277,10 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
         q->qtail->next = NULL;
 
     /* Release the lock */
+    DEBUG1(QUEUE, GET_UNLOCKING, is_tx_thread);
     if ((rv = pthread_mutex_unlock(&q->mutex)) != 0)
     {
-#ifdef DEBUG_I2C
-        uint8_t debug[4] = { 4, 0xff, 0x04 };
-        debug[3] = (uint8_t)rv & 0xff;
-        log_i2c(debug, -1);
-#endif
+        DEBUG0(QUEUE, GET_UNLOCK_FAILED);
         free(item->buffer);
         free(item);
         return rv;
@@ -304,13 +303,7 @@ int queue_check(uint8_t **pbuffer)
 /* Foreground from Rx thread */
 int queue_get(uint8_t **pbuffer)
 {
-    int rv;
-
-    Py_BEGIN_ALLOW_THREADS
-    rv = get_item(&from_i2c_q, pbuffer, 1000);
-    Py_END_ALLOW_THREADS
-
-    return rv;
+    return get_item(&from_i2c_q, pbuffer, 1000);
 }
 
 

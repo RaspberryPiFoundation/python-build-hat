@@ -32,10 +32,7 @@
 #include "port.h"
 #include "pair.h"
 #include "protocol.h"
-
-#ifdef DEBUG_I2C
 #include "debug-i2c.h"
-#endif
 
 
 #define I2C_DEVICE_NAME "/dev/i2c-1"
@@ -53,7 +50,7 @@
 
 static int gpio_fd = -1;
 static int gpio_state = 0;
-#endif /* DEBUG_I2C */
+#endif /* !USE_DUMMY_I2C */
 
 static int i2c_fd = -1;
 static int rx_event_fd = -1;
@@ -280,6 +277,7 @@ static int poll_for_rx(void)
     int rv;
 
     /* First check if the gpio has changed */
+    DEBUG0(I2C, CHECK_GPIO);
     pfds[0].fd = gpio_fd;
     pfds[0].events = POLLPRI;
     pfds[0].revents = 0;
@@ -302,6 +300,7 @@ static int poll_for_rx(void)
         return 1;
 
     /* Otherwise wait for a GPIO state change or an event */
+    DEBUG0(I2C, WAIT_FOR_RX);
     pfds[0].fd = gpio_fd;
     pfds[0].events = POLLPRI;
     pfds[0].revents = 0;
@@ -314,6 +313,7 @@ static int poll_for_rx(void)
         report_comms_error();
         return 0;
     }
+    DEBUG1(I2C, WAIT_DONE, rv);
     if ((pfds[1].revents & POLLIN) != 0)
         read_rx_event();
     if ((pfds[0].revents & POLLPRI) != 0)
@@ -335,17 +335,20 @@ static int read_message(uint8_t **pbuffer)
     *pbuffer = NULL;
 
 #ifndef USE_DUMMY_I2C
+    DEBUG0(I2C, START_IOCTL);
     if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
         return -1;
 #endif
 
     /* Read in the length */
+    DEBUG0(I2C, READ_LEN);
     if (read(i2c_fd, &byte, 1) < 0)
         return -1;
     if (byte == 0)
         return 0; /* Use a completely empty message as a NOP */
     if ((nbytes = byte) >= 0x80)
     {
+        DEBUG0(I2C, READ_LEN_2);
         if (read(i2c_fd, &byte, 1) < 0)
             return -1;
         nbytes = (nbytes & 0x7f) | (byte << 7);
@@ -364,11 +367,13 @@ static int read_message(uint8_t **pbuffer)
         offset = 2;
     }
 
+    DEBUG0(I2C, READ_BODY);
     if (read(i2c_fd, buffer+offset, nbytes-offset) < 0)
     {
         free(buffer);
         return -1;
     }
+    DEBUG0(I2C, READ_DONE);
 
     *pbuffer = buffer;
     return 0;
@@ -769,6 +774,7 @@ static void *run_comms_tx(void *args __attribute__((unused)))
                 free(buffer);
                 continue;
             }
+            DEBUG0(I2C, TX_IOCTL_DONE);
 #endif
 
             /* This is the Port Info request asking for the value? */
@@ -784,6 +790,7 @@ static void *run_comms_tx(void *args __attribute__((unused)))
                 nbytes = (nbytes & 0x7f) | (buffer[1] << 7);
             if (write(i2c_fd, buffer, nbytes) < 0)
                 report_comms_error();
+            DEBUG0(I2C, TX_DONE);
             free(buffer);
         }
     }

@@ -327,7 +327,9 @@ get_mode_info(DeviceObject *device, uint8_t port_id)
     int i;
 
     if (cmd_get_port_modes(port_id, &mode) < 0)
+    {
         return -1;
+    }
     device->input_mode_mask = mode.input_mode_mask;
     device->output_mode_mask = mode.output_mode_mask;
     device->num_modes = mode.count;
@@ -1176,13 +1178,15 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
 
     device->is_mode_busy = 0;
 
+    if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
+        /* The foreground has to be the one to send commands */
+        return -1;
+
     if (device->current_mode == MODE_IS_COMBI)
         /* This must be some sort of race condition */
         /* XXX: could process the value and discard to avoid confusion */
         return -1;
 
-    if (ensure_mode_info(device) < 0)
-        return -1;
     mode = &device->modes[device->current_mode];
 
     /* Construct the list to contain these results */
@@ -1228,6 +1232,10 @@ int device_new_combi_value(PyObject *self,
     int i;
 
     device->is_mode_busy = 0;
+
+    if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
+        /* The foreground has to be the one to send commands */
+        return -1;
 
     if (device->current_mode != MODE_IS_COMBI)
         /* A combined value in a simple mode is probably a race */

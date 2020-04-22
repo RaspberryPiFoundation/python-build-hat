@@ -16,6 +16,7 @@
 #include "device.h"
 #include "motor.h"
 #include "pair.h"
+#include "debug-i2c.h"
 
 /**
 
@@ -692,17 +693,23 @@ int port_attach_port(uint8_t port_id,
                      uint8_t *fw_revision)
 {
     /* First we must claim the global interpreter lock */
-    PyGILState_STATE gstate = PyGILState_Ensure();
-    PortObject *port = (PortObject *)port_set->ports[port_id];
+    PyGILState_STATE gstate;
+    PortObject *port;
     PyObject *arg_list;
-    PyObject *device = device_new_device((PyObject *)port,
-                                         type_id,
-                                         hw_revision,
-                                         fw_revision);
-    int rv = 0;
+    PyObject *device;
+    int rv = -1;
 
+    DEBUG0(PORT, CLAIM_GIL);
+    gstate = PyGILState_Ensure();
+    DEBUG0(PORT, CLAIMED_GIL);
+    port = (PortObject *)port_set->ports[port_id];
+    device = device_new_device((PyObject *)port,
+                               type_id,
+                               hw_revision,
+                               fw_revision);
     if (device == NULL)
-        return -1;
+        goto exit;
+    DEBUG0(PORT, NEW_DEVICE);
     if (motor_is_motor(type_id))
     {
         PyObject *motor = motor_new_motor((PyObject *)port, device);
@@ -710,7 +717,7 @@ int port_attach_port(uint8_t port_id,
         if (motor == NULL)
         {
             Py_DECREF(device);
-            return -1;
+            goto exit;
         }
 
         Py_DECREF(port->motor);
@@ -733,8 +740,10 @@ int port_attach_port(uint8_t port_id,
                                   arg_list) != NULL) ? 0 : -1;
     }
 
+exit:
     /* Release the GIL */
     PyGILState_Release(gstate);
+    DEBUG0(PORT, RELEASED_GIL);
 
     return rv;
 }
@@ -778,9 +787,14 @@ int port_detach_port(uint8_t port_id)
 int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
 {
     /* Some or all of the buffer will be the values we crave */
-    PyGILState_STATE gstate = PyGILState_Ensure();
-    PortObject *port = (PortObject *)port_set->ports[port_id];
+    PyGILState_STATE gstate;
+    PortObject *port;
     int rv;
+
+    DEBUG0(PORT, NV_CLAIM_GIL);
+    gstate = PyGILState_Ensure();
+    DEBUG0(PORT, NV_CLAIMED_GIL);
+    port = (PortObject *)port_set->ports[port_id];
 
     if (port->device == Py_None)
     {
@@ -805,6 +819,7 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
     }
 
     PyGILState_Release(gstate);
+    DEBUG0(PORT, NV_RELEASED_GIL);
     return rv;
 }
 
