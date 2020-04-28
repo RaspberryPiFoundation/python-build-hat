@@ -16,9 +16,9 @@ extern int log_i2c_init(void);
 extern void log_i2c(uint8_t *buffer, int direction);
 extern void log_i2c_dump(void);
 
-#define DBG_MODULE_I2C    0xff
-#define DBG_MODULE_QUEUE  0xfe
-#define DBG_MODULE_PORT   0xfd
+#define DBG_MODULE_I2C    0x01
+#define DBG_MODULE_QUEUE  0x02
+#define DBG_MODULE_PORT   0x04
 
 #define DBG_REASON_QUEUE_GET_LOCK_FAILED        0x00
 #define DBG_REASON_QUEUE_GET_LOOP_UNLOCK_FAILED 0x01
@@ -51,19 +51,26 @@ extern void log_i2c_dump(void);
 #define DBG_REASON_PORT_NV_CLAIMED_GIL  0x05
 #define DBG_REASON_PORT_NV_RELEASED_GIL 0x06
 
-#define DEBUG0(m,r) do { \
-    uint8_t debug[3] = { 3 }; \
-    debug[1] = DBG_MODULE_ ## m; \
-    debug[2] = DBG_REASON_ ## m ## _ ## r; \
-    log_i2c(debug, -1); \
+
+#define DEBUG_MODULE_MASK 0x00
+
+#define DEBUG0(m,r) do {                        \
+    if (((DBG_MODULE_ ## m) & DEBUG_MODULE_MASK) != 0) {       \
+        uint8_t debug[3] = { 3 };               \
+        debug[1] = DBG_MODULE_ ## m;            \
+        debug[2] = DBG_REASON_ ## m ## _ ## r;  \
+        log_i2c(debug, -1);                     \
+    }                                           \
     } while (0)
 
-#define DEBUG1(m,r, p0) do {     \
-    uint8_t debug[4] = { 4 }; \
-    debug[1] = DBG_MODULE_ ## m; \
-    debug[2] = DBG_REASON_ ## m ## _ ## r; \
-    debug[3] = p0; \
-    log_i2c(debug, -1); \
+#define DEBUG1(m,r, p0) do {                    \
+    if (((DBG_MODULE_ ## m) & DEBUG_MODULE_MASK) != 0) {       \
+        uint8_t debug[4] = { 4 };               \
+        debug[1] = DBG_MODULE_ ## m;            \
+        debug[2] = DBG_REASON_ ## m ## _ ## r;  \
+        debug[3] = p0;                          \
+        log_i2c(debug, -1);                     \
+    }                                           \
     } while (0)
 
 #else /* DEBUG_I2C */
