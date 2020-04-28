@@ -568,7 +568,6 @@ PortSet_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     {
         for (i = 0; i < NUM_HUB_PORTS; i++)
         {
-            /* TODO: pass the port ID to the constructor */
             if ((self->ports[i] = PyObject_CallObject((PyObject *)&PortType,
                                                       NULL)) == NULL)
             {
@@ -702,6 +701,9 @@ int port_attach_port(uint8_t port_id,
     DEBUG0(PORT, CLAIM_GIL);
     gstate = PyGILState_Ensure();
     DEBUG0(PORT, CLAIMED_GIL);
+    if (port_id >= NUM_HUB_PORTS)
+        goto exit;
+
     port = (PortObject *)port_set->ports[port_id];
     device = device_new_device((PyObject *)port,
                                type_id,
@@ -753,10 +755,18 @@ int port_detach_port(uint8_t port_id)
 {
     /* First claim the global interpreter lock */
     PyGILState_STATE gstate = PyGILState_Ensure();
-    PortObject *port = (PortObject *)port_set->ports[port_id];
+    PortObject *port;
     PyObject *arg_list;
     int rv = 0;
 
+    if (port_id >= NUM_HUB_PORTS)
+    {
+        /* Shouldn't get called with this */
+        PyGILState_Release(gstate);
+        return -1;
+    }
+
+    port = (PortObject *)port_set->ports[port_id];
     pair_detach_subport(port_id);
 
     device_detach(port->device);
@@ -791,6 +801,11 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
     PortObject *port;
     int rv;
 
+    if (port_id >= NUM_HUB_PORTS)
+    {
+        /* XXX: need MotorPair to grow an associated Device/Port */
+        return 0;
+    }
     DEBUG0(PORT, NV_CLAIM_GIL);
     gstate = PyGILState_Ensure();
     DEBUG0(PORT, NV_CLAIMED_GIL);
@@ -831,10 +846,18 @@ int port_new_combi_value(uint8_t port_id,
                          uint16_t nbytes)
 {
     /* Some or all of the buffer will be the values we want */
-    PyGILState_STATE gstate = PyGILState_Ensure();
-    PortObject *port = (PortObject *)port_set->ports[port_id];
+    PyGILState_STATE gstate;
+    PortObject *port;
     int rv;
 
+    if (port_id >= NUM_HUB_PORTS)
+    {
+        /* XXX: MotorPair must grow and Device/Port equivalent */
+        return 0;
+    }
+
+    gstate = PyGILState_Ensure();
+    port = (PortObject *)port_set->ports[port_id];
     if (port->device == Py_None)
     {
         /* See above */
@@ -853,8 +876,16 @@ int port_new_combi_value(uint8_t port_id,
 /* Called from the background context */
 int port_new_format(uint8_t port_id)
 {
+    PortObject *port;
+
+    if (port_id >= NUM_HUB_PORTS)
+    {
+        /* XXX: MotorPair must grow Device/Port functionality */
+        return 0;
+    }
+
     /* Don't need to call any Python functions off this */
-    PortObject *port = (PortObject *)port_set->ports[port_id];
+    port = (PortObject *)port_set->ports[port_id];
 
     if (port->device == Py_None)
     {
@@ -870,8 +901,15 @@ int port_new_format(uint8_t port_id)
 /* Called from the background context */
 int port_feedback_status(uint8_t port_id, uint8_t status)
 {
-    PortObject *port = (PortObject *)port_set->ports[port_id];
+    PortObject *port;
 
+    if (port_id >= NUM_HUB_PORTS)
+    {
+        /* XXX: MotorPair must handle this */
+        return 0;
+    }
+
+    port = (PortObject *)port_set->ports[port_id];
     if (port->device == Py_None)
     {
         /* We don't think anything is attached.  How odd. */
