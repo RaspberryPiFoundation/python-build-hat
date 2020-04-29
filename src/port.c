@@ -804,7 +804,7 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
     if (port_id >= NUM_HUB_PORTS)
     {
         /* XXX: need MotorPair to grow an associated Device/Port */
-        return 0;
+        return nbytes;
     }
     DEBUG0(PORT, NV_CLAIM_GIL);
     gstate = PyGILState_Ensure();
@@ -853,7 +853,7 @@ int port_new_combi_value(uint8_t port_id,
     if (port_id >= NUM_HUB_PORTS)
     {
         /* XXX: MotorPair must grow and Device/Port equivalent */
-        return 0;
+        return nbytes;
     }
 
     gstate = PyGILState_Ensure();
