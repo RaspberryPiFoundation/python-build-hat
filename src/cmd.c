@@ -342,7 +342,7 @@ int cmd_get_mode_name(uint8_t port_id, uint8_t mode_id, char *name)
     /* The length of this packet is variable, but should be between
      * 7 and 17 bytes.
      */
-    if (response[0] < 7 || response[0] > 17 ||
+    if (response[0] < 6 || response[0] > 17 ||
         response[2] != TYPE_PORT_MODE ||
         response[3] != port_id ||
         response[4] != mode_id ||
@@ -354,8 +354,15 @@ int cmd_get_mode_name(uint8_t port_id, uint8_t mode_id, char *name)
         return -1;
     }
 
-    memcpy(name, response+6, response[0]-6);
-    name[response[0]-6] = '\0';
+    if (response[0] == 6)
+    {
+        name[0] = '\0';
+    }
+    else
+    {
+        memcpy(name, response+6, response[0]-6);
+        name[response[0]-6] = '\0';
+    }
 
     return 0;
 }
@@ -449,7 +456,7 @@ int cmd_get_mode_symbol(uint8_t port_id, uint8_t mode_id, char *symbol)
     /* The length of this packet is variable, but should be between
      * 7 and 11 bytes.
      */
-    if (response[0] < 7 || response[0] > 11 ||
+    if (response[0] < 6 || response[0] > 11 ||
         response[2] != TYPE_PORT_MODE ||
         response[3] != port_id ||
         response[4] != mode_id ||
@@ -461,8 +468,15 @@ int cmd_get_mode_symbol(uint8_t port_id, uint8_t mode_id, char *symbol)
         return -1;
     }
 
-    memcpy(symbol, response+6, response[0]-6);
-    symbol[response[0]-6] = '\0';
+    if (response[0] == 6)
+    {
+        symbol[0] = '\0';
+    }
+    else
+    {
+        memcpy(symbol, response+6, response[0]-6);
+        symbol[response[0]-6] = '\0';
+    }
 
     return 0;
 }
