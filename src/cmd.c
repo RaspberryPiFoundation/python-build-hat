@@ -392,7 +392,8 @@ static int get_mode_min_max(uint8_t port_id,
     {
         free(response);
         PyErr_Format(hub_protocol_error,
-                     "Unexpected reposy to Mode %s Request");
+                     "Unexpected reply to Mode %s Request",
+                     info_name);
         return -1;
     }
 
