@@ -1590,3 +1590,26 @@ int cmd_disconnect_virtual_port(uint8_t port_id)
 
     return 0;
 }
+
+
+/* Send a reset command to the hub, and wait for its response */
+int cmd_action_reset(void)
+{
+    uint8_t *response = make_request(4, TYPE_HUB_ACTION, ACTION_RESET);
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 4 ||
+        response[2] != TYPE_HUB_ACTION ||
+        response[3] != ACTION_WILL_RESET)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Reset Request");
+        return -1;
+    }
+
+    free(response);
+    return 0;
+}

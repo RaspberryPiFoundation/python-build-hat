@@ -136,6 +136,7 @@ typedef struct
     PyObject_HEAD
     PyObject *ports;
     PyObject *exception;
+    int initialised;
 } HubObject;
 
 
@@ -174,6 +175,7 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self == NULL)
         return NULL;
 
+    self->initialised = 0;
     self->ports = port_init();
     if (self->ports == NULL)
     {
@@ -189,6 +191,22 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     return (PyObject *)self;
+}
+
+
+static int
+Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = { NULL };
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "", kwlist))
+        return -1;
+    if (self->initialised)
+        return 0;
+    if (cmd_action_reset() < 0)
+        return -1;
+    self->initialised = 1;
+    return 0;
 }
 
 
@@ -317,6 +335,7 @@ static PyTypeObject HubType =
                  Py_TPFLAGS_HAVE_GC |
                  Py_TPFLAGS_HAVE_FINALIZE),
     .tp_new = Hub_new,
+    .tp_init = (initproc)Hub_init,
     .tp_dealloc = (destructor)Hub_dealloc,
     .tp_traverse = (traverseproc)Hub_traverse,
     .tp_clear = (inquiry)Hub_clear,

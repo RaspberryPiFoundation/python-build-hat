@@ -49,6 +49,13 @@ typedef enum protocol_prop_op_e
     PROP_OP_UPDATE = 6   /* Update from Hat */
 } protocol_prop_op_t;
 
+/* Hub Action types */
+typedef enum protocol_action_e
+{
+    ACTION_RESET = 7,
+    ACTION_WILL_RESET = 0x34
+} protocol_action_t;
+
 /* Port Information Types */
 typedef enum protocol_port_info_e
 {

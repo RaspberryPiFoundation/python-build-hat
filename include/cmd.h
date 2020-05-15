@@ -339,4 +339,9 @@ extern int cmd_connect_virtual_port(uint8_t port_1_id,
  */
 extern int cmd_disconnect_virtual_port(uint8_t port_id);
 
+/* Sends an Action command to Reset the HAT.
+ * Returns 0 on success, -1 on error.
+ */
+extern int cmd_action_reset(void);
+
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */
