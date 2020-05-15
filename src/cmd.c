@@ -159,7 +159,7 @@ static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
         return NULL; /* Python exception already raised */
     if (response == NULL)
     {
-        PyErr_Format(hub_protocol_error, "Tx timeout");
+        PyErr_SetString(hub_protocol_error, "Tx timeout");
         return NULL;
     }
 
@@ -1283,22 +1283,18 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
     if (response == NULL)
         return -1;
 
-    /* The documentation is unclear as to what response to expect.  I
-     * think it's a TYPE_PORT_FORMAT_COMBINED with zero bit
-     * combinations, but what the subsequent data (if any) is not well
-     * documented, nor does the code offer much clue.
+    /* The documentation is unclear as to what response to expect.
+     * The code shows a TYPE_PORT_FORMAT_SINGLE for the current mode.
      */
-    if (response[0] < 5 ||
-        response[2] != TYPE_PORT_FORMAT_COMBINED ||
-        response[3] != port_id ||
-        response[4] != 0)
+    if (response[0] != 10 ||
+        response[2] != TYPE_PORT_FORMAT_SINGLE ||
+        response[3] != port_id)
     {
         free(response);
         PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port CFormat (Reset)");
+                        "Unexpected reply to Port CombiFormat (Reset)");
         return -1;
     }
-    free(response);
 
     /* Now set the mode again */
     response = make_request(10, TYPE_PORT_FORMAT_SETUP_SINGLE,
@@ -1347,13 +1343,10 @@ int cmd_set_combi_mode(uint8_t port_id,
     if (response == NULL)
         return -1;
 
-    /* It's not completely clear what response to expect to a reset */
-    if (response[0] != 7 ||
-        response[2] != TYPE_PORT_FORMAT_COMBINED ||
-        response[3] != port_id ||
-        response[4] != 0 ||
-        response[5] != 0 ||
-        response[6] != 0)
+    /* See above */
+    if (response[0] != 10 ||
+        response[2] != TYPE_PORT_FORMAT_SINGLE ||
+        response[3] != port_id)
     {
         free(response);
         PyErr_SetString(hub_protocol_error,
@@ -1370,13 +1363,10 @@ int cmd_set_combi_mode(uint8_t port_id,
     if (response == NULL)
         return -1;
 
-    /* It's not clear what to expect here either */
-    if (response[0] != 7 ||
-        response[2] != TYPE_PORT_FORMAT_COMBINED ||
-        response[3] != port_id ||
-        response[4] != 0 ||
-        response[5] != 0 ||
-        response[6] != 0)
+    /* This also gets a PORT_FORMAT_SETUP_SINGLE in response */
+    if (response[0] != 10 ||
+        response[2] != TYPE_PORT_FORMAT_SINGLE ||
+        response[3] != port_id)
     {
         free(response);
         PyErr_SetString(hub_protocol_error,
@@ -1396,6 +1386,8 @@ int cmd_set_combi_mode(uint8_t port_id,
                                 0); /* Notification disabled */
         if (response == NULL)
             return -1;
+
+        /* XXX: don't actually get a response, I think */
 
         if (response[0] != 10 ||
             response[2] != TYPE_PORT_FORMAT_SINGLE ||
@@ -1481,7 +1473,7 @@ int cmd_set_combi_mode(uint8_t port_id,
 
     free(response);
 
-    /* Unlock and restart the device */
+    /* Unlock and restart the device: this does get the COMBI response */
     response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
                             port_id,
                             INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_DISABLED);
