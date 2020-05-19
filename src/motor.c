@@ -213,7 +213,7 @@
         :param int max_power: the percentage of maximum motor power
             (PWM) to use when not specified in a method (0 - 100).
             The range is not checked in this method call, but will be
-            clipped if necessary when used.  The default is 0%.
+            clipped if necessary when used.  The default is 100%.
         :param int acceleration: (0 - 10000) the time in milliseconds
             to reach 100% of motor design speed from 0%, when the
             acceleration time parameter is omitted from a method call.
@@ -657,7 +657,7 @@ Motor_init(MotorObject *self, PyObject *args, PyObject *kwds)
     Py_XDECREF(tmp);
 
     self->default_speed = 0;
-    self->default_max_power = 0;
+    self->default_max_power = 100;
     self->default_acceleration = DEFAULT_ACCELERATION;
     self->default_deceleration = DEFAULT_DECELERATION;
     self->default_stall = 1;
