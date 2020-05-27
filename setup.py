@@ -30,4 +30,6 @@ if getenv("DEBUG_I2C") == "1":
 setup(name='hub',
       version='0.2',
       description='Strawberry library for accessing Shortcake',
+      author='Rhodri James',
+      author_email='rhodri@kynesim.co.uk',
       ext_modules=[hub_module])
