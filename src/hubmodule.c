@@ -223,8 +223,8 @@ Hub_finalize(PyObject *self)
     PyObject *etype, *evalue, *etraceback;
 
     PyErr_Fetch(&etype, &evalue, &etraceback);
-    /* TODO: callback_finalize() */
     i2c_close_hat();
+    callback_finalize();
     PyErr_Restore(etype, evalue, etraceback);
 }
 

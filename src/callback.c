@@ -194,6 +194,23 @@ int callback_init(void)
 }
 
 
+/* Shut down the callback queue processing */
+int callback_finalize(void)
+{
+    uint64_t dummy = 3;
+    int rv = 0;
+
+    /* Kill the thread */
+    shutdown = 1;
+    if (write(cb_event_fd, (uint8_t *)&dummy, 8) < 0)
+        rv = 1;
+    /* Push on anyway if there is an error */
+    pthread_join(callback_thread, NULL);
+
+    return rv;
+}
+
+
 /* Called from the receiver thread only */
 int callback_queue(uint8_t cb_type, uint8_t port_id, uint8_t event)
 {

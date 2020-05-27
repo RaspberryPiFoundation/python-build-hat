@@ -29,6 +29,11 @@
  */
 extern int callback_init(void);
 
+/* Finalize the callback thread.  Does not do much tidying up, but
+ * should only be called when we are quitting anyway.
+ */
+extern int callback_finalize(void);
+
 /* Queue a callback.  Returns zero on success, or a negative number on
  * error.  Since this is called from the receiver thread, no Python
  * exception is raised on error.
