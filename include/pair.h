@@ -40,5 +40,7 @@ extern int pair_unpair(PyObject *self);
 /* Signals an output command status */
 extern int pair_feedback_status(uint8_t port_id, uint8_t status);
 
+/* Called from callback thread */
+extern int pair_handle_callback(uint8_t port_id, uint8_t event);
 
 #endif /* RPI_STRAWBERRY_PAIR_H_INCLUDED */

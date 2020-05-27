@@ -17,6 +17,7 @@
 #include "device.h"
 #include "pair.h"
 #include "motor-settings.h"
+#include "callback.h"
 
 /**
 
@@ -1510,6 +1511,7 @@ PyObject *motor_new_motor(PyObject *port, PyObject *device)
 }
 
 
+/* Called from callback thread */
 int motor_callback(PyObject *self, int event)
 {
     MotorObject *motor = (MotorObject *)self;

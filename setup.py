@@ -12,7 +12,8 @@ hub_module = Extension('hub',
                                   'src/port.c',
                                   'src/device.c',
                                   'src/motor.c',
-                                  'src/pair.c'])
+                                  'src/pair.c',
+                                  'src/callback.c'])
 
 # If the environment variable USE_DUMMY_I2C is set, build with a fake
 # back end for testing on a desktop.
@@ -27,6 +28,6 @@ if getenv("DEBUG_I2C") == "1":
     hub_module.define_macros.append(('DEBUG_I2C', '1'))
 
 setup(name='hub',
-      version='0.1',
+      version='0.2',
       description='Strawberry library for accessing Shortcake',
       ext_modules=[hub_module])

@@ -18,6 +18,7 @@ extern void motor_demodinit(void);
 extern PyObject *motor_new_motor(PyObject *port, PyObject *device);
 
 /* Fire the Python-level callback function, if one is registered */
+/* Called from the callback thread */
 extern int motor_callback(PyObject *self, int event);
 
 /* Mark the motor object as detached from the port */

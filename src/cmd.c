@@ -239,6 +239,47 @@ PyObject *cmd_get_firmware_version(void)
 }
 
 
+PyObject *cmd_get_gpio_info(char gpio_name)
+{
+    uint32_t pupdr, otyper, ospeedr;
+    uint8_t gpio = gpio_name - 'A';
+    uint8_t *response = make_request(5, TYPE_HUB_PROPERTY,
+                                     PROP_GPIO_A + gpio,
+                                     PROP_OP_REQUEST);
+    if (response == NULL)
+        return NULL;
+
+    if (response[0] != 17 ||
+        response[2] != TYPE_HUB_PROPERTY ||
+        response[3] != PROP_GPIO_A + gpio ||
+        response[4] != PROP_OP_UPDATE)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to GPIO debug request");
+        return NULL;
+    }
+
+    pupdr = (response[5] |
+             (response[6] << 8) |
+             (response[7] << 16) |
+             (response[8] << 24));
+    otyper = (response[9] |
+              (response[10] << 8) |
+              (response[11] << 16) |
+              (response[12] << 24));
+    ospeedr = (response[13] |
+               (response[14] << 8) |
+               (response[15] << 16) |
+               (response[16] << 24));
+    free(response);
+    return Py_BuildValue("{sIsIsI}",
+                         "pupdr", pupdr,
+                         "otyper", otyper,
+                         "ospeedr", ospeedr);
+}
+
+
 int cmd_get_port_value(uint8_t port_id)
 {
     uint8_t *response = make_request(5, TYPE_PORT_INFO_REQ,

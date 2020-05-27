@@ -17,6 +17,7 @@
 #include "device.h"
 #include "motor.h"
 #include "pair.h"
+#include "callback.h"
 
 #ifdef DEBUG_I2C
 #include "debug-i2c.h"
@@ -184,8 +185,14 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     Py_INCREF(Py_None);
     self->exception = Py_None;
+    if (callback_init() < 0)
+    {
+        Py_DECREF(self);
+        return NULL;
+    }
     if (i2c_open_hat() < 0)
     {
+        /* TODO: callback_shutdown() */
         Py_DECREF(self);
         return NULL;
     }
@@ -216,6 +223,7 @@ Hub_finalize(PyObject *self)
     PyObject *etype, *evalue, *etraceback;
 
     PyErr_Fetch(&etype, &evalue, &etraceback);
+    /* TODO: callback_finalize() */
     i2c_close_hat();
     PyErr_Restore(etype, evalue, etraceback);
 }

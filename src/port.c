@@ -16,7 +16,7 @@
 #include "device.h"
 #include "motor.h"
 #include "pair.h"
-#include "debug-i2c.h"
+#include "callback.h"
 
 /**
 
@@ -621,14 +621,14 @@ static PyGetSetDef PortSet_getsetters[] =
         (getter)PortSet_get_constant,
         NULL,
         "Value passed to callback when port is attached",
-        (void *)1
+        (void *)CALLBACK_ATTACHED
     },
     {
         "DETACHED",
         (getter)PortSet_get_constant,
         NULL,
         "Value passed to callback when port is detached",
-        (void *)0
+        (void *)CALLBACK_DETACHED
     },
     { NULL }
 };
@@ -685,7 +685,7 @@ PyObject *port_init(void)
 }
 
 
-/* Called from the communications thread */
+/* Called from the communications rx thread */
 int port_attach_port(uint8_t port_id,
                      uint16_t type_id,
                      uint8_t *hw_revision,
@@ -694,24 +694,22 @@ int port_attach_port(uint8_t port_id,
     /* First we must claim the global interpreter lock */
     PyGILState_STATE gstate;
     PortObject *port;
-    PyObject *arg_list;
     PyObject *device;
-    int rv = -1;
 
-    DEBUG0(PORT, CLAIM_GIL);
-    gstate = PyGILState_Ensure();
-    DEBUG0(PORT, CLAIMED_GIL);
     if (port_id >= NUM_HUB_PORTS)
-        goto exit;
+        return -1;
 
+    gstate = PyGILState_Ensure();
     port = (PortObject *)port_set->ports[port_id];
     device = device_new_device((PyObject *)port,
                                type_id,
                                hw_revision,
                                fw_revision);
     if (device == NULL)
-        goto exit;
-    DEBUG0(PORT, NEW_DEVICE);
+    {
+        PyGILState_Release(gstate);
+        return -1;
+    }
     if (motor_is_motor(type_id))
     {
         PyObject *motor = motor_new_motor((PyObject *)port, device);
@@ -719,7 +717,8 @@ int port_attach_port(uint8_t port_id,
         if (motor == NULL)
         {
             Py_DECREF(device);
-            goto exit;
+            PyGILState_Release(gstate);
+            return -1;
         }
 
         Py_DECREF(port->motor);
@@ -735,37 +734,26 @@ int port_attach_port(uint8_t port_id,
     Py_DECREF(port->device);
     port->device = device;
 
-    if (port->callback_fn != Py_None)
-    {
-        arg_list = Py_BuildValue("(i)", 1); /* ATTACHED */
-        rv = (PyObject_CallObject(port->callback_fn,
-                                  arg_list) != NULL) ? 0 : -1;
-    }
-
-exit:
     /* Release the GIL */
     PyGILState_Release(gstate);
-    DEBUG0(PORT, RELEASED_GIL);
 
-    return rv;
+    /* Queue a callback */
+    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_ATTACHED);
 }
 
 
 int port_detach_port(uint8_t port_id)
 {
     /* First claim the global interpreter lock */
-    PyGILState_STATE gstate = PyGILState_Ensure();
+    PyGILState_STATE gstate;
     PortObject *port;
-    PyObject *arg_list;
-    int rv = 0;
 
     if (port_id >= NUM_HUB_PORTS)
-    {
         /* Shouldn't get called with this */
-        PyGILState_Release(gstate);
         return -1;
-    }
 
+    /* Claim the global interpreter lock */
+    gstate = PyGILState_Ensure();
     port = (PortObject *)port_set->ports[port_id];
     pair_detach_subport(port_id);
 
@@ -779,17 +767,10 @@ int port_detach_port(uint8_t port_id)
     port->motor = Py_None;
     Py_INCREF(Py_None);
 
-    if (port->callback_fn != Py_None)
-    {
-        arg_list = Py_BuildValue("(i)", 0); /* DETATCHED */
-        rv = (PyObject_CallObject(port->callback_fn,
-                                  arg_list) != NULL) ? 0 : 1;
-    }
-
     /* Release the penguins^WGIL */
     PyGILState_Release(gstate);
 
-    return rv;
+    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_DETACHED);
 }
 
 
@@ -803,12 +784,14 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
 
     if (port_id >= NUM_HUB_PORTS)
     {
-        /* XXX: need MotorPair to grow an associated Device/Port */
+        /* To process this, we need MotorPair to grow an associated
+         * Device/Port.  But even if it does, the Python API gives us
+         * no opportunity to get at the information.  Don't waste
+         * time, therefore.
+         */
         return nbytes;
     }
-    DEBUG0(PORT, NV_CLAIM_GIL);
     gstate = PyGILState_Ensure();
-    DEBUG0(PORT, NV_CLAIMED_GIL);
     port = (PortObject *)port_set->ports[port_id];
 
     if (port->device == Py_None)
@@ -834,7 +817,6 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
     }
 
     PyGILState_Release(gstate);
-    DEBUG0(PORT, NV_RELEASED_GIL);
     return rv;
 }
 
@@ -852,7 +834,7 @@ int port_new_combi_value(uint8_t port_id,
 
     if (port_id >= NUM_HUB_PORTS)
     {
-        /* XXX: MotorPair must grow and Device/Port equivalent */
+        /* See above */
         return nbytes;
     }
 
@@ -898,14 +880,14 @@ int port_new_format(uint8_t port_id)
 }
 
 
-/* Called from the background context */
+/* Called from the background rx context */
 int port_feedback_status(uint8_t port_id, uint8_t status)
 {
     PortObject *port;
 
     if (port_id >= NUM_HUB_PORTS)
     {
-        /* XXX: MotorPair must handle this */
+        /* This should have gone via pair_feedback_status() */
         return 0;
     }
 
@@ -929,9 +911,9 @@ int port_feedback_status(uint8_t port_id, uint8_t status)
     if (port->motor != Py_None)
     {
         if ((status & 0x02) != 0)
-            motor_callback(port->motor, CALLBACK_COMPLETE);
+            callback_queue(CALLBACK_MOTOR, port_id, CALLBACK_COMPLETE);
         if ((status & 0x04) != 0)
-            motor_callback(port->motor,
+            callback_queue(CALLBACK_MOTOR, port_id,
                            ((status & 0x20) != 0) ? CALLBACK_STALLED :
                            CALLBACK_INTERRUPTED);
     }
@@ -1007,4 +989,49 @@ PyObject *
 port_get_motor(PyObject *port)
 {
     return Port_get_motor((PortObject *)port, NULL);
+}
+
+
+/* Called from callback thread */
+int port_handle_callback(uint8_t port_id, uint8_t event)
+{
+    PyGILState_STATE gstate;
+    PortObject *port;
+    PyObject *arg_list;
+    int rv;
+
+    if (port_id >= NUM_HUB_PORTS)
+        /* Virtual port, doesn't have a port-level callback */
+        return 0;
+
+    port = (PortObject *)port_set->ports[port_id];
+    gstate = PyGILState_Ensure();
+    if (port->callback_fn == Py_None)
+    {
+        PyGILState_Release(gstate);
+        return 0;
+    }
+
+    arg_list = Py_BuildValue("(i)", event);
+    rv = (PyObject_CallObject(port->callback_fn, arg_list) != NULL) ? 0 : -1;
+    Py_XDECREF(arg_list);
+    PyGILState_Release(gstate);
+
+    return rv;
+}
+
+
+/* Called from callback thread */
+int port_handle_motor_callback(uint8_t port_id, uint8_t event)
+{
+    PortObject *port;
+
+    if (port_id >= NUM_HUB_PORTS)
+        return 0;
+
+    port = (PortObject *)port_set->ports[port_id];
+    if (port->motor != NULL)
+        return motor_callback(port->motor, event);
+
+    return 0;
 }

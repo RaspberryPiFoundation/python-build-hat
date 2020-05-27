@@ -65,20 +65,6 @@ extern int queue_check(uint8_t **pbuffer);
  */
 extern int queue_get(uint8_t **pbuffer);
 
-#if 0
-/* Queue an item from the background thread
- *
- * Returns 0 on success and a standard errno on failure.
- */
-extern int queue_add_buffer_background(uint8_t *buffer);
-
-/* Check to see if something has been queued by the background
- *
- * Returns the buffer queued, or NULL if no buffer is waiting.
- */
-extern uint8_t *queue_check_background(void);
-#endif
-
 /* Send the Tx thread a message to terminate */
 extern void queue_shutdown(void);
 

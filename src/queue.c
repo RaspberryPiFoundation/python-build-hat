@@ -77,9 +77,13 @@ static int push(queue_t *q, queue_item_t *item)
     if ((rv = pthread_mutex_lock(&q->mutex)) != 0)
         return rv;
     if ((rv = write(q->eventfd, &dummy, 8)) < 0)
+    {
+        pthread_mutex_unlock(&q->mutex);
         return rv;
+    }
     else if (rv != 8)
     {
+        pthread_mutex_unlock(&q->mutex);
         errno = EPROTO;
         return -1;
     }

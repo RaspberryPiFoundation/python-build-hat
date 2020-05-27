@@ -39,7 +39,14 @@ typedef enum protocol_type_e
 typedef enum protocol_property_e
 {
     PROP_FW_VERSION = 3,
-    PROP_HW_VERSION = 4
+    PROP_HW_VERSION = 4,
+    /***DEBUG***/
+    PROP_GPIO_A = 0x0F,
+    PROP_GPIO_B = 0x10,
+    PROP_GPIO_C = 0x11,
+    PROP_GPIO_D = 0x12,
+    PROP_DGIO_E = 0x13,
+    PROP_GPIO_F = 0x14,
 } protocol_property_t;
 
 /* Hub Property Operations */

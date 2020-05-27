@@ -344,4 +344,9 @@ extern int cmd_disconnect_virtual_port(uint8_t port_id);
  */
 extern int cmd_action_reset(void);
 
+
+/***DEBUG***/
+extern PyObject *cmd_get_gpio_info(char gpio_name);
+
+
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

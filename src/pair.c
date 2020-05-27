@@ -15,6 +15,7 @@
 #include "port.h"
 #include "cmd.h"
 #include "motor-settings.h"
+#include "callback.h"
 
 /**
 
@@ -1165,49 +1166,50 @@ int pair_unpair(PyObject *self)
 
 
 /* See port.c:port_feedback_status() for a discussion of the status
- * field bits
+ * field bits.  Called from the background rx context.
  */
 int pair_feedback_status(uint8_t port_id, uint8_t status)
 {
     MotorPairObject *pair = find_pair(port_id);
-    PyGILState_STATE gstate;
-    PyObject *args;
-    int rv = 0;
 
     if (pair == NULL)
         return -1;
 
-    if (pair->callback_fn == Py_None)
-        return 0; /* No callback registered */
-
-    gstate = PyGILState_Ensure();
-
     if ((status & 0x02) != 0)
-    {
-        /* Command complete */
-        args = Py_BuildValue("(i)", CALLBACK_COMPLETE);
-        rv = (PyObject_CallObject(pair->callback_fn, args) != NULL) ? 0 : -1;
-        Py_XDECREF(args);
-    }
+        callback_queue(CALLBACK_PAIR, port_id, CALLBACK_COMPLETE);
     if ((status & 0x04) != 0)
-    {
-        /* Command interrupted */
-        int rv1;
-
-        if ((status & 0x20) != 0)
-            /* Command stalled, in fact */
-            args = Py_BuildValue("(i)", CALLBACK_STALLED);
-        else
-            args = Py_BuildValue("(i)", CALLBACK_INTERRUPTED);
-        rv1 = (PyObject_CallObject(pair->callback_fn, args) != NULL) ? 0 : -1;
-
-        if (rv == 0)
-            rv = rv1;
-        Py_XDECREF(args);
-    }
+        callback_queue(CALLBACK_PAIR, port_id,
+                       ((status & 0x20) != 0) ? CALLBACK_STALLED :
+                       CALLBACK_INTERRUPTED);
 
     /* Turns out we don't track busy here */
 
+    return 0;
+}
+
+
+/* Called from the callback thread */
+int pair_handle_callback(uint8_t port_id, uint8_t event)
+{
+    MotorPairObject *pair = find_pair(port_id);
+    PyGILState_STATE gstate;
+    PyObject *arg_list;
+    int rv;
+
+    if (pair == NULL)
+        return -1;
+
+    gstate = PyGILState_Ensure();
+
+    if (pair->callback_fn == Py_None)
+    {
+        PyGILState_Release(gstate);
+        return 0;
+    }
+
+    arg_list = Py_BuildValue("(i)", event);
+    rv = (PyObject_CallObject(pair->callback_fn, arg_list) != NULL) ? 0 : -1;
+    Py_XDECREF(arg_list);
     PyGILState_Release(gstate);
 
     return rv;

@@ -37,11 +37,6 @@ typedef struct mode_info_s
 /* Total number of physical ports connected to the hat */
 #define NUM_HUB_PORTS 6
 
-/* Value passed to the motor/pair callbacks */
-#define CALLBACK_COMPLETE    0
-#define CALLBACK_INTERRUPTED 1
-#define CALLBACK_STALLED     2
-
 extern int port_modinit(void);
 extern void port_demodinit(void);
 
@@ -65,5 +60,9 @@ extern int port_get_id(PyObject *port);
 extern PyObject *port_get_device(PyObject *port);
 extern PyObject *ports_get_value_dict(PyObject *portset);
 extern PyObject *port_get_motor(PyObject *port);  /* Returns new reference */
+
+/* The following is called only from the callback thread */
+extern int port_handle_callback(uint8_t port_id, uint8_t event);
+extern int port_handle_motor_callback(uint8_t port_id, uint8_t event);
 
 #endif /* RPI_STRAWBERRY_PORT_H_INCLUDED */
