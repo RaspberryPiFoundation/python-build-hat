@@ -559,7 +559,7 @@ static int handle_port_value_combi(uint8_t *buffer,
         BITMAP_CLEAR(expecting_value_on_port, port_id);
         *ppassback = 1;
     }
-    entry_mask = buffer[4] | (buffer[5] << 8);
+    entry_mask = buffer[5] | (buffer[4] << 8);
     buffer += 6;
     nbytes -= 6;
 
@@ -575,12 +575,6 @@ static int handle_port_value_combi(uint8_t *buffer,
                 return -1;
             }
             return 1; /* Packet has been handled */
-        }
-        if (nbytes < 2)
-        {
-            /* Less than the minimum possible for the protocol */
-            errno = EPROTO;
-            return -1;
         }
         if ((entry_mask & (1 << i)) != 0)
         {
