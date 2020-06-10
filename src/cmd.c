@@ -1244,6 +1244,11 @@ int cmd_write_mode_data(uint8_t port_id,
 
     if (queue_get(&response) != 0)
         return -1;
+    if (response == NULL)
+    {
+        PyErr_SetString(hub_protocol_error, "Tx timeout");
+        return -1;
+    }
 
     /* 'response' is now ours, and must be freed when done with */
     if (response[1] != 0x00)
