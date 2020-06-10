@@ -1425,16 +1425,43 @@ int cmd_set_combi_mode(uint8_t port_id,
     /* For each mode, do a Format Single Setup on it */
     for (i = 0; i < num_modes; i++)
     {
-        response = make_request(10, TYPE_PORT_FORMAT_SETUP_SINGLE,
-                                port_id,
-                                modes[i] >> 4,
-                                0, 0, 0, 0, /* Delta = 0 ? */
-                                0); /* Notification disabled */
-        if (response == NULL)
+        /* We do not expect a response, so we can't use make_request() */
+        if ((buffer = malloc(10)) == NULL)
+        {
+            PyErr_NoMemory();
             return -1;
+        }
 
-        /* XXX: don't actually get a response, I think */
+        buffer[0] = 10;
+        buffer[1] = 0x00; /* Hub ID */
+        buffer[2] = TYPE_PORT_FORMAT_SETUP_SINGLE;
+        buffer[3] = port_id;
+        buffer[4] = modes[i] >> 4;
+        buffer[5] = 0; /* Delta = 0 ? */
+        buffer[6] = 0;
+        buffer[7] = 0;
+        buffer[8] = 0;
+        buffer[9] = 0; /* Notification disabled */
 
+        if (queue_add_buffer(buffer) != 0)
+        {
+            /* Exception already raised */
+            free(buffer);
+            /* Do an emergency reset rather than just leave this unsafe */
+            goto emergency_reset;
+        }
+    }
+
+    /* Now we should get the responses */
+    for (i = 0; i < num_modes; i++)
+    {
+        if (queue_get(&response) != 0)
+            goto emergency_reset;
+        if (response == NULL)
+        {
+            PyErr_SetString(hub_protocol_error, "Rx timeout");
+            goto emergency_reset;
+        }
         if (response[0] != 10 ||
             response[2] != TYPE_PORT_FORMAT_SINGLE ||
             response[3] != port_id ||
@@ -1453,6 +1480,7 @@ int cmd_set_combi_mode(uint8_t port_id,
             /* Do an emergency reset rather than just leave this unsafe */
             goto emergency_reset;
         }
+        free(response);
     }
 
     /* Now set the combination.  This one we can't make_request() */
@@ -1482,42 +1510,7 @@ int cmd_set_combi_mode(uint8_t port_id,
         goto emergency_reset;
     }
 
-    if (queue_get(&response) != 0)
-    {
-        /* Exception already raised */
-        goto emergency_reset;
-    }
-
-    if (response[1] != 0x00)
-    {
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
-        free(response);
-        goto emergency_reset;
-    }
-
-    if (response[2] == TYPE_GENERIC_ERROR)
-    {
-        handle_generic_error(TYPE_PORT_FORMAT_SETUP_COMBINED, response);
-        free(response);
-        goto emergency_reset;
-    }
-
-    combi_map = (1 << num_modes) - 1;
-    if (response[0] != 7 ||
-        response[1] != 0x00 ||
-        response[2] != TYPE_PORT_FORMAT_COMBINED ||
-        response[3] != port_id ||
-        response[4] != combi_index ||
-        response[5] != (combi_map & 0xff) ||
-        response[6] != ((combi_map >> 8) & 0xff))
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Format Setup Combi Set");
-        goto emergency_reset;
-    }
-
-    free(response);
+    /* No response is expected */
 
     /* Unlock and restart the device: this does get the COMBI response */
     response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
@@ -1526,12 +1519,13 @@ int cmd_set_combi_mode(uint8_t port_id,
     if (response == NULL)
         return -1;
 
+    combi_map = (1 << num_modes) - 1;
     if (response[0] != 7 ||
         response[2] != TYPE_PORT_FORMAT_COMBINED ||
         response[3] != port_id ||
-        response[4] != 0 ||
-        response[5] != 0 ||
-        response[6] != 0)
+        response[4] != combi_index ||
+        response[5] != (combi_map & 0xff) ||
+        response[6] != ((combi_map >> 8) & 0xff))
     {
         free(response);
         PyErr_SetString(hub_protocol_error,
@@ -1541,6 +1535,7 @@ int cmd_set_combi_mode(uint8_t port_id,
 
     free(response);
 
+#if 0 /* This appears to get stuck */
     /* For some reason we do that again */
     response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
                             port_id,
@@ -1562,6 +1557,7 @@ int cmd_set_combi_mode(uint8_t port_id,
     }
 
     free(response);
+#endif
 
     return 0;
 

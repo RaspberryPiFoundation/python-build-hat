@@ -320,6 +320,45 @@ Device_pwm(PyObject *self, PyObject *args)
 }
 
 
+/* Handle the internals around a combi-mode setting, since it is
+ * quite involved and happens in more than one place.
+ */
+static int set_combi_mode(DeviceObject *device,
+                          int combi_index,
+                          uint8_t mode_and_dataset[MAX_DATASETS],
+                          int num_entries)
+{
+    if (cmd_set_combi_mode(port_get_id(device->port),
+                           combi_index,
+                           mode_and_dataset,
+                           num_entries) < 0)
+        return -1;
+
+    memcpy(device->combi_mode, mode_and_dataset, MAX_DATASETS);
+    device->num_combi_modes = num_entries;
+    device->current_mode = MODE_IS_COMBI;
+
+    /* Set up the list for handling input values */
+    {
+        PyObject *new_list = PyList_New(num_entries);
+        PyObject *old_list;
+        int i;
+
+        if (new_list == NULL)
+            return -1;
+        for (i = 0; i < num_entries; i++)
+            PyList_SET_ITEM(new_list, i, Py_None);
+        old_list = device->values;
+        device->values = new_list;
+        Py_XDECREF(old_list);
+        device->is_unreported = 0;
+    }
+
+    return 0;
+}
+
+
+
 static int
 get_mode_info(DeviceObject *device, uint8_t port_id)
 {
@@ -541,6 +580,7 @@ Device_mode(PyObject *self, PyObject *args)
         return NULL;
     }
 
+    /* XXX: consider checking for an iterable rather than a list */
     else if (PyList_Check(arg1))
     {
         /* Else we have been given a combi mode.  This enters our
@@ -627,31 +667,11 @@ Device_mode(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        if (cmd_set_combi_mode(port_get_id(device->port),
-                               combi_index,
-                               mode_and_dataset,
-                               num_entries) < 0)
+        if (set_combi_mode(device,
+                           combi_index,
+                           mode_and_dataset,
+                           num_entries) < 0)
             return NULL;
-
-        memcpy(device->combi_mode, mode_and_dataset, MAX_DATASETS);
-        device->num_combi_modes = num_entries;
-        device->current_mode = MODE_IS_COMBI;
-
-        /* Set up the list for handling input values */
-        {
-            PyObject *new_list = PyList_New(num_entries);
-            PyObject *old_list;
-            int i;
-
-            if (new_list == NULL)
-                return NULL;
-            for (i = 0; i < num_entries; i++)
-                PyList_SET_ITEM(new_list, i, Py_None);
-            old_list = device->values;
-            device->values = new_list;
-            Py_XDECREF(old_list);
-            device->is_unreported = 0;
-        }
 
         Py_RETURN_NONE;
     }
