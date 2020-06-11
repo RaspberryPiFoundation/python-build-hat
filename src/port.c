@@ -991,6 +991,12 @@ port_get_motor(PyObject *port)
     return Port_get_motor((PortObject *)port, NULL);
 }
 
+int
+port_is_motor(PyObject *port)
+{
+    return ((PortObject *)port)->motor != Py_None;
+}
+
 
 /* Called from callback thread */
 int port_handle_callback(uint8_t port_id, uint8_t event)

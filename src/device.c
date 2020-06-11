@@ -409,6 +409,44 @@ get_mode_info(DeviceObject *device, uint8_t port_id)
     }
 
     device->flags |= DO_FLAGS_GOT_MODE_INFO;
+
+    /* If this is a motor, we want to emulate the Micropython runtime
+     * and set a more user-friendly mode.
+     */
+    if (port_is_motor(device->port))
+    {
+        int combi_index;
+
+        for (combi_index = 0;
+             combi_index < MAX_COMBI_MODES;
+             combi_index++)
+        {
+            if (device->combi_modes[combi_index] == 0)
+                break;  /* Run out of possible modes */
+            if ((device->combi_modes[combi_index] & 15) == 15)
+            {
+                /* This has all the modes we need:
+                 * [(1,0), (2,2), (3,1), (0,0)]
+                 *
+                 * Sadly both modes 2 and 3 only have one dataset,
+                 * so we actually set this mode:
+                 *   [(1,0), (2,0), (3,0), (0,0)]
+                 */
+                /* XXX: we should check the datasets too */
+                static uint8_t mode_list[MAX_DATASETS] = {
+                    (1 << 4) | 0,
+                    (2 << 4) | 0,
+                    (3 << 4) | 0,
+                    (0 << 4) | 0,
+                    0
+                };
+
+                return set_combi_mode(device, combi_index, mode_list, 4);
+            }
+        }
+        /* We can't find a suitable combi-mode.  Oh well */
+    }
+
     return 0;
 }
 
