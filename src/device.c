@@ -1132,25 +1132,27 @@ static int read_value(uint8_t format_type,
         case FORMAT_8BIT:
             if (nbytes < 1)
                 return -1;
-            if ((*pvalue = PyLong_FromLong(buffer[0])) == NULL)
+            if ((*pvalue = PyLong_FromLong((int8_t)buffer[0])) == NULL)
                 return -1;
             return 1;
 
         case FORMAT_16BIT:
             if (nbytes < 2)
                 return -1;
-            if ((*pvalue = PyLong_FromLong(buffer[0] |
-                                           (buffer[1] << 8))) == NULL)
+            *pvalue = PyLong_FromLong((int16_t)(buffer[0] |
+                                                (buffer[1] << 8)));
+            if (*pvalue == NULL)
                 return -1;
             return 2;
 
         case FORMAT_32BIT:
             if (nbytes < 4)
                 return -1;
-            if ((*pvalue = PyLong_FromLong(buffer[0] |
-                                           (buffer[1] << 8) |
-                                           (buffer[2] << 16) |
-                                           (buffer[3] << 24))) == NULL)
+            *pvalue = PyLong_FromLong((int32_t)(buffer[0] |
+                                                (buffer[1] << 8) |
+                                                (buffer[2] << 16) |
+                                                (buffer[3] << 24)));
+            if (*pvalue == NULL)
                 return -1;
             return 4;
 
