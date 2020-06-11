@@ -437,6 +437,8 @@ Device_mode(PyObject *self, PyObject *args)
     }
     if (!PyArg_ParseTuple(args, "|OO:mode", &arg1, &arg2))
         return NULL;
+    if (ensure_mode_info(device) < 0)
+        return NULL;
 
     if (arg1 == NULL)
     {
@@ -448,8 +450,6 @@ Device_mode(PyObject *self, PyObject *args)
             /* Return the current mode and dataset(s) */
             mode_info_t *mode;
 
-            if (ensure_mode_info(device) < 0)
-                return NULL;
             mode = &device->modes[device->current_mode];
 
             if (mode == NULL)
@@ -509,8 +509,6 @@ Device_mode(PyObject *self, PyObject *args)
         if (PyErr_Occurred() != NULL)
             return NULL;
 
-        if (ensure_mode_info(device) < 0)
-            return NULL;
         if (mode < 0 || mode >= device->num_modes)
         {
             PyErr_SetString(PyExc_ValueError, "Invalid mode number");
@@ -628,8 +626,6 @@ Device_mode(PyObject *self, PyObject *args)
             if ((dataset = PyLong_AsLong(dataset_obj)) == -1 &&
                 PyErr_Occurred() != NULL)
                 return NULL;
-            if (ensure_mode_info(device) < 0)
-                return NULL;
             if (mode < 0 ||
                 mode >= device->num_modes ||
                 dataset < 0 ||
@@ -647,8 +643,6 @@ Device_mode(PyObject *self, PyObject *args)
         }
 
         /* Check if this combination is permitted */
-        if (ensure_mode_info(device) < 0)
-            return NULL;
         for (combi_index = 0; combi_index < MAX_COMBI_MODES; combi_index++)
         {
             if (device->combi_modes[combi_index] == 0)
@@ -798,10 +792,11 @@ Device_get(PyObject *self, PyObject *args)
         }
     }
 
+    if (ensure_mode_info(device) < 0)
+        return NULL;
     if (!device->is_unreported)
     {
-        if (ensure_mode_info(device) < 0 ||
-            cmd_get_port_value(port_get_id(device->port)) < 0)
+        if (cmd_get_port_value(port_get_id(device->port)) < 0)
         {
             return NULL;
         }
@@ -815,8 +810,6 @@ Device_get(PyObject *self, PyObject *args)
     {
         /* Simple (single) mode */
         /* Get the current mode data */
-        if (ensure_mode_info(device) < 0)
-            return NULL;
         mode = &device->modes[device->current_mode];
         result_count = PyList_Size(device->values);
         if (result_count != mode->format.datasets)
@@ -855,8 +848,6 @@ Device_get(PyObject *self, PyObject *args)
             PyObject *value;
             uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
 
-            if (ensure_mode_info(device) < 0)
-                return NULL;
             mode = &device->modes[mode_number];
             value = PyList_GetItem(device->values, i);
             value = convert_raw(value, format, mode);
