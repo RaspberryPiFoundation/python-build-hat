@@ -1176,11 +1176,12 @@ int pair_feedback_status(uint8_t port_id, uint8_t status)
         return -1;
 
     if ((status & 0x02) != 0)
-        callback_queue(CALLBACK_PAIR, port_id, CALLBACK_COMPLETE);
+        callback_queue(CALLBACK_PAIR, port_id, CALLBACK_COMPLETE, NULL);
     if ((status & 0x04) != 0)
         callback_queue(CALLBACK_PAIR, port_id,
                        ((status & 0x20) != 0) ? CALLBACK_STALLED :
-                       CALLBACK_INTERRUPTED);
+                       CALLBACK_INTERRUPTED,
+                       NULL);
 
     /* Turns out we don't track busy here */
 

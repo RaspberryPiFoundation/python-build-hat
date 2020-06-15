@@ -9,9 +9,10 @@
 #define RPI_STRAWBERRY_CALLBACK_H_INCLUDED
 
 /* Callback type codes */
-#define CALLBACK_PORT  0
-#define CALLBACK_MOTOR 1
-#define CALLBACK_PAIR  2
+#define CALLBACK_PORT     0
+#define CALLBACK_MOTOR    1
+#define CALLBACK_PAIR     2
+#define CALLBACK_FIRMWARE 3
 
 /* Event codes for the port callbacks */
 #define CALLBACK_DETACHED 0
@@ -38,6 +39,9 @@ extern int callback_finalize(void);
  * error.  Since this is called from the receiver thread, no Python
  * exception is raised on error.
  */
-extern int callback_queue(uint8_t cb_type, uint8_t port_id, uint8_t event);
+extern int callback_queue(uint8_t cb_type,
+                          uint8_t port_id,
+                          uint8_t event,
+                          PyObject *firmware);
 
 #endif /* RPI_STRAWBERRY_CALLBACK_H_INCLUDED */

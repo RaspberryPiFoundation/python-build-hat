@@ -18,6 +18,7 @@
 #include "motor.h"
 #include "pair.h"
 #include "callback.h"
+#include "firmware.h"
 
 #ifdef DEBUG_I2C
 #include "debug-i2c.h"
@@ -44,7 +45,7 @@ This module provides access to the Shortcake hat.
 .. caution::
 
     The methods of the original ``hub`` module are not documented.
-    The documentation here is for the  implemention made for the
+    The documentation here is for the implemention made for the
     Shortcake hat.  This was created by examining the existing code
     and making deductions from the behaviour of the example Flipper
     hub in our possession.
@@ -137,6 +138,7 @@ typedef struct
     PyObject_HEAD
     PyObject *ports;
     PyObject *exception;
+    PyObject *firmware;
     int initialised;
 } HubObject;
 
@@ -145,6 +147,7 @@ static int
 Hub_traverse(HubObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->ports);
+    Py_VISIT(self->firmware);
     Py_VISIT(self->exception);
     return 0;
 }
@@ -154,6 +157,7 @@ static int
 Hub_clear(HubObject *self)
 {
     Py_CLEAR(self->ports);
+    Py_CLEAR(self->firmware);
     Py_CLEAR(self->exception);
     return 0;
 }
@@ -185,6 +189,8 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     Py_INCREF(Py_None);
     self->exception = Py_None;
+    Py_INCREF(Py_None);
+    self->firmware = Py_None;
     if (callback_init() < 0)
     {
         Py_DECREF(self);
@@ -205,11 +211,27 @@ static int
 Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = { NULL };
+    PyObject *new;
+    PyObject *old;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "", kwlist))
         return -1;
     if (self->initialised)
         return 0;
+
+    new = cmd_get_exception();
+    Py_INCREF(new);
+    old = self->exception;
+    Py_DECREF(old);
+    self->exception = new;
+
+    new = firmware_init();
+    if (new == NULL)
+        return -1;
+    old = self->firmware;
+    Py_DECREF(old);
+    self->firmware = new;
+
     if (cmd_action_reset() < 0)
         return -1;
     self->initialised = 1;
@@ -245,6 +267,14 @@ Hub_get_exception(HubObject *self, void *closure)
     return self->exception;
 }
 
+/* Ditto the firmware upgrader */
+static PyObject *
+Hub_get_firmware(HubObject *self, void *closure)
+{
+    Py_INCREF(self->firmware);
+    return self->firmware;
+}
+
 
 static PyGetSetDef Hub_getsetters[] =
 {
@@ -254,6 +284,13 @@ static PyGetSetDef Hub_getsetters[] =
         (getter)Hub_get_exception,
         NULL,
         "The internal protocol error",
+        NULL
+    },
+    {
+        "firmware",
+        (getter)Hub_get_firmware,
+        NULL,
+        "The firmware upgrader",
         NULL
     },
     { NULL }
@@ -420,11 +457,8 @@ PyInit_hub(void)
         return NULL;
     }
 
-    hub_obj = PyObject_CallObject((PyObject *)&HubType, NULL);
-    if (PyModule_AddObject(hub, "hub", hub_obj) < 0)
+    if (firmware_modinit() < 0)
     {
-        Py_XDECREF(hub_obj);
-        Py_CLEAR(hub_obj);
         cmd_demodinit();
         pair_demodinit();
         port_demodinit();
@@ -434,7 +468,21 @@ PyInit_hub(void)
         Py_DECREF(hub);
         return NULL;
     }
-    ((HubObject *)hub_obj)->exception = cmd_get_exception();
-    Py_INCREF(((HubObject *)hub_obj)->exception);
+
+    hub_obj = PyObject_CallObject((PyObject *)&HubType, NULL);
+    if (PyModule_AddObject(hub, "hub", hub_obj) < 0)
+    {
+        Py_XDECREF(hub_obj);
+        Py_CLEAR(hub_obj);
+        firmware_demodinit();
+        cmd_demodinit();
+        pair_demodinit();
+        port_demodinit();
+        motor_demodinit();
+        device_demodinit();
+        Py_DECREF(&HubType);
+        Py_DECREF(hub);
+        return NULL;
+    }
     return hub;
 }

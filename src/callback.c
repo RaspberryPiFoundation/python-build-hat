@@ -17,6 +17,7 @@
 #include "callback.h"
 #include "port.h"
 #include "pair.h"
+#include "firmware.h"
 
 typedef struct cb_queue_s
 {
@@ -25,6 +26,7 @@ typedef struct cb_queue_s
     uint8_t type;
     uint8_t event;
     uint8_t port_id;
+    PyObject *firmware;
 } cb_queue_t;
 
 static cb_queue_t *cb_q_head;
@@ -148,10 +150,18 @@ static void *run_callbacks(void *arg __attribute__((unused)))
                     report_callback_error();
                 break;
 
+            case CALLBACK_FIRMWARE:
+                if (firmware_handle_callback(item->port_id,
+                                             item->event,
+                                             item->firmware) < 0)
+                    report_callback_error();
+                break;
+
             default:
                 report_callback_error();
         }
 
+        Py_XDECREF(item->firmware);
         free(item);
     }
 
@@ -212,7 +222,10 @@ int callback_finalize(void)
 
 
 /* Called from the receiver thread only */
-int callback_queue(uint8_t cb_type, uint8_t port_id, uint8_t event)
+int callback_queue(uint8_t cb_type,
+                   uint8_t port_id,
+                   uint8_t event,
+                   PyObject *firmware)
 {
     cb_queue_t *item = malloc(sizeof(cb_queue_t));
     int rv;
@@ -224,6 +237,8 @@ int callback_queue(uint8_t cb_type, uint8_t port_id, uint8_t event)
     item->type = cb_type;
     item->port_id = port_id;
     item->event = event;
+    Py_XINCREF(firmware);
+    item->firmware = firmware;
 
     if (pthread_mutex_lock(&cb_mutex) != 0)
     {

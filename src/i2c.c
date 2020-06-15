@@ -31,6 +31,7 @@
 #include "queue.h"
 #include "port.h"
 #include "pair.h"
+#include "firmware.h"
 #include "protocol.h"
 #include "debug-i2c.h"
 
@@ -57,6 +58,8 @@ static int rx_event_fd = -1;
 static pthread_t comms_rx_thread;
 static pthread_t comms_tx_thread;
 static int shutdown = 0;
+
+static PyObject *firmware_object = NULL;
 
 
 #ifdef USE_DUMMY_I2C
@@ -646,6 +649,45 @@ static int handle_output_feedback(uint8_t *buffer, uint16_t nbytes)
 }
 
 
+static int handle_firmware_response(uint8_t *buffer, uint16_t nbytes)
+{
+    if (nbytes < 5 || buffer[2] != TYPE_FIRMWARE_RESPONSE)
+        return 0;
+    if (buffer[1] != 0)
+    {
+        errno = EPROTO; /* Protocol error */
+        return -1;
+    }
+
+    switch (buffer[3])
+    {
+        case FIRMWARE_INITIALIZE:
+            if (nbytes != 5)
+            {
+                errno = EPROTO;
+                return -1;
+            }
+            if (firmware_object != NULL)
+            {
+                if (firmware_action_done(firmware_object,
+                                         FIRMWARE_INITIALIZE,
+                                         buffer[4]) < 0)
+                {
+                    errno = EPROTO;
+                    return -1;
+                }
+            }
+            return 1;
+
+        default:
+            errno = EPROTO;
+            return -1;
+    }
+
+    return 0;
+}
+
+
 static int handle_immediate(uint8_t *buffer, uint16_t nbytes)
 {
     int rv;
@@ -684,6 +726,9 @@ static int handle_immediate(uint8_t *buffer, uint16_t nbytes)
     }
 
     if ((rv = handle_output_feedback(buffer, nbytes)) != 0)
+        return rv;
+
+    if ((rv = handle_firmware_response(buffer, nbytes)) != 0)
         return rv;
 
     return 0; /* Nothing interesting here, guv */
@@ -891,6 +936,8 @@ int i2c_open_hat(void)
  */
 int i2c_close_hat(void)
 {
+    PyObject *tmp;
+
     /* Kill comms thread */
     shutdown = 1;
     signal_rx_shutdown();
@@ -913,5 +960,22 @@ int i2c_close_hat(void)
     close_wake_gpio();
 #endif
 
+    tmp = firmware_object;
+    firmware_object = NULL;
+    Py_XDECREF(tmp);
+
     return 0;
+}
+
+
+/* Register the firmware object with the I2C subsystem so it knows
+ * where to direct firmware callbacks
+ */
+void i2c_register_firmware_object(PyObject *firmware)
+{
+    PyObject *tmp = firmware_object;
+
+    Py_INCREF(firmware);
+    firmware_object = firmware;
+    Py_XDECREF(tmp);
 }

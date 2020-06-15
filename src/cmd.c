@@ -1614,3 +1614,35 @@ int cmd_action_reset(void)
     free(response);
     return 0;
 }
+
+
+/* Send an initialization command to the firmware upgrade system */
+int cmd_firmware_init(uint32_t nbytes)
+{
+    /* For now, send the packet and don't expect the reply (for timing) */
+    uint8_t *buffer = malloc(8);
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    buffer[0] = 8;
+    buffer[1] = 0x00; /* Hub ID */
+    buffer[2] = TYPE_FIRMWARE_REQUEST;
+    buffer[3] = FIRMWARE_INITIALIZE;
+    buffer[4] = nbytes & 0xff;
+    buffer[5] = (nbytes >> 8) & 0xff;
+    buffer[6] = (nbytes >> 16) & 0xff;
+    buffer[7] = (nbytes >> 24) & 0xff;
+
+    if (queue_add_buffer(buffer) != 0)
+    {
+        /* Exception already raised */
+        free(buffer);
+        return -1;
+    }
+
+    return 0;
+}

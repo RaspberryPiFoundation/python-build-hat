@@ -344,6 +344,11 @@ extern int cmd_disconnect_virtual_port(uint8_t port_id);
  */
 extern int cmd_action_reset(void);
 
+/* Sends a Firmware Request to initialize the external SPI Flash on
+ * the HAT for a new firmware image.
+ * Returns 0 on success, -1 on error.
+ */
+extern int cmd_firmware_init(uint32_t nbytes);
 
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

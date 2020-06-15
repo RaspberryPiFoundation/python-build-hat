@@ -21,4 +21,9 @@ extern int i2c_open_hat(void);
  */
 extern int i2c_close_hat(void);
 
+/* Register the firmware object with the I2C subsystem so it knows
+ * where to direct firmware callbacks
+ */
+extern void i2c_register_firmware_object(PyObject *firmware);
+
 #endif /* RPI_STRAWBERRY_I2C_H_INCLUDED */

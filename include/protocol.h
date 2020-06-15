@@ -32,7 +32,9 @@ typedef enum protocol_type_e
     TYPE_PORT_FORMAT_COMBINED,
     TYPE_VIRTUAL_PORT_SETUP = 0x61,
     TYPE_PORT_OUTPUT = 0x81,
-    TYPE_PORT_OUTPUT_FEEDBACK = 0x82
+    TYPE_PORT_OUTPUT_FEEDBACK = 0x82,
+    TYPE_FIRMWARE_REQUEST = 0xf1,
+    TYPE_FIRMWARE_RESPONSE = 0xf2
 } protocol_type_t;
 
 /* Hub Properties */
@@ -40,13 +42,6 @@ typedef enum protocol_property_e
 {
     PROP_FW_VERSION = 3,
     PROP_HW_VERSION = 4,
-    /***DEBUG***/
-    PROP_GPIO_A = 0x0F,
-    PROP_GPIO_B = 0x10,
-    PROP_GPIO_C = 0x11,
-    PROP_GPIO_D = 0x12,
-    PROP_DGIO_E = 0x13,
-    PROP_GPIO_F = 0x14,
 } protocol_property_t;
 
 /* Hub Property Operations */
@@ -127,5 +122,13 @@ typedef enum protocol_output_cmd_e
     OUTPUT_CMD_STALL_CONTROL = 0x54
 } protocol_output_cmd_t;
 
+typedef enum protocol_firmware_subcmd_e
+{
+    FIRMWARE_INITIALIZE = 0x01,
+    FIRMWARE_STORE = 0x02,
+    FIRMWARE_READLENGTH = 0x03,
+    FIRMWARE_CHECKSUM = 0x04,
+    FIRMWARE_VALIDATE = 0x05
+} protocol_firmware_subcmd_t;
 
 #endif /* RPI_STRAWBERRY_PROTOCOL_H_INCLUDED */

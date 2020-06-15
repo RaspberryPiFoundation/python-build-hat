@@ -595,6 +595,7 @@ Motor_traverse(MotorObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->port);
     Py_VISIT(self->device);
+    Py_VISIT(self->callback);
     return 0;
 }
 
@@ -604,6 +605,7 @@ Motor_clear(MotorObject *self)
 {
     Py_CLEAR(self->port);
     Py_CLEAR(self->device);
+    Py_CLEAR(self->callback);
     return 0;
 }
 
