@@ -114,6 +114,22 @@ check_fw_status(FirmwareObject *firmware)
 }
 
 
+#define FLASH_SIZE_UNKNOWN  0
+#define FLASH_SIZE_4MB      1
+#define FLASH_SIZE_8MB      2
+#define FLASH_SIZE_16MB     3
+#define FLASH_SIZE_32MB     4
+
+#define FLASH_SIZE_COUNT 5
+
+const char *flash_sizes[FLASH_SIZE_COUNT] = {
+    "unknown",
+    "4 MBytes",
+    "8 MBytes",
+    "16 MBytes",
+    "32 MBytes",
+};
+
 static PyObject *
 Firmware_info(PyObject *self, PyObject *args)
 {
@@ -123,8 +139,10 @@ Firmware_info(PyObject *self, PyObject *args)
     uint32_t new_appl_image_stored_checksum;
     uint32_t new_appl_image_calc_checksum;
     uint32_t appl_calc_checksum;
+    uint32_t flash_device_id;
     int valid;
     int currently_stored_bytes;
+    const char *flash_size;
 
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
@@ -141,8 +159,32 @@ Firmware_info(PyObject *self, PyObject *args)
         return NULL;
     if ((currently_stored_bytes = cmd_firmware_length()) < 0)
         return NULL;
+    if (cmd_firmware_get_flash_devid(&flash_device_id) < 0)
+        return NULL;
 
-    dict = Py_BuildValue("{sk sk sk sN sk sk si sN si}",
+    switch (flash_device_id)
+    {
+        case 0x1640EF:
+            flash_size = flash_sizes[FLASH_SIZE_4MB];
+            break;
+
+        case 0x1740EF:
+            flash_size = flash_sizes[FLASH_SIZE_8MB];
+            break;
+
+        case 0x1840EF:
+            flash_size = flash_sizes[FLASH_SIZE_16MB];
+            break;
+
+        case 0x1940EF:
+            flash_size = flash_sizes[FLASH_SIZE_32MB];
+            break;
+
+        default:
+            flash_size = flash_sizes[FLASH_SIZE_UNKNOWN];
+    }
+
+    dict = Py_BuildValue("{sk sk sk sN sk sk si sN ss si}",
                          "appl_checksum", appl_checksum,
                          "new_appl_image_stored_checksum",
                          new_appl_image_stored_checksum,
@@ -156,6 +198,7 @@ Firmware_info(PyObject *self, PyObject *args)
                          "upload_finished",
                          PyBool_FromLong(currently_stored_bytes ==
                                          firmware->image_bytes),
+                         "spi_flash_size", flash_size,
                          "valid", valid);
     return dict;
 }

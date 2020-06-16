@@ -379,5 +379,9 @@ extern int cmd_firmware_validate_image(int *pvalid,
                                        uint32_t *pstored_checksum,
                                        uint32_t *pcalc_checksum);
 
+/* Sends a Firmware Request asking for the Device ID of the external
+ * flash device.  Returns 0 on success, -1 on error.
+ */
+extern int cmd_firmware_get_flash_devid(uint32_t *pdev_id);
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

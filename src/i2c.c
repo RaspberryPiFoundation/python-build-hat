@@ -659,36 +659,25 @@ static int handle_firmware_response(uint8_t *buffer, uint16_t nbytes)
         return -1;
     }
 
-    switch (buffer[3])
+    if (buffer[3] == FIRMWARE_INITIALIZE)
     {
-        case FIRMWARE_INITIALIZE:
-            if (nbytes != 5)
+        /* This is passed on via callback -- erase can take a while */
+        if (nbytes != 5)
+        {
+            errno = EPROTO;
+            return -1;
+        }
+        if (firmware_object != NULL)
+        {
+            if (firmware_action_done(firmware_object,
+                                     FIRMWARE_INITIALIZE,
+                                     buffer[4]) < 0)
             {
                 errno = EPROTO;
                 return -1;
             }
-            if (firmware_object != NULL)
-            {
-                if (firmware_action_done(firmware_object,
-                                         FIRMWARE_INITIALIZE,
-                                         buffer[4]) < 0)
-                {
-                    errno = EPROTO;
-                    return -1;
-                }
-            }
-            return 1;
-
-        case FIRMWARE_STORE:
-        case FIRMWARE_READLENGTH:
-        case FIRMWARE_CHECKSUM:
-        case FIRMWARE_VALIDATE:
-            /* Just let this back as normal */
-            break;
-
-        default:
-            errno = EPROTO;
-            return -1;
+        }
+        return 1;
     }
 
     return 0;

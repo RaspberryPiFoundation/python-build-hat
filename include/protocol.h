@@ -128,7 +128,8 @@ typedef enum protocol_firmware_subcmd_e
     FIRMWARE_STORE = 0x02,
     FIRMWARE_READLENGTH = 0x03,
     FIRMWARE_CHECKSUM = 0x04,
-    FIRMWARE_VALIDATE = 0x05
+    FIRMWARE_VALIDATE = 0x05,
+    FIRMWARE_FLASH_DEVID = 0x06
 } protocol_firmware_subcmd_t;
 
 #endif /* RPI_STRAWBERRY_PROTOCOL_H_INCLUDED */

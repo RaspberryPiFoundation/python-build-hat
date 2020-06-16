@@ -1788,3 +1788,32 @@ int cmd_firmware_validate_image(int *pvalid,
     free(response);
     return 0;
 }
+
+
+int cmd_firmware_get_flash_devid(uint32_t *pdev_id)
+{
+    uint8_t *response = make_request(4, TYPE_FIRMWARE_REQUEST,
+                                     FIRMWARE_FLASH_DEVID);
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 8 ||
+        response[2] != TYPE_FIRMWARE_RESPONSE ||
+        response[3] != FIRMWARE_FLASH_DEVID)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Firmware Request");
+        return -1;
+    }
+
+    *pdev_id = response[4] |
+        (response[5] << 8) |
+        (response[6] << 16) |
+        (response[7] << 24);
+
+    free(response);
+    return 0;
+}
+
