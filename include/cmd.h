@@ -350,5 +350,10 @@ extern int cmd_action_reset(void);
  */
 extern int cmd_firmware_init(uint32_t nbytes);
 
+/* Sends a Firmware Request to write up to 64 bytes to the next area
+ * in external SPI Flash.  Returns 0 on success, -1 on error.
+ */
+extern int cmd_firmware_store(const uint8_t *data, uint32_t nbytes);
+
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

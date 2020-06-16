@@ -122,12 +122,43 @@ PyObject *cmd_version_as_unicode(uint8_t *buffer)
 }
 
 
+static uint8_t *get_response(uint8_t type)
+{
+    uint8_t *response;
+
+    if (queue_get(&response) != 0)
+        return NULL; /* Exception already raised */
+    if (response == NULL)
+    {
+        PyErr_SetString(hub_protocol_error, "Tx timeout");
+        return NULL;
+    }
+
+    /* `response` is dynamically allocated and now our responsibility */
+    if (response[1] != 0x00)
+    {
+        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+        free(response);
+        return NULL;
+    }
+
+    /* Check for an error return */
+    if (response[2] == TYPE_GENERIC_ERROR)
+    {
+        handle_generic_error(type, response);
+        free(response);
+        return NULL;
+    }
+
+    return response;
+}
+
+
 static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
 {
     va_list args;
     uint8_t *buffer = malloc(nbytes);
     int i;
-    uint8_t *response;
 
     if (buffer == NULL)
     {
@@ -155,31 +186,7 @@ static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
      * it is done with it.
      */
 
-    if (queue_get(&response) != 0)
-        return NULL; /* Python exception already raised */
-    if (response == NULL)
-    {
-        PyErr_SetString(hub_protocol_error, "Tx timeout");
-        return NULL;
-    }
-
-    /* `response` is dynamically allocated and now our responsibility */
-    if (response[1] != 0x00)
-    {
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
-        free(response);
-        return NULL;
-    }
-
-    /* Check for an error return */
-    if (response[2] == TYPE_GENERIC_ERROR)
-    {
-        handle_generic_error(type, response);
-        free(response);
-        return NULL;
-    }
-
-    return response;
+    return get_response(type);
 }
 
 
@@ -1201,30 +1208,8 @@ int cmd_write_mode_data(uint8_t port_id,
 
     /* 'buffer' is now the responsibility of the comms thread */
 
-    if (queue_get(&response) != 0)
+    if ((response = get_response(TYPE_PORT_OUTPUT)) == NULL)
         return -1;
-    if (response == NULL)
-    {
-        PyErr_SetString(hub_protocol_error, "Tx timeout");
-        return -1;
-    }
-
-    /* 'response' is now ours, and must be freed when done with */
-    if (response[1] != 0x00)
-    {
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
-        free(response);
-        return -1;
-    }
-
-    /* Check for an error return */
-    if (response[2] == TYPE_GENERIC_ERROR)
-    {
-        handle_generic_error(TYPE_PORT_OUTPUT, response);
-        free(response);
-        return -1;
-    }
-
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
         response[3] != port_id)
@@ -1645,4 +1630,60 @@ int cmd_firmware_init(uint32_t nbytes)
     }
 
     return 0;
+}
+
+
+/* Send data to write to the firmware upgrade area */
+int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
+{
+    /* We have to allocate the packet ourself since it is variable length */
+    uint8_t *buffer = malloc(nbytes+4);
+    uint8_t *response;
+    uint32_t bytes_written;
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    buffer[0] = nbytes+4;
+    buffer[1] = 0x00; /* Hub ID */
+    buffer[2] = TYPE_FIRMWARE_REQUEST;
+    buffer[3] = FIRMWARE_STORE;
+    memcpy(buffer+4, data, nbytes);
+
+    if (queue_clear_responses() != 0 || queue_add_buffer(buffer) != 0)
+    {
+        /* Exception already raised */
+        free(buffer);
+        return -1;
+    }
+
+    /* 'buffer' is now the responsibility of the comms thread */
+
+    if ((response = get_response(TYPE_FIRMWARE_REQUEST)) == NULL)
+        return -1;
+    if (response[0] != 9 ||
+        response[2] != TYPE_FIRMWARE_RESPONSE ||
+        response[3] != FIRMWARE_STORE)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Firmware Request (Store)");
+        return -1;
+    }
+    if (response[4] == 0)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error, "Firmware Store failed");
+        return -1;
+    }
+    bytes_written =
+        response[5] |
+        (response[6] << 8) |
+        (response[7] << 16) |
+        (response[8] << 24);
+
+    return (int)bytes_written;
 }

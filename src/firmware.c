@@ -39,14 +39,13 @@
 typedef struct
 {
     PyObject_HEAD
-    uint32_t current_address;
     volatile uint8_t status;
     PyObject *callback;
 } FirmwareObject;
 
 const char *status_messages[FW_STATUS_MAX] = {
     NULL,
-    "Erase in progress"
+    "Erase in progress",
 };
 
 
@@ -81,7 +80,6 @@ Firmware_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     FirmwareObject *self = (FirmwareObject *)type->tp_alloc(type, 0);
     if (self != NULL)
     {
-        self->current_address = 0;
         self->status = FW_STATUS_IDLE;
         i2c_register_firmware_object((PyObject *)self);
         self->callback = Py_None;
@@ -117,13 +115,59 @@ Firmware_appl_image_initialize(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    firmware->current_address = 0;
     firmware->status = FW_STATUS_ERASING;
     if (cmd_firmware_init(nbytes) < 0)
     {
         firmware->status = FW_STATUS_IDLE;
         return NULL;
     }
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
+Firmware_appl_image_store(PyObject *self, PyObject *args)
+{
+    FirmwareObject *firmware = (FirmwareObject *)self;
+    const char *buffer;
+    int nbytes;
+    uint8_t status;
+
+    if (!PyArg_ParseTuple(args, "y#", &buffer, &nbytes))
+        return NULL;
+
+    status = firmware->status;
+    if (status != FW_STATUS_IDLE)
+    {
+        if (status >= FW_STATUS_MAX)
+        {
+            PyErr_Format(cmd_get_exception(),
+                         "Unexpected firmware state %d",
+                         status);
+        }
+        else
+        {
+            PyErr_SetString(cmd_get_exception(), status_messages[status]);
+        }
+        return NULL;
+    }
+
+    if (nbytes == 0)
+        Py_RETURN_NONE;
+
+    /* Writing 64 bytes doesn't take that long, so we may block */
+    /* ...as long as we only write 64 bytes at a time */
+    while (nbytes > 64)
+    {
+        if (cmd_firmware_store((const uint8_t *)buffer, nbytes) < 0)
+            return NULL;
+        nbytes -= 64;
+        buffer += 64;
+    }
+    if (nbytes > 0)
+        if (cmd_firmware_store((const uint8_t *)buffer, nbytes) < 0)
+            return NULL;
 
     Py_RETURN_NONE;
 }
@@ -166,6 +210,12 @@ static PyMethodDef Firmware_methods[] = {
         Firmware_appl_image_initialize,
         METH_VARARGS,
         "Initialize HAT to receive a new firmware image"
+    },
+    {
+        "appl_image_store",
+        Firmware_appl_image_store,
+        METH_VARARGS,
+        "Store bytes to the new firmware image in external flash"
     },
     {
         "callback",

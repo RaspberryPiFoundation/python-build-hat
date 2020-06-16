@@ -679,6 +679,10 @@ static int handle_firmware_response(uint8_t *buffer, uint16_t nbytes)
             }
             return 1;
 
+        case FIRMWARE_STORE:
+            /* Just let this back as normal */
+            break;
+
         default:
             errno = EPROTO;
             return -1;
