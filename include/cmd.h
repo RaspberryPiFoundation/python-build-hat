@@ -355,5 +355,11 @@ extern int cmd_firmware_init(uint32_t nbytes);
  */
 extern int cmd_firmware_store(const uint8_t *data, uint32_t nbytes);
 
+/* Sends a Firmware Request for the number of bytes currently written
+ * to external SPI Flash for the new image.  Returns -1 on error, and
+ * the number of bytes written on success.
+ */
+extern int cmd_firmware_length(void);
+
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

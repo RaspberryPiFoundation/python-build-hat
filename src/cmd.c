@@ -1687,3 +1687,31 @@ int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
 
     return (int)bytes_written;
 }
+
+
+int cmd_firmware_length(void)
+{
+    uint8_t *response = make_request(4, TYPE_FIRMWARE_REQUEST,
+                                     FIRMWARE_READLENGTH);
+    uint32_t nbytes;
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 8 ||
+        response[2] != TYPE_FIRMWARE_RESPONSE ||
+        response[3] != FIRMWARE_READLENGTH)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Firmware Request");
+        return -1;
+    }
+
+    nbytes = response[4] |
+        (response[5] << 8) |
+        (response[6] << 16) |
+        (response[7] << 24);
+
+    return (int)nbytes;
+}

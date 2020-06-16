@@ -174,6 +174,21 @@ Firmware_appl_image_store(PyObject *self, PyObject *args)
 
 
 static PyObject *
+Firmware_ext_flash_read_length(PyObject *self __attribute__((unused)),
+                               PyObject *args)
+{
+    int rv;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    if ((rv = cmd_firmware_length()) < 0)
+        return NULL;
+    return PyLong_FromLong(rv);
+}
+
+
+static PyObject *
 Firmware_callback(PyObject *self, PyObject *args)
 {
     FirmwareObject *firmware = (FirmwareObject *)self;
@@ -216,6 +231,12 @@ static PyMethodDef Firmware_methods[] = {
         Firmware_appl_image_store,
         METH_VARARGS,
         "Store bytes to the new firmware image in external flash"
+    },
+    {
+        "ext_flash_read_length",
+        Firmware_ext_flash_read_length,
+        METH_VARARGS,
+        "Read the number of bytes (so far) written to external flash"
     },
     {
         "callback",
