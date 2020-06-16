@@ -371,5 +371,13 @@ extern int cmd_firmware_length(void);
  */
 extern int cmd_firmware_checksum(uint8_t request_type, uint32_t *pchecksum);
 
+/* Sends a Firmware Request to validate the image in external flash.
+ * Returns 0 on success, -1 on error (with an exception already raised).
+ * The validity and checksums are returned through pointer arguments.
+ */
+extern int cmd_firmware_validate_image(int *pvalid,
+                                       uint32_t *pstored_checksum,
+                                       uint32_t *pcalc_checksum);
+
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

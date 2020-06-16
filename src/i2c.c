@@ -682,6 +682,7 @@ static int handle_firmware_response(uint8_t *buffer, uint16_t nbytes)
         case FIRMWARE_STORE:
         case FIRMWARE_READLENGTH:
         case FIRMWARE_CHECKSUM:
+        case FIRMWARE_VALIDATE:
             /* Just let this back as normal */
             break;
 

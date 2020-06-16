@@ -40,6 +40,7 @@ typedef struct
 {
     PyObject_HEAD
     volatile uint8_t status;
+    uint32_t image_bytes;
     PyObject *callback;
 } FirmwareObject;
 
@@ -81,6 +82,7 @@ Firmware_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self != NULL)
     {
         self->status = FW_STATUS_IDLE;
+        self->image_bytes = 0;
         i2c_register_firmware_object((PyObject *)self);
         self->callback = Py_None;
         Py_INCREF(Py_None);
@@ -89,17 +91,11 @@ Firmware_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 
-static PyObject *
-Firmware_appl_image_initialize(PyObject *self, PyObject *args)
+static int
+check_fw_status(FirmwareObject *firmware)
 {
-    FirmwareObject *firmware = (FirmwareObject *)self;
-    uint32_t nbytes;
-    uint8_t status;
+    uint8_t status = firmware->status;
 
-    if (!PyArg_ParseTuple(args, "k:nbytes", &nbytes))
-        return NULL;
-
-    status = firmware->status;
     if (status != FW_STATUS_IDLE)
     {
         if (status >= FW_STATUS_MAX)
@@ -112,8 +108,69 @@ Firmware_appl_image_initialize(PyObject *self, PyObject *args)
         {
             PyErr_SetString(cmd_get_exception(), status_messages[status]);
         }
-        return NULL;
+        return 0;
     }
+    return 1;
+}
+
+
+static PyObject *
+Firmware_info(PyObject *self, PyObject *args)
+{
+    FirmwareObject *firmware = (FirmwareObject *)self;
+    PyObject *dict;
+    uint32_t appl_checksum;
+    uint32_t new_appl_image_stored_checksum;
+    uint32_t new_appl_image_calc_checksum;
+    uint32_t appl_calc_checksum;
+    int valid;
+    int currently_stored_bytes;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+    if (!check_fw_status(firmware))
+        return NULL;
+
+    if (cmd_firmware_checksum(FW_CHECKSUM_STORED, &appl_checksum) < 0)
+        return NULL;
+    if (cmd_firmware_checksum(FW_CHECKSUM_CALC, &appl_calc_checksum) < 0)
+        return NULL;
+    if (cmd_firmware_validate_image(&valid,
+                                    &new_appl_image_stored_checksum,
+                                    &new_appl_image_calc_checksum) < 0)
+        return NULL;
+    if ((currently_stored_bytes = cmd_firmware_length()) < 0)
+        return NULL;
+
+    dict = Py_BuildValue("{sk sk sk sN sk sk si sN si}",
+                         "appl_checksum", appl_checksum,
+                         "new_appl_image_stored_checksum",
+                         new_appl_image_stored_checksum,
+                         "appl_calc_checksum", appl_calc_checksum,
+                         "new_appl_valid", PyBool_FromLong(valid == 1),
+                         "new_appl_image_calc_checksum",
+                         new_appl_image_calc_checksum,
+                         "new_image_size", firmware->image_bytes,
+                         "currently_stored_bytes",
+                         currently_stored_bytes,
+                         "upload_finished",
+                         PyBool_FromLong(currently_stored_bytes ==
+                                         firmware->image_bytes),
+                         "valid", valid);
+    return dict;
+}
+
+
+static PyObject *
+Firmware_appl_image_initialize(PyObject *self, PyObject *args)
+{
+    FirmwareObject *firmware = (FirmwareObject *)self;
+    uint32_t nbytes;
+
+    if (!PyArg_ParseTuple(args, "k:nbytes", &nbytes))
+        return NULL;
+    if (!check_fw_status(firmware))
+        return NULL;
 
     firmware->status = FW_STATUS_ERASING;
     if (cmd_firmware_init(nbytes) < 0)
@@ -121,6 +178,7 @@ Firmware_appl_image_initialize(PyObject *self, PyObject *args)
         firmware->status = FW_STATUS_IDLE;
         return NULL;
     }
+    firmware->image_bytes = nbytes;
 
     Py_RETURN_NONE;
 }
@@ -132,26 +190,11 @@ Firmware_appl_image_store(PyObject *self, PyObject *args)
     FirmwareObject *firmware = (FirmwareObject *)self;
     const char *buffer;
     int nbytes;
-    uint8_t status;
 
     if (!PyArg_ParseTuple(args, "y#", &buffer, &nbytes))
         return NULL;
-
-    status = firmware->status;
-    if (status != FW_STATUS_IDLE)
-    {
-        if (status >= FW_STATUS_MAX)
-        {
-            PyErr_Format(cmd_get_exception(),
-                         "Unexpected firmware state %d",
-                         status);
-        }
-        else
-        {
-            PyErr_SetString(cmd_get_exception(), status_messages[status]);
-        }
+    if (!check_fw_status(firmware))
         return NULL;
-    }
 
     if (nbytes == 0)
         Py_RETURN_NONE;
@@ -174,12 +217,14 @@ Firmware_appl_image_store(PyObject *self, PyObject *args)
 
 
 static PyObject *
-Firmware_ext_flash_read_length(PyObject *self __attribute__((unused)),
-                               PyObject *args)
+Firmware_ext_flash_read_length(PyObject *self, PyObject *args)
 {
+    FirmwareObject *firmware = (FirmwareObject *)self;
     int rv;
 
     if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+    if (!check_fw_status(firmware))
         return NULL;
 
     if ((rv = cmd_firmware_length()) < 0)
@@ -191,9 +236,12 @@ Firmware_ext_flash_read_length(PyObject *self __attribute__((unused)),
 static PyObject *
 Firmware_appl_checksum(PyObject *self, PyObject *args)
 {
+    FirmwareObject *firmware = (FirmwareObject *)self;
     uint32_t checksum;
 
     if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+    if (!check_fw_status(firmware))
         return NULL;
 
     if (cmd_firmware_checksum(FW_CHECKSUM_STORED, &checksum) < 0)
@@ -216,6 +264,8 @@ Firmware_callback(PyObject *self, PyObject *args)
         Py_INCREF(firmware->callback);
         return firmware->callback;
     }
+    if (!check_fw_status(firmware))
+        return NULL;
 
     /* Otherwise we are setting a new callback (or unsetting it with
      * None).  Ensure that we have something legitimate.
@@ -234,6 +284,12 @@ Firmware_callback(PyObject *self, PyObject *args)
 
 
 static PyMethodDef Firmware_methods[] = {
+    {
+        "info",
+        Firmware_info,
+        METH_VARARGS,
+        "Information about the firmware"
+    },
     {
         "appl_image_initialize",
         Firmware_appl_image_initialize,

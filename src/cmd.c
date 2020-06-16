@@ -1745,3 +1745,46 @@ int cmd_firmware_checksum(uint8_t request_type, uint32_t *pchecksum)
     free(response);
     return 0;
 }
+
+
+int cmd_firmware_validate_image(int *pvalid,
+                                uint32_t *pstored_checksum,
+                                uint32_t *pcalc_checksum)
+{
+    uint8_t *response = make_request(4, TYPE_FIRMWARE_REQUEST,
+                                     FIRMWARE_VALIDATE);
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 13 ||
+        response[2] != TYPE_FIRMWARE_RESPONSE ||
+        response[3] != FIRMWARE_VALIDATE)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Firmware Request");
+        return -1;
+    }
+
+    *pvalid = (int8_t)response[4];
+    if (response[4] == 0xff)
+    {
+        *pstored_checksum = 0;
+        *pcalc_checksum = 0;
+    }
+    else
+    {
+        *pstored_checksum = response[5] |
+            (response[6] << 8) |
+            (response[7] << 16) |
+            (response[8] << 24);
+        *pcalc_checksum = response[9] |
+            (response[10] << 8) |
+            (response[11] << 16) |
+            (response[12] << 24);
+    }
+
+    free(response);
+    return 0;
+}
