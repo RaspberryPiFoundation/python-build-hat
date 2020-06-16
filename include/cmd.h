@@ -43,6 +43,9 @@ typedef struct value_format_s
 #define FORMAT_32BIT 0x02
 #define FORMAT_FLOAT 0x03
 
+#define FW_CHECKSUM_STORED 0x00
+#define FW_CHECKSUM_CALC   0x01
+
 
 /* Initialises the command subsystem, creating the exception used for
  * protocol errors.  Returns 0 for success, -1 for error.
@@ -360,6 +363,13 @@ extern int cmd_firmware_store(const uint8_t *data, uint32_t nbytes);
  * the number of bytes written on success.
  */
 extern int cmd_firmware_length(void);
+
+/* Sends a Firmware Request for the running (internal) application's
+ * stored or calculated checksum.
+ * Returns 0 on success, -1 on error (with an exception already set).
+ * The checksum is returned through the pchecksum parameter.
+ */
+extern int cmd_firmware_checksum(uint8_t request_type, uint32_t *pchecksum);
 
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

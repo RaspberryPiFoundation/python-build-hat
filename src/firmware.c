@@ -189,6 +189,20 @@ Firmware_ext_flash_read_length(PyObject *self __attribute__((unused)),
 
 
 static PyObject *
+Firmware_appl_checksum(PyObject *self, PyObject *args)
+{
+    uint32_t checksum;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    if (cmd_firmware_checksum(FW_CHECKSUM_STORED, &checksum) < 0)
+        return NULL;
+    return PyLong_FromUnsignedLong(checksum);
+}
+
+
+static PyObject *
 Firmware_callback(PyObject *self, PyObject *args)
 {
     FirmwareObject *firmware = (FirmwareObject *)self;
@@ -231,6 +245,12 @@ static PyMethodDef Firmware_methods[] = {
         Firmware_appl_image_store,
         METH_VARARGS,
         "Store bytes to the new firmware image in external flash"
+    },
+    {
+        "appl_checksum",
+        Firmware_appl_checksum,
+        METH_VARARGS,
+        "Retrieve the checksum of the running application"
     },
     {
         "ext_flash_read_length",
