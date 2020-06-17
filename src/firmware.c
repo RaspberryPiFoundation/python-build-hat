@@ -227,6 +227,7 @@ Firmware_appl_image_initialize(PyObject *self, PyObject *args)
 }
 
 
+#define CHUNK_BYTES 64
 static PyObject *
 Firmware_appl_image_store(PyObject *self, PyObject *args)
 {
@@ -244,12 +245,12 @@ Firmware_appl_image_store(PyObject *self, PyObject *args)
 
     /* Writing 64 bytes doesn't take that long, so we may block */
     /* ...as long as we only write 64 bytes at a time */
-    while (nbytes > 64)
+    while (nbytes > CHUNK_BYTES)
     {
-        if (cmd_firmware_store((const uint8_t *)buffer, nbytes) < 0)
+        if (cmd_firmware_store((const uint8_t *)buffer, CHUNK_BYTES) < 0)
             return NULL;
-        nbytes -= 64;
-        buffer += 64;
+        nbytes -= CHUNK_BYTES;
+        buffer += CHUNK_BYTES;
     }
     if (nbytes > 0)
         if (cmd_firmware_store((const uint8_t *)buffer, nbytes) < 0)
@@ -257,6 +258,7 @@ Firmware_appl_image_store(PyObject *self, PyObject *args)
 
     Py_RETURN_NONE;
 }
+#undef CHUNK_BYTES
 
 
 static PyObject *
