@@ -22,3 +22,4 @@ This chapter describes the classes and functions made available in the
         device.rst
         motor.rst
         pair.rst
+        firmware.rst

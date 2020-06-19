@@ -24,7 +24,135 @@
 
     .. note::
 
-        WRITE THIS DOCUMENTATION
+        This class is not directly available to the user.  It is only
+        used to create the ``hub.hub.firmware`` instance.
+
+    A firmware update will follow these steps:
+
+    1.  Use :py:meth:`firmware.appl_image_initialize()` to clear the
+        buffer in external flash and set the size of the binary image
+        to be transferred.
+    #.  Use :py:meth:`firmware.appl_image_store()` to upload the image
+        as one or more byte arrays (data) one after the other.
+    #.  **Restart the hub and wait for the bootloader to update the
+        internal flash.  When the update has been done the hub will
+        start the new application.**
+
+        a.  The bootloader will detect that a new image has been
+            stored.
+        #.  The new image will be validated.  The stored size will be
+            used to calculate the CRC32 checksum.  This checksum will
+            be compared to the CRC32 checksum stored in the image.
+        #.  Assuming the image is valid, the internal flash will be
+            erased.
+        #.  The new image will be copied to the internal flash.
+        #.  The CRC32 checksum of the new image in internal flash is
+            calculated and compared to the one stored in the external
+            flash as well as the one in the image.
+        #.  If the image in internal flash is valid, the image in
+            external flash is invalidated.
+        #.  The bootloader will start the new application.
+
+    .. py:method:: info() -> dict
+
+        Returns a dict with the firmware subsystem information, much
+        of which is calculated during the function call.  Avoid
+        calling this function every time you need a specific item.
+        It's better to use the same dictionary object and reference
+        items as needed unless you specifically need to refresh the
+        information.
+
+        The following keys are present:
+
+        * ``appl_checksum`` : the CRC32 checksum of the application in
+          internal flash, as stored in internal flash.
+        * ``new_appl_image_stored_checksum`` : the CRC32 checksum of
+          the new application in external flash, as stored in external
+          flash.
+        * ``appl_calc_checksum`` : the CRC32 checksum of the
+          application in internal flash, as calculated on the fly.
+        * ``new_appl_valid`` : the (boolean) validity of the
+          application in external flash.  ``True`` if valid, ``False``
+          if not.
+        * ``new_appl_image_calc_checksum`` : the CRC32 checksum  of
+          the new application in external flash, as calculated on the
+          fly.
+        * ``new_image_size`` : the size of the new firmware image in
+          bytes, as declared in the call to
+          :py:meth:`.appl_image_initialise()`.  This is not the
+          actual uploaded byte count.
+        * ``currently_stored_bytes`` : the number of bytes of image
+          that have been uploaded via :py:meth:`.appl_image_store()`.
+        * ``upload_finished`` : ``True`` when
+          ``currently_stored_bytes`` is equal to ``new_image_size``.
+        * ``spi_flash_size`` : The size in bytes of the external
+          flash, given as a string.  Will be one of '32 MBytes', '16
+          MBytes', '8 MBytes', '4 MBytes' or 'unknown'.
+        * ``valid`` : the validity of the firmware image in external
+          flash.  Will be ``1`` if the image is valid, ``0`` if there
+          is no image present, or ``-1`` if the image is invalid.
+
+    .. py:method:: appl_checksum()
+
+        :return: The CRC32 checksum of the application in internal
+            flash.
+        :rtype: int (unsigned 32-bit value)
+
+    .. py:method:: appl_image_initialize(size)
+
+        Initialises the firmware upgrade system, erasing the external
+        flash and setting the expected size of the firmware image.
+
+        :param int size: the number of bytes of the new image that
+            will be eventually written to external flash.
+
+        This method will return immediately, but the erase operation
+        will take several seconds.  Further ``Firmware`` methods will
+        raise a ``hub.hub.HubProtocolError`` if the erase operation is
+        still in progress.  When the erase operation completes, it
+        will generate a firmware callback (see
+        :py:meth:`Firmware.callback()` below).
+
+    .. py:method:: appl_image_store(data)
+
+        Stores the new image data supplied in external flash.  Can be
+        called successively until the full image is stored.  Before
+        this method is used, :py:meth:`appl_image_initialize()` must
+        be called.
+
+        :param data: the data to send
+        :type data: bytes-like object
+
+    .. py:method:: ext_flash_read_length()
+
+        :return: the number of bytes that have been written to
+            external flash.
+        :rtype: int
+
+    .. py:method:: callback([fn])
+
+        Gets or sets the function to be called when long (background)
+        firmware operation completes.
+
+        :param fn: The function to call.  This is a positional
+            parameter only.
+        :type fn: Callable or None
+        :raises TypeError: if ``fn`` is present, not ``None`` and not
+            callable.
+        :return: the current callback function if ``fn`` is omitted,
+            otherwise ``None``.
+        :rtype: Callable or None
+
+        ``fn``, if present, should be a function taking two
+        parameters.  The first parameter is the reason for the
+        background activity.  Currently this is always ``1``,
+        indicating an erase operation caused by
+        :py:meth:`appl_image_initialize()`.
+
+        The second parameter is a status code.  It will be ``1`` if
+        the background activity completed successfully, or ``0`` if an
+        error occurred.
+
 */
 
 

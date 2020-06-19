@@ -133,7 +133,7 @@
           corresponds to mode number ``N`` (see below), and the set
           bits indicate modes that can be combined together.
         * ``modes`` : A list of dictionaries representing available
-          modes.  Where _mode numbers_ are called for in this
+          modes.  Where *mode numbers* are called for in this
           documentation, they are the index of the mode in this list.
 
         .. note::

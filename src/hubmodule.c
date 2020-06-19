@@ -77,6 +77,12 @@ This module provides access to the Shortcake hat.
 
         The collection of ports on the Shortcake hat.
 
+    .. py:attribute:: firmware
+
+        :type: Firmware
+
+        The firmware upgrade controller.
+
     .. py:exception:: HubProtocolError
 
         A copy of the module's HubProtocolError attribute, for
