@@ -1817,3 +1817,27 @@ int cmd_firmware_get_flash_devid(uint32_t *pdev_id)
     return 0;
 }
 
+
+int cmd_firmware_read_flash(uint32_t addr, uint8_t *buffer)
+{
+    uint8_t *response = make_request(8, TYPE_FIRMWARE_REQUEST,
+                                     FIRMWARE_READ_FLASH,
+                                     U32_TO_BYTE_ARG(addr));
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 20 ||
+        response[2] != TYPE_FIRMWARE_RESPONSE ||
+        response[3] != FIRMWARE_READ_FLASH)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Firmware Request");
+        return -1;
+    }
+
+    memcpy(buffer, response+4, 16);
+    free(response);
+    return 0;
+}

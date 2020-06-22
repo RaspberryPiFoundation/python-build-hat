@@ -153,6 +153,20 @@
         the background activity completed successfully, or ``0`` if an
         error occurred.
 
+    .. py:method:: flash_read(addr)
+
+        Reads 16 bytes from internal or external flash memory.
+
+        :param int addr: The address to start reading from.  Internal
+        flash addresses run from 0x00000000, mapped into flash to
+        exclude the bootloader.  External addresses from from
+        0x1000000.
+        :return: the 16 bytes of flash starting at the given address.
+        :rtype: bytes
+
+        This function is intended for debugging only, so its error
+        handling is not very comprehensive.
+
 */
 
 
@@ -456,6 +470,24 @@ Firmware_callback(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Firmware_read_flash(PyObject *self, PyObject *args)
+{
+    FirmwareObject *firmware = (FirmwareObject *)self;
+    uint32_t addr;
+    uint8_t buffer[16];
+
+    if (!PyArg_ParseTuple(args, "k:addr", &addr))
+        return NULL;
+    if (!check_fw_status(firmware))
+        return NULL;
+
+    if (cmd_firmware_read_flash(addr, buffer) < 0)
+        return NULL;
+    return Py_BuildValue("y#", buffer, 16);
+}
+
+
 static PyMethodDef Firmware_methods[] = {
     {
         "info",
@@ -492,6 +524,12 @@ static PyMethodDef Firmware_methods[] = {
         Firmware_callback,
         METH_VARARGS,
         "Get or set callback function"
+    },
+    {
+        "read_flash",
+        Firmware_read_flash,
+        METH_VARARGS,
+        "Read 16 bytes from internal or external flash memory"
     },
     { NULL, NULL, 0, NULL }
 };

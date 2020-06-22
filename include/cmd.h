@@ -384,4 +384,11 @@ extern int cmd_firmware_validate_image(int *pvalid,
  */
 extern int cmd_firmware_get_flash_devid(uint32_t *pdev_id);
 
+/* Sends a Firmware Request asking for 16 bytes from flash memory.
+ * The "buffer" parameter must be a 16-byte array.
+ * Returns 0 on success, -1 on error.
+ */
+extern int cmd_firmware_read_flash(uint32_t addr, uint8_t *buffer);
+
+
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */
