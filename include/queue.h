@@ -65,6 +65,16 @@ extern int queue_check(uint8_t **pbuffer);
  */
 extern int queue_get(uint8_t **pbuffer);
 
+/* Wait patiently on the queue from the comms Rx thread for a buffer.
+ *
+ * Times out after 10 seconds, so only used when very long delays are
+ * expected.  Timeouts are considered an error, returning ETIMEOUT.
+ *
+ * Returns 0 on success, with `pbuffer` pointing to the received buffer.
+ * On failure, returns a standard errno and raises a Python exception.
+ */
+extern int queue_get_delayed(uint8_t **pbuffer);
+
 /* Send the Tx thread a message to terminate */
 extern void queue_shutdown(void);
 

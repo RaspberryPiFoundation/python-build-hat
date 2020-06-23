@@ -240,6 +240,8 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
 
     if (cmd_action_reset() < 0)
         return -1;
+    if (cmd_wait_for_reset_complete() < 0)
+        return -1;
     self->initialised = 1;
     return 0;
 }

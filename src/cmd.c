@@ -1587,8 +1587,7 @@ int cmd_action_reset(void)
         return -1;
 
     if (response[0] != 4 ||
-        response[2] != TYPE_HUB_ACTION ||
-        response[3] != ACTION_WILL_RESET)
+        response[2] != TYPE_HUB_ACTION)
     {
         free(response);
         PyErr_SetString(hub_protocol_error,
@@ -1596,8 +1595,64 @@ int cmd_action_reset(void)
         return -1;
     }
 
+    if (response[3] == ACTION_HAS_RESET)
+    {
+        /* This is an old reset, from power-on most likely */
+        free(response);
+        response = get_response(TYPE_HUB_ACTION);
+        if (response == NULL)
+            return -1;
+
+        if (response[0] != 4 ||
+            response[2] != TYPE_HUB_ACTION ||
+            response[3] != ACTION_WILL_RESET)
+        {
+            free(response);
+            PyErr_SetString(hub_protocol_error,
+                            "Unexpected reply to Reset Request");
+            return -1;
+        }
+    }
+
     free(response);
     return 0;
+}
+
+
+/* Wait for a Has Reset message from the hub */
+int cmd_wait_for_reset_complete(void)
+{
+    uint8_t *response;
+
+    while (1)
+    {
+        if (queue_get_delayed(&response) != 0)
+            return -1; /* Exception already raised */
+        if (response == NULL)
+        {
+            PyErr_SetString(hub_protocol_error, "Rx timeout");
+            return -1;
+        }
+        if (response[1] != 0x00)
+        {
+            PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+            free(response);
+            return -1;
+        }
+
+        if (response[0] == 4 &&
+            response[2] == TYPE_HUB_ACTION &&
+            response[3] == ACTION_HAS_RESET)
+        {
+            /* This is the Action update we were looking for */
+            free(response);
+            return 0;
+        }
+        free(response);
+    }
+
+    /* Can't reach this point */
+    return -1;
 }
 
 

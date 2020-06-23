@@ -311,6 +311,13 @@ int queue_get(uint8_t **pbuffer)
 }
 
 
+/* Foreground from Rx thread (long delay possible) */
+int queue_get_delayed(uint8_t **pbuffer)
+{
+    return get_item(&from_i2c_q, pbuffer, 10000); /* 10 seconds */
+}
+
+
 /* Request from foreground to kill the transmitter wait */
 void queue_shutdown(void)
 {

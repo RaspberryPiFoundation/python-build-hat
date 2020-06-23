@@ -347,6 +347,11 @@ extern int cmd_disconnect_virtual_port(uint8_t port_id);
  */
 extern int cmd_action_reset(void);
 
+/* Waits for an Action update of Has Reset, after the HAT has reset.
+ * Returns 0 on success, -1 on error.
+ */
+extern int cmd_wait_for_reset_complete(void);
+
 /* Sends a Firmware Request to initialize the external SPI Flash on
  * the HAT for a new firmware image.
  * Returns 0 on success, -1 on error.

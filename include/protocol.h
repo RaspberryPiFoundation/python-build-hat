@@ -55,7 +55,8 @@ typedef enum protocol_prop_op_e
 typedef enum protocol_action_e
 {
     ACTION_RESET = 7,
-    ACTION_WILL_RESET = 0x34
+    ACTION_WILL_RESET = 0x34,
+    ACTION_HAS_RESET = 0x35
 } protocol_action_t;
 
 /* Port Information Types */
