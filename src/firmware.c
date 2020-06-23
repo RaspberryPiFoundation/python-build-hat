@@ -369,6 +369,10 @@ Firmware_appl_image_initialize(PyObject *self, PyObject *args)
 }
 
 
+/* We go to some lengths to support the extended two-byte length format for
+ * packet lengths of 128 bytes or more.  Sadly the firmware's main command
+ * processor only supports single byte lengths.
+ */
 #define CHUNK_BYTES 64
 static PyObject *
 Firmware_appl_image_store(PyObject *self, PyObject *args)

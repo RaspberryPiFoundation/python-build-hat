@@ -1692,9 +1692,11 @@ int cmd_firmware_init(uint32_t nbytes)
 int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
 {
     /* We have to allocate the packet ourself since it is variable length */
-    uint8_t *buffer = malloc(nbytes+4);
+    uint32_t data_len = nbytes + 4;
+    uint8_t *buffer = malloc(data_len);
     uint8_t *response;
     uint32_t bytes_written;
+    int index = 0;
 
     if (buffer == NULL)
     {
@@ -1702,11 +1704,19 @@ int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
         return -1;
     }
 
-    buffer[0] = nbytes+4;
-    buffer[1] = 0x00; /* Hub ID */
-    buffer[2] = TYPE_FIRMWARE_REQUEST;
-    buffer[3] = FIRMWARE_STORE;
-    memcpy(buffer+4, data, nbytes);
+    if (data_len > 0x7f)
+    {
+        buffer[index++] = (data_len & 0x7f) | 0x80;
+        buffer[index++] = data_len >> 7;
+    }
+    else
+    {
+        buffer[index++] = nbytes+4;
+    }
+    buffer[index++] = 0x00; /* Hub ID */
+    buffer[index++] = TYPE_FIRMWARE_REQUEST;
+    buffer[index++] = FIRMWARE_STORE;
+    memcpy(buffer+index, data, nbytes);
 
     if (queue_clear_responses() != 0 || queue_add_buffer(buffer) != 0)
     {

@@ -813,7 +813,8 @@ static void *run_comms_tx(void *args __attribute__((unused)))
 #endif
 
             /* This is the Port Info request asking for the value? */
-            if (buffer[2] == TYPE_PORT_INFO_REQ &&
+            if (buffer[0] < 0x80 &&
+                buffer[2] == TYPE_PORT_INFO_REQ &&
                 buffer[4] == PORT_INFO_VALUE)
             {
                 BITMAP_SET(expecting_value_on_port, buffer[3]);
