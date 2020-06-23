@@ -32,8 +32,6 @@ with open(sys.argv[1], "rb") as firmware_file:
     firmware_bytes = firmware_file.read()
 
 
-sleep(2) # Give the hub reset a chance to finish
-
 firmware.callback(erase_callback)
 firmware.appl_image_initialize(len(firmware_bytes))
 

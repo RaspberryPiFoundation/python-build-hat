@@ -4,6 +4,4 @@ from hub import hub
 from time import sleep
 
 info = hub.info()
-
-sleep(2)
 print("Firmware version:", info["firmware_revision"])
