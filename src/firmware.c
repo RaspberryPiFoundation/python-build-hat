@@ -167,6 +167,17 @@
         This function is intended for debugging only, so its error
         handling is not very comprehensive.
 
+    .. py:method:: reboot()
+
+        Reboots the hat to allow a firmware upgrade to complete.  The
+        bootloader will validate any image in external flash, and if
+        valid copy it into internal flash and run it.
+
+        Note that this method is not intended as a general purpose
+        reset mechanism.  It does not wait for the Hat to finish
+        resetting, so any subsequent attempts to communicate with the
+        hat will likely time out.
+
 */
 
 
@@ -492,6 +503,22 @@ Firmware_read_flash(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+Firmware_reboot(PyObject *self, PyObject *args)
+{
+    FirmwareObject *firmware = (FirmwareObject *)self;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+    if (!check_fw_status(firmware))
+        return NULL;
+
+    if (cmd_action_reset() < 0)
+        return NULL;
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef Firmware_methods[] = {
     {
         "info",
@@ -534,6 +561,12 @@ static PyMethodDef Firmware_methods[] = {
         Firmware_read_flash,
         METH_VARARGS,
         "Read 16 bytes from internal or external flash memory"
+    },
+    {
+        "reboot",
+        Firmware_reboot,
+        METH_VARARGS,
+        "Reboot the hat and let it finish the upgrade"
     },
     { NULL, NULL, 0, NULL }
 };

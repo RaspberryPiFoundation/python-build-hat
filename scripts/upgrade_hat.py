@@ -51,6 +51,10 @@ print("Done")
 bytes_written = 0
 bytes_remaining = len(firmware_bytes)
 
+# We could send the whole byte string in one go -- appl_image_store will
+# break it up into manageable chunks for transmission -- but it's always
+# good to give users
+
 while bytes_remaining >= 1024:
     print("\rWriting {}%".format(100*bytes_written // len(firmware_bytes)), end="")
     sys.stdout.flush()
@@ -75,4 +79,6 @@ if not info["new_appl_valid"]:
           format(info["new_appl_image_calc_checksum"]))
     sys.exit(1)
 
-print("Done")
+print("Rebooting to complete upgrade")
+firmware.reboot()
+print("Wait for the LEDs to go out before running more programs")
