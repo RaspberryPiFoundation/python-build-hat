@@ -384,7 +384,7 @@ Firmware_appl_image_initialize(PyObject *self, PyObject *args)
  * packet lengths of 128 bytes or more.  Sadly the firmware's main command
  * processor only supports single byte lengths.
  */
-#define CHUNK_BYTES 64
+#define CHUNK_BYTES 256
 static PyObject *
 Firmware_appl_image_store(PyObject *self, PyObject *args)
 {

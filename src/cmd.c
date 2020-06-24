@@ -1693,12 +1693,14 @@ int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
 {
     /* We have to allocate the packet ourself since it is variable length */
     uint32_t data_len = nbytes + 4;
-    uint8_t *buffer = malloc(data_len);
+    uint8_t *buffer;
     uint8_t *response;
     uint32_t bytes_written;
     int index = 0;
 
-    if (buffer == NULL)
+    if (data_len > 0x7f)
+        data_len++; /* The data will be one byte longer than we thought */
+    if ((buffer = malloc(data_len)) == NULL)
     {
         PyErr_NoMemory();
         return -1;
