@@ -11,6 +11,8 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#include "device.h"
+
 extern int motor_modinit(void);
 extern void motor_demodinit(void);
 
@@ -24,22 +26,12 @@ extern int motor_callback(PyObject *self, int event);
 /* Mark the motor object as detached from the port */
 extern void motor_detach(PyObject *self);
 
-/* Check for the device type being Motor (0001), System Train Motor (0002),
- * External Motor With Tacho (0026), Internal Motor With Tacho (0027),
- * Large Tacho Motor (002e), Extra Large Tacho Motor (002f), Medium
- * Angular Motor (0030), Large Angular Motor (0031) or Micro Angular
- * Motor (0041).  The latter are listed in code rather than current
- * documentation, unfortunately.
- */
-#define motor_is_motor(dt) \
-    ((dt) == 0x0001 ||     \
-     (dt) == 0x0002 ||     \
-     (dt) == 0x0026 ||     \
-     (dt) == 0x0027 ||     \
-     (dt) == 0x002e ||     \
-     (dt) == 0x002f ||     \
-     (dt) == 0x0030 ||     \
-     (dt) == 0x0031 ||     \
-     (dt) == 0x0041)
+/* Check for the device type being one of the formally recognised motors */
+#define motor_is_motor(dt)                     \
+    ((dt) == ID_MOTOR_MEDIUM            ||     \
+     (dt) == ID_MOTOR_LARGE             ||     \
+     (dt) == ID_MOTOR_SMALL             ||     \
+     (dt) == ID_STONE_GREY_MOTOR_MEDIUM ||     \
+     (dt) == ID_STONE_GREY_MOTOR_LARGE)
 
 #endif /* RPI_STRAWBERRY_MOTOR_H_INCLUDED */

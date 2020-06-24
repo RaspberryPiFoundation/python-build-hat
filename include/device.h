@@ -11,6 +11,16 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+/* Device ID manifest constants */
+#define ID_MOTOR_MEDIUM            0x30
+#define ID_MOTOR_LARGE             0x31
+#define ID_COLOUR                  0x3d
+#define ID_DISTANCE                0x3e
+#define ID_FORCE                   0x3f
+#define ID_MOTOR_SMALL             0x41
+#define ID_STONE_GREY_MOTOR_MEDIUM 0x4b
+#define ID_STONE_GREY_MOTOR_LARGE  0x4c
+
 extern int device_modinit(void);
 extern void device_demodinit(void);
 

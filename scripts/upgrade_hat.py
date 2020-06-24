@@ -53,7 +53,7 @@ bytes_remaining = len(firmware_bytes)
 
 # We could send the whole byte string in one go -- appl_image_store will
 # break it up into manageable chunks for transmission -- but it's always
-# good to give users
+# good to give users a visual indication that things are happening.
 
 while bytes_remaining >= 1024:
     print("\rWriting {}%".format(100*bytes_written // len(firmware_bytes)), end="")

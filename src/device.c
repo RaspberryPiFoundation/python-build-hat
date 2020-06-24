@@ -207,6 +207,82 @@ typedef struct
 #define DEVICE_FORMAT_max 2
 
 
+typedef struct
+{
+    uint16_t type_id;
+    uint16_t mode_mask;
+    int num_modes;
+    uint8_t mode_list[MAX_DATASETS];
+} default_mode_t;
+
+#define NUM_DEFAULT_MODES 7
+
+#define MODE(m,d) (((m) << 4) | (d))
+static default_mode_t default_modes[NUM_DEFAULT_MODES] = {
+    {
+        ID_MOTOR_SMALL,
+        0x000f,
+        4,
+        /* Speed      Pos        APos       Power */
+        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
+    },
+    {
+        ID_MOTOR_MEDIUM,
+        0x000f,
+        4,
+        /* Speed      Pos        APos       Power */
+        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
+    },
+    {
+        ID_MOTOR_LARGE,
+        0x000f,
+        4,
+        /* Speed      Pos        APos       Power */
+        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
+    },
+    {
+        ID_STONE_GREY_MOTOR_MEDIUM,
+        0x000f,
+        4,
+        /* Speed      Pos        APos       Power */
+        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
+    },
+    {
+        ID_STONE_GREY_MOTOR_LARGE,
+        0x000f,
+        4,
+        /* Speed      Pos        APos       Power */
+        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
+    },
+    {
+        ID_COLOUR,
+        0x0023,
+        5,
+        /* Colour     Reflect    Red        Green      Blue */
+        { MODE(1,0), MODE(0,0), MODE(5,0), MODE(5,1), MODE(5,2) },
+    },
+    {
+        ID_FORCE,
+        0x0013,
+        3,
+        { MODE(0,0), MODE(1,0), MODE(4,0) },
+    }
+};
+#undef MODE
+
+
+static default_mode_t *
+get_default_mode(uint16_t id)
+{
+    int i;
+
+    for (i = 0; i < NUM_DEFAULT_MODES; i++)
+        if (default_modes[i].type_id == id)
+            return &default_modes[i];
+    return NULL;
+}
+
+
 static int
 Device_traverse(DeviceObject *self, visitproc visit, void *arg)
 {
@@ -363,6 +439,7 @@ static int
 get_mode_info(DeviceObject *device, uint8_t port_id)
 {
     port_modes_t mode;
+    default_mode_t *default_mode;
     int i;
 
     if (cmd_get_port_modes(port_id, &mode) < 0)
@@ -410,10 +487,9 @@ get_mode_info(DeviceObject *device, uint8_t port_id)
 
     device->flags |= DO_FLAGS_GOT_MODE_INFO;
 
-    /* If this is a motor, we want to emulate the Micropython runtime
-     * and set a more user-friendly mode.
+    /* The Micropython runtime sets some devices to more user-friendly modes
      */
-    if (port_is_motor(device->port))
+    if ((default_mode = get_default_mode(device->type_id)) != NULL)
     {
         int combi_index;
 
@@ -423,25 +499,13 @@ get_mode_info(DeviceObject *device, uint8_t port_id)
         {
             if (device->combi_modes[combi_index] == 0)
                 break;  /* Run out of possible modes */
-            if ((device->combi_modes[combi_index] & 15) == 15)
+            if ((device->combi_modes[combi_index] &
+                 default_mode->mode_mask) == default_mode->mode_mask)
             {
-                /* This has all the modes we need:
-                 * [(1,0), (2,2), (3,1), (0,0)]
-                 *
-                 * Sadly both modes 2 and 3 only have one dataset,
-                 * so we actually set this mode:
-                 *   [(1,0), (2,0), (3,0), (0,0)]
-                 */
-                /* XXX: we should check the datasets too */
-                static uint8_t mode_list[MAX_DATASETS] = {
-                    (1 << 4) | 0,
-                    (2 << 4) | 0,
-                    (3 << 4) | 0,
-                    (0 << 4) | 0,
-                    0
-                };
-
-                return set_combi_mode(device, combi_index, mode_list, 4);
+                /* This has all the modes we need */
+                return set_combi_mode(device, combi_index,
+                                      default_mode->mode_list,
+                                      default_mode->num_modes);
             }
         }
         /* We can't find a suitable combi-mode.  Oh well */
