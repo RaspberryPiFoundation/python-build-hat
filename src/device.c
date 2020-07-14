@@ -18,7 +18,7 @@
 
 .. py:class:: Device
 
-    The ports on the Shortcake hat are able to autodetect the
+    The ports on the Build HAT are able to autodetect the
     capabilities of the device that is plugged in.  When a generic
     device is detected, then an enhanced set of methods is available.
 
@@ -27,9 +27,9 @@
 
     .. note::
 
-        This class is not actually available to the user.  It is only
-        used by the the six device instances, which are provided
-        already initialised.
+        This class is not directly available to the user.  It is only
+        used by the the six device instances, and its instances are
+        provided already initialised.
 
     .. py:attribute:: FORMAT_RAW
 
@@ -72,16 +72,8 @@
         given by the ``datasets`` field of the mode's format, and the
         type of the values by the ``type`` field.  If the device is a
         combination mode, the result is defined by the particular
-        combination of modes and datasets specified in the
+        combination of modes and datasets specified to the
         :py:meth:`Device.mode()` method.
-
-        .. note::
-
-            It is not clear from the code when values are actively
-            read from the device.  At present, a call to get() does
-            not explicitly request a value through the hat; this will
-            likely change as the semantics of data acquisition are
-            clarified.
 
         ``format`` is a position-only argument.
 
@@ -134,10 +126,6 @@
         The modes must be a permitted combination (as in the
         ``combi_modes`` entry of the :py:meth:`Port.info()`
         dictionary.
-
-        .. note::
-
-            Combination modes are not currently implemented.
 
         If the ``mode`` is an integer (simple mode), it may be
         followed by ``mode_data``.  The sequence of bytes is sent

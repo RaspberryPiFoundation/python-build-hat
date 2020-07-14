@@ -74,6 +74,3 @@ like this::
     >>> hub.port.B.device.mode([(1, 0), (3, 0)])
     >>> hub.port.B.device.get()
     [1, 10]
-
-Motors on the whole do not use modes, but have an entirely separate
-API.  See the :py:class:`Motor` class for more details.

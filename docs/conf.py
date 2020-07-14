@@ -14,7 +14,7 @@ VERSION = 'latest'
 
 tags.add('port_' + PORT)
 ports = OrderedDict((
-    ('hub', 'the Shortcake Hat'),
+    ('hub', 'the Build HAT'),
 ))
 
 # The members of the html_context dict are available inside
@@ -55,7 +55,7 @@ templates_path = ['templates']
 source_suffix = '.rst'
 
 # General information about the project.
-project = 'LEGO Hub'
+project = 'Raspberry Pi Build HAT'
 copyright = '2020 - Kynesim Ltd'
 
 def get_firmware_version (file_path, search_string):

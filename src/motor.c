@@ -23,7 +23,7 @@
 
 .. py:class:: Motor
 
-    The ports on the Shortcake hat are able to autodetect the
+    The ports on the Build HAT are able to autodetect the
     capabilites of the device that is plugged in.  When a motor device
     is detected, then an enhanced set of methods is available.
 
@@ -32,9 +32,9 @@
 
     .. note::
 
-        This class is not actually available to the user.  It is only
-        used by the six motor instances, which are provided already
-        initialised.
+        This class is not directly available to the user.  It is only
+        used by the six motor instances, and its instances are
+        provided already initialised.
 
     .. py:attribute:: BUSY_MODE
 
@@ -106,14 +106,14 @@
         :type: int
         :value: 0
 
-        Meaning uncertain (PID is undocumented)
+        Meaning uncertain.
 
     .. py:attribute:: PID_POSITION
 
         :type: int
         :value: 1
 
-        Meaning uncertain (PID is undocumented)
+        Meaning uncertain.
 
     .. py:attribute:: STOP_FLOAT
 
@@ -247,18 +247,15 @@
             :py:const:`Motor.STOP_HOLD` are provided for convenience
             for the first three values.  The default value is ``1``
             (:py:const:`Motor.STOP_BRAKE`)
-        :param pid: the default "position PID", unless overridden in a
-            method call.  The default value is ``(0, 0, 0)``
+        :param pid: the default "position PID"
+            (Proportional-Integral-Derivative) motor control tuple,
+            unless overridden in a method call.  The default value is
+            ``(0, 0, 0)``
         :type pid: (int, int, int)
         :return: a dictionary of the default values if no parameters
             are given, otherwise ``None``.
         :rtype: dict or None
         :raises ValueError: if ``stop`` is not a valid value.
-
-        .. note::
-
-            There is no further documentation of what the "position
-            PID" value is, even in the Wireless protocol document.
 
     .. py:method:: callback([fn])
 
@@ -285,11 +282,9 @@
         * :py:const:`Motor.EVENT_STALL` : indicates that the motor
           stalled, preventing the command from completing.
 
-        The callback function is called from a background context,
-        which limits what it can safely do.  In particular, calling
-        any of the functions in the hub library is likely to cause
-        problems.  It is usually best to set a flag variable and deal
-        with the event from the foreground.
+        The callback function is called from a background context.  It
+        is sometimes best to set a flag variable and deal with the
+        event from the foreground.
 
         ``fn`` is a position-only parameter.
 
@@ -426,8 +421,9 @@
 
     .. py:method:: pid([p, i, d])
 
-        With no parameters, returns a tuple with the current used P, I
-        and D values if the values have been set using this method or
+        With no parameters, returns a tuple with the current used
+        P(roportional), I(ntegral) and D(erivative) motor controller
+        values if the values have been set using this method or
         :py:meth:`Motor.default()`.  If the values have not been set,
         a tuple of zeroes is returned and is invalid.  Otherwise all
         three parameters must be given, and the default P, I and D
@@ -439,12 +435,6 @@
            values used in the low-level drivers. To do this it is
            required to implement additional sub-commands in the LPF2
            protocol.
-
-       .. note::
-
-           The above is taken from the original documentation with
-           only minor edits for grammar and flow.  I have no further
-           information on what these P, I and D values might be or do.
 
     .. py:method:: pair(motor)
 

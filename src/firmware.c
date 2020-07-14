@@ -159,7 +159,7 @@
 
         :param int addr: The address to start reading from.  Internal
         flash addresses run from 0x00000000, mapped into flash to
-        exclude the bootloader.  External addresses from from
+        exclude the bootloader.  External addresses run from
         0x1000000.
         :return: the 16 bytes of flash starting at the given address.
         :rtype: bytes

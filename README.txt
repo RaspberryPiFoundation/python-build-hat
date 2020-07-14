@@ -1,5 +1,75 @@
+Build and install
+------------------
+
+At the moment this only builds for test on a desktop (see the FakeHat
+repo for the other end of the comms line).  Cross-compilation for the
+Raspberry Pi will come in due course; let's get something working
+first, OK?
+
+To build the hub package, first create yourself a virtual environment
+(if you haven't already) and turn it on:
+
+```
+$ python3 -m venv hat_env
+$ source hat_env/bin/activate
+```
+
+You may need to install the I2C development library:
+
+```
+$ sudo apt install libi2c-dev
+```
+
+Now use the setup.py script to build and install the module:
+
+```
+(hub_env) $ USE_DUMMY_I2C=1 ./setup.py build
+...much wibbling...
+(hub_env) $ USE_DUMMY_I2C=1 ./setup.py install
+```
+
+You should now be able to "import hub" in a Python3 script and have
+the module available to you.
+
+Optionally the code may be compiled with "DEBUG_I2C=1" to enable logging
+of the I2C traffic on the hub.
+
+
+Documentation
+-------------
+
+Instructions for regenerating the documentation can be found in
+docs/README.md.  Briefly, assuming you have the appropriate python
+modules installed:
+
+```
+$ (cd docs; make html)
+```
+
+will rebuild the documentation.  The doc tree starts at
+``docs/build/html/index.html``
+
+
 Usage
 -----
+
+Aside from requiring
+
+```python
+from hub import hub
+```
+
+rather than
+
+```python
+import hub
+```
+
+this should be identical to normal usage you have connecting to a
+Spike hub via a USB-serial terminal.  Firmware upgrade (and the
+hub.Firmware class) is different; see its specific documentation for
+details.
+
 
 To control a motor attached to port A:
 
@@ -26,31 +96,3 @@ while True:
 		time.sleep(0.5) # Wait half a second for motor to finish turning
 
 ```
-
-Build and install
-------------------
-
-At the moment this only builds for test on a desktop (see the FakeHat
-repo for the other end of the comms line).  Cross-compilation for the
-Raspberry Pi will come in due course; let's get something working
-first, OK?
-
-To build the hub package, first create yourself a virtual environment
-(if you haven't already) and turn it on:
-
-$ python3 -m venv hat_env
-$ source hat_env/bin/activate
-
-
-Now use the setup.py script to build and install the module:
-
-(hub_env) $ USE_DUMMY_I2C=1 ./setup.py build
-...much wibbling...
-(hub_env) $ USE_DUMMY_I2C=1 ./setup.py install
-
-
-You should now be able to "import hub" in a Python3 script and have
-the module available to you.
-
-Optionally the code may be compiled with "DEBUG_I2C=1" to enable logging
-of the I2C traffic on the hub.

@@ -30,7 +30,7 @@
 
     .. note::
 
-        This class is not actually available to the user.  Instances
+        This class is not directly available to the user.  Instances
         are created by the :py:meth:`Motor.pair()` method.
 
     .. note::
@@ -39,22 +39,22 @@
         original does.  For consistency we do likewise, but raising an
         exception would be much better.
 
-    .. py:method: primary()
+    .. py:method:: primary()
 
         Returns the :py:class:`Motor` object representing the motor
         that created this pair.
 
-    .. py:method: secondary()
+    .. py:method:: secondary()
 
         Returns the :py:class:`Motor` object representing the motor
         that was paired with the :py:meth:`.primary()` to create this
         pair.
 
-    .. py:method: id()
+    .. py:method:: id()
 
         Returns the integer ID assigned to the port pair.
 
-    .. py:method: callback([fn])
+    .. py:method:: callback([fn])
 
         Gets or sets the function to be called when a motor command on
         the pair completes.
@@ -79,11 +79,9 @@
         * :py:const:`Motor.EVENT_STALL` : indicates that the motor
           stalled, preventing the command from completing.
 
-        The callback function is called from a background context,
-        which limits what it can safely do.  In particular, calling
-        any of the functions in the hub library is likely to cause
-        problems.  It is usually best to set a flag variable and deal
-        with the event from the foreground.
+        The callback function is called from a background context.  It
+        is sometimes best to set a flag variable and deal with the
+        event from the foreground.
 
         ``fn`` is a position-only parameter.
 
@@ -91,11 +89,11 @@
 
             The callback is not as useful as one might hope, since it
             does not indicate which motor command is being reported.
-            Methods of the :py:class:`Motor` class may invoke more
+            Methods of the :py:class:`MotorPair` class may invoke more
             than one motor command, depending on their exact
             parameters.
 
-    .. py:method: unpair()
+    .. py:method:: unpair()
 
         Removes the pairing between the motors in this pair.  After
         calling this method, this :py:class:`MotorPair` object will be
@@ -106,8 +104,9 @@
 
     .. py:method:: pid([p, i, d])
 
-        With no parameters, returns a tuple with the current used P, I
-        and D values if the values have been set using this method or
+        With no parameters, returns a tuple with the current used
+        P(roportional), I(ntegral) and D(erivative) motor controller
+        values if the values have been set using this method or
         :py:meth:`Motor.default()`.  If the values have not been set,
         a tuple of zeroes is returned and is invalid.  Otherwise all
         three parameters must be given, and the default P, I and D
@@ -119,12 +118,6 @@
            values used in the low-level drivers. To do this it is
            required to implement additional sub-commands in the LPF2
            protocol.
-
-       .. note::
-
-           The above is taken from the original documentation with
-           only minor edits for grammar and flow.  I have no further
-           information on what these P, I and D values might be or do.
 
     .. py:method:: float()
 

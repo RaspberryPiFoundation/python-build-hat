@@ -26,7 +26,7 @@
 
     .. note::
 
-        This class is not actually available to the user.  It is only
+        This class is not directly available to the user.  It is only
         used by the Hub object itself, and comes ready initialized.
 
     .. py:attribute:: A
@@ -86,38 +86,40 @@
         The original doesn't explicitly acknowledge that this
         intermediate collection object exists.  To avoid confusion, it
         seems better to document it as it really is.  There is also no
-        documentation of the ATTACHED and DETACHED attributes.
+        documentation of the :py:const:`ATTACHED` and
+        :py:const:`DETACHED` attributes.
 
 .. py:class:: Port
 
-    Represents a port on the Hat, which may or may not have a device
+    Represents a port on the hat, which may or may not have a device
     attached to it.  The methods of this class are always available.
 
-    The ports on the hub are able to autodetect the capabilities of
+    The ports on the hat are able to autodetect the capabilities of
     the device that is plugged in.  When a motor or device is
-    detected, then an enhanced set of methods is available through the
-    Port.motor or Port.device attribute.
+    detected, an enhanced set of methods is available through the
+    :py:attr:`Port.motor` or :py:attr:`Port.device` attribute.
 
     .. note::
 
         This class is not actually available to the user.  It is only
-        used by the Hub object itself, and comes ready initialized.
+        used by the Hub object itself, and instances come ready
+        initialized.
 
     .. py:attribute:: device
 
-        A ``Device`` instance for the device attached to the port, or
+        A :py:class:`Device` instance for the device attached to the port, or
         ``None`` if no device is currently attached.
 
     .. py:attribute:: motor
 
-        A ``Motor`` instance for the motor attached to the port, or
+        A :py:class:`Motor` instance for the motor attached to the port, or
         ``None`` if there is no recognised motor currently attached.
 
     .. py:method:: info() -> dict
 
         Returns a dictionary describing the capabilities of the device
         connected to the port.  If the port has nothing plugged in,
-        then the result is a dictinoary with only a ``type`` key with
+        then the result is a dictionary with only a ``type`` key with
         a value of ``None``.
 
         A port with a powered-up compatible device plugged in returns
@@ -150,8 +152,7 @@
             more convenient.
 
             The original documentation mistakenly claims that the
-            ``combi-modes`` value is a list rather than a tuple.  At
-            present, combination modes are not (very) implemented.
+            ``combi-modes`` value is a list rather than a tuple.
 
         Each ``modes`` list item dictionary has the following keys:
 
@@ -277,10 +278,8 @@
           ``hub.port.DETACHED``) : indicates that the device
           previously plugged into the port has been removed.
 
-        The callback function is called from a background context,
-        which limits what it can do.  In particular, calling any of
-        the functions in the hub library is likely to cause problems.
-        It is usually best to set a flag variable and deal with the
+        The callback function is called from a background context.
+        It is sometimes best to set a flag variable and deal with the
         event from the foreground.
 
         Example::
