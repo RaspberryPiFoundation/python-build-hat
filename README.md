@@ -1,10 +1,21 @@
+Welcome
+-------
+
+This Python module allows you to run the Raspberry Pi Build HAT.  It
+includes detailed documentation -- see below for how to generate and
+read it.
+
+The ``hub`` module provides a ``hub`` object that holds information on
+all of the devices attached to the HAT.  Individual motors and sensors
+can be found under ``hub.port.X`` where ``X`` is the name of the
+port.  In addition there are callbacks to inform the code that devices
+have been attached to or detached from the HAT, status functions to
+determine exactly what device is on a port, and specialist functions
+to drive motors.
+
+
 Build and install
 ------------------
-
-At the moment this only builds for test on a desktop (see the FakeHat
-repo for the other end of the comms line).  Cross-compilation for the
-Raspberry Pi will come in due course; let's get something working
-first, OK?
 
 To build the hub package, first create yourself a virtual environment
 (if you haven't already) and turn it on:
@@ -23,16 +34,19 @@ $ sudo apt install libi2c-dev
 Now use the setup.py script to build and install the module:
 
 ```
-(hub_env) $ USE_DUMMY_I2C=1 ./setup.py build
+(hub_env) $ ./setup.py build
 ...much wibbling...
-(hub_env) $ USE_DUMMY_I2C=1 ./setup.py install
+(hub_env) $ ./setup.py install
 ```
 
 You should now be able to "import hub" in a Python3 script and have
 the module available to you.
 
-Optionally the code may be compiled with "DEBUG_I2C=1" to enable logging
+Optionally the code may be compiled with "DEBUG\_I2C=1" to enable logging
 of the I2C traffic on the hub.
+
+The code may be compiled with "USE\_DUMMY\_I2C=1" to use an ethernet local
+loopback as a fake I2C for test purposes.
 
 
 Documentation
@@ -53,23 +67,7 @@ will rebuild the documentation.  The doc tree starts at
 Usage
 -----
 
-Aside from requiring
-
-```python
-from hub import hub
-```
-
-rather than
-
-```python
-import hub
-```
-
-this should be identical to normal usage you have connecting to a
-Spike hub via a USB-serial terminal.  Firmware upgrade (and the
-hub.Firmware class) is different; see its specific documentation for
-details.
-
+See the detailed documentation for the Python objects available.
 
 To control a motor attached to port A:
 

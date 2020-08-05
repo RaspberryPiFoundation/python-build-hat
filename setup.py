@@ -3,6 +3,9 @@
 from setuptools import setup, Extension
 from os import getenv
 
+with open("README.md") as readme:
+    long_description = readme.read()
+
 hub_module = Extension('hub',
                        include_dirs = ['include'],
                        sources = ['src/hubmodule.c',
@@ -31,6 +34,8 @@ if getenv("DEBUG_I2C") == "1":
 setup(name='hub',
       version='0.2',
       description='Strawberry library for accessing Shortcake',
+      long_description=long_description,
+      long_description_content_type="text/markdown",
       author='Rhodri James',
       author_email='rhodri@kynesim.co.uk',
       ext_modules=[hub_module])

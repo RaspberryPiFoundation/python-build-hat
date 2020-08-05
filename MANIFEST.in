@@ -1,0 +1,3 @@
+include src/*.c
+include include/*.h
+include LICENSE
