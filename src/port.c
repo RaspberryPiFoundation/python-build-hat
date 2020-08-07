@@ -53,18 +53,6 @@
 
         Represents port D.
 
-    .. py:attribute:: E
-
-        :type: Port
-
-        Represents port E.
-
-    .. py:attribute:: F
-
-        :type: Port
-
-        Represents port F.
-
     .. py:attribute:: ATTACHED
 
         :type: int
@@ -516,8 +504,7 @@ static PyTypeObject PortType =
 };
 
 
-/* The "port" object itself just contains six slots for Ports */
-#define NUM_HUB_PORTS 6
+/* The "port" object itself just contains the slots for Ports */
 typedef struct
 {
     PyObject_HEAD
@@ -613,8 +600,10 @@ static PyGetSetDef PortSet_getsetters[] =
     { "B", (getter)PortSet_get_port, NULL, "Port B", (void *)1 },
     { "C", (getter)PortSet_get_port, NULL, "Port C", (void *)2 },
     { "D", (getter)PortSet_get_port, NULL, "Port D", (void *)3 },
+#ifdef BUILD_FOR_HW_VER_1
     { "E", (getter)PortSet_get_port, NULL, "Port E", (void *)4 },
     { "F", (getter)PortSet_get_port, NULL, "Port F", (void *)5 },
+#endif
     {
         "ATTACHED",
         (getter)PortSet_get_constant,

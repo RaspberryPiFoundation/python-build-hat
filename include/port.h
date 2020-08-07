@@ -35,7 +35,11 @@ typedef struct mode_info_s
 
 
 /* Total number of physical ports connected to the hat */
+#ifdef BUILD_FOR_HW_VER_1
 #define NUM_HUB_PORTS 6
+#else
+#define NUM_HUB_PORTS 4
+#endif
 
 extern int port_modinit(void);
 extern void port_demodinit(void);
