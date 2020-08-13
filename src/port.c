@@ -509,6 +509,7 @@ typedef struct
 {
     PyObject_HEAD
     PyObject *ports[NUM_HUB_PORTS];
+    int power_state;
 } PortSetObject;
 
 
@@ -566,6 +567,7 @@ PortSet_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             }
             ((PortObject *)self->ports[i])->port_id = i;
         }
+        self->power_state = 1;
     }
     return (PyObject *)self;
 }
@@ -622,6 +624,34 @@ static PyGetSetDef PortSet_getsetters[] =
 };
 
 
+static PyObject *
+PortSet_power(PyObject *self, PyObject *args)
+{
+    PortSetObject *ports = (PortSetObject *)self;
+    int power_state = -1;
+
+    if (!PyArg_ParseTuple(args, "|p:power", &power_state))
+        return NULL;
+
+    if (power_state == -1)
+    {
+        /* The caller wants the current (believed) power state */
+        return PyBool_FromLong(ports->power_state);
+    }
+    if (cmd_set_vcc_port(power_state) < 0)
+        return NULL;
+    ports->power_state = power_state;
+
+    Py_RETURN_NONE;
+}
+
+
+static PyMethodDef PortSet_methods[] = {
+    { "power", PortSet_power, METH_VARARGS, "Read or set the port power state" },
+    { NULL, NULL, 0, NULL }
+};
+
+
 static PyTypeObject PortSetType =
 {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -634,7 +664,8 @@ static PyTypeObject PortSetType =
     .tp_dealloc = (destructor)PortSet_dealloc,
     .tp_traverse = (traverseproc)PortSet_traverse,
     .tp_clear = (inquiry)PortSet_clear,
-    .tp_getset = PortSet_getsetters
+    .tp_getset = PortSet_getsetters,
+    .tp_methods = PortSet_methods
 };
 
 

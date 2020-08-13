@@ -395,5 +395,13 @@ extern int cmd_firmware_get_flash_devid(uint32_t *pdev_id);
  */
 extern int cmd_firmware_read_flash(uint32_t addr, uint8_t *buffer);
 
+/* Sends an Action turning the Vcc Port line (the power to the ports)
+ * on or off, as requested.  The "state" parameter is a boolean: if it is
+ * non-zero the power will be turned on, if it is zero the power will be
+ * turned off.  Returns 0 on success, -1 on error (with an exception
+ * raised as usual).
+ */
+extern int cmd_set_vcc_port(int state);
+
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

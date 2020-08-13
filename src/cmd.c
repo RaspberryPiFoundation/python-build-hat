@@ -1908,3 +1908,31 @@ int cmd_firmware_read_flash(uint32_t addr, uint8_t *buffer)
     free(response);
     return 0;
 }
+
+
+int cmd_set_vcc_port(int state)
+{
+    /* We don't expect a response */
+    uint8_t *buffer = malloc(4);
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    buffer[0] = 4;
+    buffer[1] = 0x00; /* Hub ID */
+    buffer[3] = TYPE_HUB_ACTION;
+    buffer[4] = state ? ACTION_VCC_PORT_CONTROL_ON :
+        ACTION_VCC_PORT_CONTROL_OFF;
+
+    if (queue_add_buffer(buffer) != 0)
+    {
+        /* Exception already raised */
+        free(buffer);
+        return -1;
+    }
+
+    return 0;
+}
