@@ -11,7 +11,7 @@ Building the Documentation
 
 Getting the documentation converted from ReStructured Text to your
 preferred format requires the sphinx package, and optionally (for
-RTD-styling) sphinx_rtd_theme package.  To install them:
+RTD-styling) sphinx\_rtd\_theme package.  To install them:
 
     pip install sphinx
     pip install sphinx_rtd_theme

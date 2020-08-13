@@ -134,27 +134,6 @@
 
         ``mode`` and ``mode_data`` are position-only parameters.
 
-    .. py:method:: pwm(value)
-
-        Sets the PWM level generated at the port, if output is
-        permitted.
-
-        :param int value: The PWM level generated, ranging from -100
-            to +100.  The polarity of the PWM signal matches the sign
-            of the value.
-
-        :raises ValueError: if the input is greater than 100 or less
-            than -100.
-
-        Calling ``pwm(0)`` stops the PWM signal and leaves the port
-        driver in a floating state.
-
-        ``value`` is a position-only parameter.
-
-        .. note::
-
-            This is not currently implemented.
-
 */
 
 #define MAX_DATASETS 8

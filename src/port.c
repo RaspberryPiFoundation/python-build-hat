@@ -69,13 +69,24 @@
         The value passed to the ``Port`` instance callback function
         when a device is detached from the port.
 
-    .. note::
+    .. py:method:: power([state])
 
-        The original doesn't explicitly acknowledge that this
-        intermediate collection object exists.  To avoid confusion, it
-        seems better to document it as it really is.  There is also no
-        documentation of the :py:const:`ATTACHED` and
-        :py:const:`DETACHED` attributes.
+        Sets or gets the current state of powering the ports ("Vcc
+        Port").  If Vcc Port is not enabled, devices on the ports will
+        not be recognised.
+
+        :param bool state: the requested state of the power supply to
+            the ports.  If ``True`` the ports should be powered, if
+            ``False`` power will be removed.
+
+        If ``state`` is missing, the current state of port power will
+        be returned.  Otherwise ``None`` is returned.
+
+        This method is primarily intended as an emergency shutdown
+        switch.  Note that the power state returned is what the
+        library believes the state to be; if the Build Hat has somehow
+        enabled or disabled power to the ports, the information
+        returned may be inaccurate.
 
 .. py:class:: Port
 
