@@ -1923,8 +1923,8 @@ int cmd_set_vcc_port(int state)
 
     buffer[0] = 4;
     buffer[1] = 0x00; /* Hub ID */
-    buffer[3] = TYPE_HUB_ACTION;
-    buffer[4] = state ? ACTION_VCC_PORT_CONTROL_ON :
+    buffer[2] = TYPE_HUB_ACTION;
+    buffer[3] = state ? ACTION_VCC_PORT_CONTROL_ON :
         ACTION_VCC_PORT_CONTROL_OFF;
 
     if (queue_add_buffer(buffer) != 0)
