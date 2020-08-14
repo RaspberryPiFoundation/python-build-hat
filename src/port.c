@@ -17,6 +17,7 @@
 #include "motor.h"
 #include "pair.h"
 #include "callback.h"
+#include "protocol.h"
 
 /**
 
@@ -87,6 +88,28 @@
         library believes the state to be; if the Build Hat has somehow
         enabled or disabled power to the ports, the information
         returned may be inaccurate.
+
+    .. py:method:: power_callback([fn])
+
+        Sets the function to be called when the hub signals that too
+        much power is being drawn for the ports.
+
+        :param fn: The function to call.  This is a positional
+            parameter only.
+        :type fn: Callable or None
+        :raises TypeError: if ``fn`` is present, not ``None`` and not
+            callable.
+
+        If ``fn`` is omitted, the current callback function will be
+        returned.  Otherwise ``None`` is returned.
+
+        If ``fn`` is None, the callback will be disabled.
+
+        Otherwise ``fn`` should be a function taking one parameter
+        the indicates the overpower status.  It will be zero if the
+        Hat is functioning within normal parameters, and ``0xff`` if
+        the power draw is too great.  The callback function is called
+        from a background context.
 
 .. py:class:: Port
 
@@ -520,6 +543,7 @@ typedef struct
 {
     PyObject_HEAD
     PyObject *ports[NUM_HUB_PORTS];
+    PyObject *callback_fn;
     int power_state;
 } PortSetObject;
 
@@ -578,6 +602,8 @@ PortSet_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             }
             ((PortObject *)self->ports[i])->port_id = i;
         }
+        self->callback_fn = Py_None;
+        Py_INCREF(Py_None);
         self->power_state = 1;
     }
     return (PyObject *)self;
@@ -657,8 +683,52 @@ PortSet_power(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+PortSet_power_callback(PyObject *self, PyObject *args)
+{
+    PortSetObject *ports = (PortSetObject *)self;
+    PyObject *temp = NULL;
+
+    if (!PyArg_ParseTuple(args, "O:power_callback", &temp))
+        return NULL;
+
+    if (temp == NULL)
+    {
+        Py_INCREF(ports->callback_fn);
+        return ports->callback_fn;
+    }
+
+    if (temp != Py_None && !PyCallable_Check(temp))
+    {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+    Py_XINCREF(temp);
+    Py_XDECREF(ports->callback_fn);
+    ports->callback_fn = temp;
+
+    if (temp == Py_None)
+        cmd_disable_alert(ALERT_OVER_POWER);
+    else
+        cmd_enable_alert(ALERT_OVER_POWER);
+
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef PortSet_methods[] = {
-    { "power", PortSet_power, METH_VARARGS, "Read or set the port power state" },
+    {
+        "power",
+        PortSet_power,
+        METH_VARARGS,
+        "Read or set the port power state"
+    },
+    {
+        "power_callback",
+        PortSet_power_callback,
+        METH_VARARGS,
+        "Read or set the callback function for overpower alerts"
+    },
     { NULL, NULL, 0, NULL }
 };
 
@@ -1072,3 +1142,28 @@ int port_handle_motor_callback(uint8_t port_id, uint8_t event)
 
     return 0;
 }
+
+
+/* Called from callback thread */
+int ports_handle_callback(uint8_t overpower_state)
+{
+    PyGILState_STATE gstate;
+    PyObject *arg_list;
+    int rv;
+
+    gstate = PyGILState_Ensure();
+    if (port_set->callback_fn == Py_None)
+    {
+        PyGILState_Release(gstate);
+        return 0;
+    }
+
+    arg_list = Py_BuildValue("(i)", overpower_state);
+    rv = (PyObject_CallObject(port_set->callback_fn, arg_list) != NULL) ?
+        0 : -1;
+    Py_XDECREF(arg_list);
+    PyGILState_Release(gstate);
+
+    return rv;
+}
+

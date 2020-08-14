@@ -61,6 +61,31 @@ typedef enum protocol_action_e
     ACTION_HAS_RESET = 0x35
 } protocol_action_t;
 
+/* Hub Alert types */
+typedef enum protocol_alert_e
+{
+    ALERT_LOW_VOLTAGE = 1,
+    ALERT_HIGH_CURRENT,
+    ALERT_LOW_SIGNAL_STRENGTH,
+    ALERT_OVER_POWER
+} protocol_alert_t;
+
+/* Hub Alert Operations */
+typedef enum protocol_alert_op_e
+{
+    ALERT_OP_ENABLE = 1,
+    ALERT_OP_DISABLE,
+    ALERT_OP_REQUEST,
+    ALERT_OP_UPDATE
+} protocol_alert_op_t;
+
+/* Hub Alert Payloads */
+typedef enum protocol_alert_value_e
+{
+    ALERT_OK = 0x00,
+    ALERT_ALERT = 0xff
+} protocol_alert_value_t;
+
 /* Port Information Types */
 typedef enum protocol_port_info_e
 {

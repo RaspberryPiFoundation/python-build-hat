@@ -1936,3 +1936,57 @@ int cmd_set_vcc_port(int state)
 
     return 0;
 }
+
+
+int cmd_enable_alert(uint8_t alert)
+{
+    uint8_t *buffer = malloc(5);
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    buffer[0] = 5;
+    buffer[1] = 0x00; /* Hub ID */
+    buffer[2] = TYPE_HUB_ALERT;
+    buffer[3] = alert;
+    buffer[4] = ALERT_OP_ENABLE;
+
+    if (queue_add_buffer(buffer) != 0)
+    {
+        /* Exception already raised */
+        free(buffer);
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int cmd_disable_alert(uint8_t alert)
+{
+    uint8_t *buffer = malloc(5);
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    buffer[0] = 5;
+    buffer[1] = 0x00; /* Hub ID */
+    buffer[2] = TYPE_HUB_ALERT;
+    buffer[3] = alert;
+    buffer[4] = ALERT_OP_DISABLE;
+
+    if (queue_add_buffer(buffer) != 0)
+    {
+        /* Exception already raised */
+        free(buffer);
+        return -1;
+    }
+
+    return 0;
+}

@@ -66,8 +66,9 @@ extern PyObject *ports_get_value_dict(PyObject *portset);
 extern PyObject *port_get_motor(PyObject *port);  /* Returns new reference */
 extern int port_is_motor(PyObject *port); /* True if a motor is connected */
 
-/* The following is called only from the callback thread */
+/* The following are called only from the callback thread */
 extern int port_handle_callback(uint8_t port_id, uint8_t event);
 extern int port_handle_motor_callback(uint8_t port_id, uint8_t event);
+extern int ports_handle_callback(uint8_t overpower_state);
 
 #endif /* RPI_STRAWBERRY_PORT_H_INCLUDED */

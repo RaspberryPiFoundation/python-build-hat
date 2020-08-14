@@ -403,5 +403,15 @@ extern int cmd_firmware_read_flash(uint32_t addr, uint8_t *buffer);
  */
 extern int cmd_set_vcc_port(int state);
 
+/* Send an Alert message with an Enable operation for the given alert.
+ * Returns 0 on success, -1 on error.
+ */
+extern int cmd_enable_alert(uint8_t alert);
+
+/* Send an Alert message with a Disable operation for the given alert.
+ * Returns 0 on success, -1 on error.
+ */
+extern int cmd_disable_alert(uint8_t alert);
+
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */

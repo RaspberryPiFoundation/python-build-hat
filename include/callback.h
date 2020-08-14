@@ -13,6 +13,7 @@
 #define CALLBACK_MOTOR    1
 #define CALLBACK_PAIR     2
 #define CALLBACK_FIRMWARE 3
+#define CALLBACK_ALERT    4
 
 /* Event codes for the port callbacks */
 #define CALLBACK_DETACHED 0

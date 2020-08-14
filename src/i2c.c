@@ -32,6 +32,7 @@
 #include "port.h"
 #include "pair.h"
 #include "firmware.h"
+#include "callback.h"
 #include "protocol.h"
 #include "debug-i2c.h"
 
@@ -684,6 +685,23 @@ static int handle_firmware_response(uint8_t *buffer, uint16_t nbytes)
 }
 
 
+static int handle_alert(uint8_t *buffer, uint16_t nbytes)
+{
+    if (nbytes < 6 ||
+        buffer[2] != TYPE_HUB_ALERT ||
+        buffer[4] != ALERT_OP_UPDATE)
+        return 0;
+    if (buffer[1] != 0 || nbytes != 6)
+    {
+        errno = EPROTO;
+        return -1;
+    }
+
+    callback_queue(CALLBACK_ALERT, buffer[3], buffer[5], NULL);
+    return 1;
+}
+
+
 static int handle_immediate(uint8_t *buffer, uint16_t nbytes)
 {
     int rv;
@@ -725,6 +743,9 @@ static int handle_immediate(uint8_t *buffer, uint16_t nbytes)
         return rv;
 
     if ((rv = handle_firmware_response(buffer, nbytes)) != 0)
+        return rv;
+
+    if ((rv = handle_alert(buffer, nbytes)) != 0)
         return rv;
 
     return 0; /* Nothing interesting here, guv */

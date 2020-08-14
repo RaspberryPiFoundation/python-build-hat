@@ -18,6 +18,7 @@
 #include "port.h"
 #include "pair.h"
 #include "firmware.h"
+#include "protocol.h"
 
 typedef struct cb_queue_s
 {
@@ -155,6 +156,12 @@ static void *run_callbacks(void *arg __attribute__((unused)))
                                              item->event,
                                              item->firmware) < 0)
                     report_callback_error();
+                break;
+
+            case CALLBACK_ALERT:
+                if (item->port_id == ALERT_OVER_POWER)
+                    if (ports_handle_callback(item->event) < 0)
+                        report_callback_error();
                 break;
 
             default:
