@@ -1990,3 +1990,30 @@ int cmd_disable_alert(uint8_t alert)
 
     return 0;
 }
+
+
+int cmd_request_alert(uint8_t alert)
+{
+    uint8_t *response = make_request(5, TYPE_HUB_ALERT,
+                                     alert,
+                                     ALERT_OP_REQUEST);
+    uint32_t result;
+
+    if (response == NULL)
+        return -1;
+
+    if (response[0] != 6 ||
+        response[2] != TYPE_HUB_ALERT ||
+        response[3] != alert ||
+        response[4] != ALERT_OP_UPDATE)
+    {
+        free(response);
+        PyErr_SetString(hub_protocol_error,
+                        "Unexpected reply to Alert Request");
+        return -1;
+    }
+
+    result = response[5];
+    free(response);
+    return result;
+}

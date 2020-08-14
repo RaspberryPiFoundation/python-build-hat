@@ -86,6 +86,8 @@ static PyObject *firmware_object = NULL;
 
 /* Bitmap indicating that the given port is expecting a value response */
 DEFINE_BITMAP(expecting_value_on_port, 256);
+/* Bitmap indicating that the given alert is expected */
+DEFINE_BITMAP(expecting_alert, 5);
 
 
 static inline uint16_t extract_uint16(uint8_t *buffer)
@@ -685,8 +687,11 @@ static int handle_firmware_response(uint8_t *buffer, uint16_t nbytes)
 }
 
 
-static int handle_alert(uint8_t *buffer, uint16_t nbytes)
+static int handle_alert(uint8_t *buffer, uint16_t nbytes, int *ppassback)
 {
+    /* Assume nothing was waiting for this alert */
+    *ppassback = 0;
+
     if (nbytes < 6 ||
         buffer[2] != TYPE_HUB_ALERT ||
         buffer[4] != ALERT_OP_UPDATE)
@@ -695,6 +700,13 @@ static int handle_alert(uint8_t *buffer, uint16_t nbytes)
     {
         errno = EPROTO;
         return -1;
+    }
+
+    /* Don't drop this packet if it's expected */
+    if (BITMAP_IS_SET(expecting_alert, buffer[3]))
+    {
+        BITMAP_CLEAR(expecting_alert, buffer[3]);
+        *ppassback = 1;
     }
 
     callback_queue(CALLBACK_ALERT, buffer[3], buffer[5], NULL);
@@ -745,8 +757,16 @@ static int handle_immediate(uint8_t *buffer, uint16_t nbytes)
     if ((rv = handle_firmware_response(buffer, nbytes)) != 0)
         return rv;
 
-    if ((rv = handle_alert(buffer, nbytes)) != 0)
+    if ((rv = handle_alert(buffer, nbytes, &passback)) < 0 ||
+        (rv > 0 && !passback))
+    {
         return rv;
+    }
+    else if (rv > 0)
+    {
+        /* Handled, but pass to foreground */
+        return 0;
+    }
 
     return 0; /* Nothing interesting here, guv */
 }
@@ -834,11 +854,18 @@ static void *run_comms_tx(void *args __attribute__((unused)))
 #endif
 
             /* This is the Port Info request asking for the value? */
-            if (buffer[0] < 0x80 &&
-                buffer[2] == TYPE_PORT_INFO_REQ &&
-                buffer[4] == PORT_INFO_VALUE)
+            if (buffer[0] < 0x80)
             {
-                BITMAP_SET(expecting_value_on_port, buffer[3]);
+                if (buffer[2] == TYPE_PORT_INFO_REQ &&
+                    buffer[4] == PORT_INFO_VALUE)
+                {
+                    BITMAP_SET(expecting_value_on_port, buffer[3]);
+                }
+                else if (buffer[2] == TYPE_HUB_ALERT &&
+                         buffer[4] == ALERT_OP_REQUEST)
+                {
+                    BITMAP_SET(expecting_alert, buffer[3]);
+                }
             }
 
             /* Construct the buffer length */

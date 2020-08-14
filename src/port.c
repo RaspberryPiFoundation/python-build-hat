@@ -111,6 +111,13 @@
         the power draw is too great.  The callback function is called
         from a background context.
 
+    .. py:method:: overpower_state()
+
+        Reads the overpower alert flag from the Hat.
+
+        :rtype: bool
+        :return: True if the alert flag is raised, False if not.
+
 .. py:class:: Port
 
     Represents a port on the hat, which may or may not have a device
@@ -716,6 +723,21 @@ PortSet_power_callback(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+PortSet_overpower_state(PyObject *self, PyObject *args)
+{
+    int alert_state;
+
+    if (!PyArg_ParseTuple(args, ""))
+        return NULL;
+
+    if ((alert_state = cmd_request_alert(ALERT_OVER_POWER)) < 0)
+        return NULL;
+
+    return PyBool_FromLong(alert_state);
+}
+
+
 static PyMethodDef PortSet_methods[] = {
     {
         "power",
@@ -728,6 +750,12 @@ static PyMethodDef PortSet_methods[] = {
         PortSet_power_callback,
         METH_VARARGS,
         "Read or set the callback function for overpower alerts"
+    },
+    {
+        "overpower_state",
+        PortSet_overpower_state,
+        METH_VARARGS,
+        "Read the Hat's overpower alert flag"
     },
     { NULL, NULL, 0, NULL }
 };
@@ -1166,4 +1194,3 @@ int ports_handle_callback(uint8_t overpower_state)
 
     return rv;
 }
-
