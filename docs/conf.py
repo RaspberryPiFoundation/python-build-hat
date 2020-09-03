@@ -56,7 +56,8 @@ source_suffix = '.rst'
 
 # General information about the project.
 project = 'Raspberry Pi Build HAT'
-copyright = '2020 - Kynesim Ltd'
+copyright = '''2020 - Raspberry Pi (Trading) Limited;
+2017-2020 - LEGO System A/S - Aastvej 1, 7190 Billund, DK.'''
 
 def get_firmware_version (file_path, search_string):
     # XXX: Fix this when versioning is handled properly

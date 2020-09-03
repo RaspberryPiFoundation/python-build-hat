@@ -1,6 +1,14 @@
 /* callback.h
  *
- * Copyright (c) Kynesim Ltd, 2020
+ * SPDX-License-Identifier: MIT
+ *
+ * Copyright (c) 2020 Raspberry Pi (Trading) Limited
+ *
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ *     Copyright (c) 2020 Kynesim Ltd
+ *     Copyright (c) 2017-2020 LEGO System A/S
  *
  * Handling callbacks, using a separate thread.
  */

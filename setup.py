@@ -1,5 +1,9 @@
 #! /usr/bin/env python3
 
+# Copyright (c) 2020 Raspberry Pi (Trading) Limited
+#
+# SPDX-License-Identifier: MIT
+
 from setuptools import setup, Extension
 from os import getenv
 

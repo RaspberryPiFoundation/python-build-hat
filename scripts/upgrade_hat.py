@@ -7,6 +7,16 @@ Invoke it as:
     $ upgrade_hat.py <firmware.bin>
 """
 
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2020 Raspberry Pi (Trading) Limited
+#
+# This file incorporates work covered by the following copyright and
+# permission notice:
+#
+#     Copyright (c) 2020 Kynesim Ltd
+
+
 import hub
 import sys
 from time import sleep

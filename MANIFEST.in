@@ -1,3 +1,7 @@
 include src/*.c
 include include/*.h
 include LICENSE
+recursive-include docs *.rst Makefile *.md *.py
+include docs/templates/*.html
+include docs/templates/*.inc
+include docs/static/*
