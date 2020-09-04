@@ -1475,7 +1475,10 @@ int cmd_set_combi_mode(uint8_t port_id,
     if (response[0] != 7 ||
         response[2] != TYPE_PORT_FORMAT_COMBINED ||
         response[3] != port_id ||
-        response[4] != combi_index ||
+/* The colour sensor returns a bad value for combi_index,
+ * so don't check it.
+ */
+//        response[4] != combi_index ||
         response[5] != (combi_map & 0xff) ||
         response[6] != ((combi_map >> 8) & 0xff))
     {
@@ -1486,30 +1489,6 @@ int cmd_set_combi_mode(uint8_t port_id,
     }
 
     free(response);
-
-#if 0 /* This appears to get stuck */
-    /* For some reason we do that again */
-    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
-                            port_id,
-                            INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_DISABLED);
-    if (response == NULL)
-        return -1;
-
-    if (response[0] != 7 ||
-        response[2] != TYPE_PORT_FORMAT_COMBINED ||
-        response[3] != port_id ||
-        response[4] != 0 ||
-        response[5] != 0 ||
-        response[6] != 0)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port Format Combi Setup Start");
-        return -1;
-    }
-
-    free(response);
-#endif
 
     return 0;
 

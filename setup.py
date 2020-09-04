@@ -36,7 +36,7 @@ if getenv("DEBUG_I2C") == "1":
     hub_module.define_macros.append(('DEBUG_I2C', '1'))
 
 setup(name='hub',
-      version='0.2',
+      version='0.2.1',
       description='Strawberry library for accessing Shortcake',
       long_description=long_description,
       long_description_content_type="text/markdown",
