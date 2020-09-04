@@ -157,6 +157,7 @@ typedef struct
     PyObject *fw_revision;
     int      current_mode;
     uint8_t  flags;
+    uint8_t  rx_error;
     uint8_t  num_modes;
     uint16_t type_id;
     uint16_t input_mode_mask;
@@ -173,6 +174,12 @@ typedef struct
 #define DO_FLAGS_GOT_MODE_INFO 0x01
 #define DO_FLAGS_COMBINABLE    0x02
 #define DO_FLAGS_DETACHED      0x80
+
+#define DO_RXERR_NONE         0x00
+#define DO_RXERR_NO_MODE_INFO 0x01
+#define DO_RXERR_BAD_MODE     0x02
+#define DO_RXERR_INTERNAL     0x03
+#define DO_RXERR_BAD_FORMAT   0x04
 
 #define DEVICE_FORMAT_RAW     0
 #define DEVICE_FORMAT_PERCENT 1
@@ -301,6 +308,7 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_INCREF(Py_None);
         self->current_mode = 0;
         self->flags = 0;
+        self->rx_error = 0;
         self->is_unreported = 0;
         self->is_mode_busy = 0;
         self->is_motor_busy = 0;
@@ -873,8 +881,50 @@ Device_get(PyObject *self, PyObject *args)
         return NULL;
     if (!device->is_unreported)
     {
+        device->rx_error = DO_RXERR_NONE;
         if (cmd_get_port_value(port_get_id(device->port)) < 0)
         {
+            PyObject *hub_protocol_exception = cmd_get_exception();
+
+            if (PyErr_Occurred() != NULL &&
+                PyErr_ExceptionMatches(hub_protocol_exception) &&
+                device->rx_error != DO_RXERR_NONE)
+            {
+                /* Replace the error with something more informative */
+                PyErr_Clear();
+                switch (device->rx_error)
+                {
+                    case DO_RXERR_NO_MODE_INFO:
+                        PyErr_SetString(
+                            hub_protocol_exception,
+                            "Mode information not ready, try again");
+                        break;
+
+                    case DO_RXERR_BAD_MODE:
+                        PyErr_SetString(
+                            hub_protocol_exception,
+                            "Inconsistent mode information, please set mode");
+                        break;
+
+                    case DO_RXERR_INTERNAL:
+                        PyErr_SetString(
+                            hub_protocol_exception,
+                            "Internal error on reception");
+                        break;
+
+                    case DO_RXERR_BAD_FORMAT:
+                        PyErr_SetString(
+                            hub_protocol_exception,
+                            "Format error in received value");
+                        break;
+
+                    default:
+                        PyErr_Format(
+                            hub_protocol_exception,
+                            "Unknown error (%d) receiving value",
+                            device->rx_error);
+                }
+            }
             return NULL;
         }
     }
@@ -1269,19 +1319,27 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
     device->is_mode_busy = 0;
 
     if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
+    {
         /* The foreground has to be the one to send commands */
+        device->rx_error = DO_RXERR_NO_MODE_INFO;
         return -1;
+    }
 
     if (device->current_mode == MODE_IS_COMBI)
+    {
         /* This must be some sort of race condition */
-        /* XXX: could process the value and discard to avoid confusion */
+        device->rx_error = DO_RXERR_BAD_MODE;
         return -1;
+    }
 
     mode = &device->modes[device->current_mode];
 
     /* Construct the list to contain these results */
     if ((values = PyList_New(mode->format.datasets)) == NULL)
+    {
+        device->rx_error = DO_RXERR_INTERNAL;
         return -1;
+    }
 
     for (i = 0; i < mode->format.datasets; i++)
     {
@@ -1290,6 +1348,7 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
         if (nread < 0)
         {
             Py_DECREF(values);
+            device->rx_error = DO_RXERR_BAD_FORMAT;
             return -1;
         }
         buffer += nread;
@@ -1324,25 +1383,34 @@ int device_new_combi_value(PyObject *self,
     device->is_mode_busy = 0;
 
     if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
+    {
         /* The foreground has to be the one to send commands */
+        device->rx_error = DO_RXERR_NO_MODE_INFO;
         return -1;
+    }
 
     if (device->current_mode != MODE_IS_COMBI)
+    {
         /* A combined value in a simple mode is probably a race */
-        /* XXX: could process the value and discard to avoid confusion */
+        device->rx_error = DO_RXERR_BAD_MODE;
         return -1;
+    }
 
     mode_number = (device->combi_mode[entry] >> 4) & 0x0f;
     mode = &device->modes[mode_number];
 
     bytes_consumed = read_value(mode->format.type, buffer, nbytes, &value);
     if (bytes_consumed < 0)
+    {
+        device->rx_error = DO_RXERR_BAD_FORMAT;
         return -1;
+    }
 
     /* This is not terribly efficient... */
     if ((values = PyList_New(device->num_combi_modes)) == NULL)
     {
         Py_DECREF(value);
+        device->rx_error = DO_RXERR_INTERNAL;
         return -1;
     }
 
@@ -1361,6 +1429,7 @@ int device_new_combi_value(PyObject *self,
             {
                 Py_DECREF(values);
                 Py_DECREF(value);
+                device->rx_error = DO_RXERR_INTERNAL;
                 return -1;
             }
             Py_INCREF(old_value);
