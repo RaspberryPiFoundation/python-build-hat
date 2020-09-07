@@ -400,14 +400,14 @@ static PyTypeObject HubType =
 
 static struct PyModuleDef hubmodule = {
     PyModuleDef_HEAD_INIT,
-    "hub",
+    "build_hat",
     NULL, /* Documentation */
     -1,   /* module state is in globals */
 };
 
 
 PyMODINIT_FUNC
-PyInit_hub(void)
+PyInit_build_hat(void)
 {
     PyObject *hub;
     PyObject *hub_obj;
