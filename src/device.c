@@ -36,8 +36,8 @@
     .. note::
 
         This class is not directly available to the user.  It is only
-        used by the the six device instances, and its instances are
-        provided already initialised.
+        used by the port object, and its instances are provided
+        already initialised.
 
     .. py:attribute:: FORMAT_RAW
 

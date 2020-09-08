@@ -10,7 +10,7 @@
  *     Copyright (c) 2020 Kynesim Ltd
  *     Copyright (c) 2017-2020 LEGO System A/S
  *
- * Module to provide Python access to the Lego Hat via I2C
+ * Module to provide Python access to the Build HAT via I2C
  */
 
 #define PY_SSIZE_T_CLEAN
@@ -36,46 +36,25 @@
 
 This module provides access to the Build HAT.
 
-.. note::
+.. py:exception:: build_hat.HubProtocolError
 
-    The original module directly contained the functions and
-    attributes of the Hub object.  Unfortunately because
-    communications with the hat take place in a background thread,
-    this unavoidably sometimes caused address exceptions during
-    module finalization (i.e. when a program using the hub module
-    ended).  Separating the actual hub functionality into its own
-    class allows us to avoid this problem, and allows for
-    supporting multiple hats in the future.
-
-    To use pre-existing examples of code using the hub module,
-    simply replace ``import hub`` with ``from hub import hub``.
-
-.. py:exception:: hub.HubProtocolError
-
-    This exception is raised by the hub module when no standard
+    This exception is raised by the build_hat module when no standard
     exception is more relevant.  It often indicates a problem
     communicating with the Build HAT.
 
-    .. note::
-
-        This exception is not supplied in the original.
-
-.. py:class:: hub.Hub
+.. py:class:: build_hat.BuildHAT
 
     Represents a Build HAT.
 
     .. note::
 
-        This class is not directly available to the user.  It is
-        only used to create the ``hub.hub`` instance. Future
-        versions of the module may make the Hub object available
-        to support multiple hats with different I2C addresses.
+        Only one instance of the BuildHAT class may be created.
 
     .. py:attribute:: port
 
         :type: PortSet
 
-        The collection of ports on the Shortcake hat.
+        The collection of ports on the Build HAT.
 
     .. py:attribute:: firmware
 
@@ -97,22 +76,6 @@ This module provides access to the Build HAT.
         * ``hardware_revision`` : Hardware version as a string in the form
           ``MAJOR.MINOR.BUGFIX.BUILD``
 
-        .. note::
-
-            The original info dictionary did not contain the firmware
-            version.  It did give the Bluetooth UUID of the hub (not
-            present on the Build HAT), an undocumented integer as a
-            product variant code, and a number of statistics related
-            to execution under Micropython.  These were all omitted as
-            irrelevant to the Build HAT.
-
-            The original info() method allowed a byte string to be
-            passed as a parameter.  If this key matched a hash of the
-            Bluetooth UUID, a Python module was created on the fly to
-            allow testing of various low-level features of the hub
-            hardware.  This is not particularly useful for this
-            library, so has not been implemented.
-
     .. py:method:: status() -> dict
 
         Returns a dictionary containing a single key, ``port``, whose
@@ -121,24 +84,9 @@ This module provides access to the Build HAT.
         the current values of the corresponding ports.  See
         :py:meth:`Device.get()` for details.
 
-        .. note::
-
-            The original status dictionary also contained the current
-            values of the accelerometer, gyroscope, position and
-            display.  Since none of these are present on the Build HAT,
-            they have been omitted.
-
-.. py:attribute:: hub.hub
-
-    This is an instance of the :py:class:`hub.Hub` class created to
-    communicate with the physical Build HAT at the default I2C
-    address.  It is automatically created when the hub module is
-    loaded.
-
-
 */
 
-/* The Hub object, an instance of which we make available */
+/* The BuildHAT object */
 typedef struct
 {
     PyObject_HEAD
@@ -178,12 +126,22 @@ Hub_dealloc(HubObject *self)
 }
 
 
+/* Make this class a singleton */
+static int build_hat_created = 0;
+
 static PyObject *
 Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    HubObject *self = (HubObject *)type->tp_alloc(type, 0);
+    HubObject *self;
 
-    if (self == NULL)
+    if (build_hat_created != 0)
+    {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "A BuildHAT() instance already exists");
+        return NULL;
+    }
+
+    if ((self = (HubObject *)type->tp_alloc(type, 0)) == NULL)
         return NULL;
 
     self->initialised = 0;
@@ -204,11 +162,11 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     if (i2c_open_hat() < 0)
     {
-        /* TODO: callback_shutdown() */
         Py_DECREF(self);
         return NULL;
     }
 
+    build_hat_created = 1;
     return (PyObject *)self;
 }
 
@@ -380,7 +338,7 @@ static PyMethodDef Hub_methods[] = {
 static PyTypeObject HubType =
 {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "Hub",
+    .tp_name = "BuildHAT",
     .tp_doc = "Object encapsulating a Shortcake Hat",
     .tp_basicsize = sizeof(HubObject),
     .tp_itemsize = 0,
@@ -410,7 +368,6 @@ PyMODINIT_FUNC
 PyInit_build_hat(void)
 {
     PyObject *hub;
-    PyObject *hub_obj;
 
     if ((hub = PyModule_Create(&hubmodule)) == NULL)
         return NULL;
@@ -477,11 +434,8 @@ PyInit_build_hat(void)
         return NULL;
     }
 
-    hub_obj = PyObject_CallObject((PyObject *)&HubType, NULL);
-    if (PyModule_AddObject(hub, "hub", hub_obj) < 0)
+    if (PyModule_AddObject(hub, "BuildHAT", (PyObject *)&HubType) < 0)
     {
-        Py_XDECREF(hub_obj);
-        Py_CLEAR(hub_obj);
         firmware_demodinit();
         cmd_demodinit();
         pair_demodinit();

@@ -41,12 +41,6 @@
         This class is not directly available to the user.  Instances
         are created by the :py:meth:`Motor.pair()` method.
 
-    .. note::
-
-        Returning ``False`` is a poor API choice, but it's what the
-        original does.  For consistency we do likewise, but raising an
-        exception would be much better.
-
     .. py:method:: primary()
 
         Returns the :py:class:`Motor` object representing the motor

@@ -31,12 +31,12 @@
 
 .. py:class:: PortSet
 
-    Represents the collection of ports attached to the Hub.
+    Represents the collection of ports attached to the BuildHAT.
 
     .. note::
 
         This class is not directly available to the user.  It is only
-        used by the Hub object itself, and comes ready initialized.
+        used by the BuildHAT object itself, and comes ready initialized.
 
     .. py:attribute:: A
 
@@ -99,8 +99,8 @@
 
     .. py:method:: power_callback([fn])
 
-        Sets the function to be called when the hub signals that too
-        much power is being drawn for the ports.
+        Sets the function to be called when the Build HAT signals that
+        too much power is being drawn for the ports.
 
         :param fn: The function to call.  This is a positional
             parameter only.
@@ -128,29 +128,31 @@
 
 .. py:class:: Port
 
-    Represents a port on the hat, which may or may not have a device
-    attached to it.  The methods of this class are always available.
+    Represents a port on the Build HAT, which may or may not have a
+    device attached to it.  The methods of this class are always
+    available.
 
-    The ports on the hat are able to autodetect the capabilities of
-    the device that is plugged in.  When a motor or device is
+    The ports on the Build HAT are able to autodetect the capabilities
+    of the device that is plugged in.  When a motor or device is
     detected, an enhanced set of methods is available through the
     :py:attr:`Port.motor` or :py:attr:`Port.device` attribute.
 
     .. note::
 
         This class is not actually available to the user.  It is only
-        used by the Hub object itself, and instances come ready
+        used by the BuildHAT object itself, and instances come ready
         initialized.
 
     .. py:attribute:: device
 
-        A :py:class:`Device` instance for the device attached to the port, or
-        ``None`` if no device is currently attached.
+        A :py:class:`Device` instance for the device attached to the
+        port, or ``None`` if no device is currently attached.
 
     .. py:attribute:: motor
 
-        A :py:class:`Motor` instance for the motor attached to the port, or
-        ``None`` if there is no recognised motor currently attached.
+        A :py:class:`Motor` instance for the motor attached to the
+        port, or ``None`` if there is no recognised motor currently
+        attached.
 
     .. py:method:: info() -> dict
 
@@ -321,7 +323,7 @@
 
         Example::
 
-            from hub import hub
+            from build_at import BuildHAT
 
             def greet(event):
                 if event == hub.port.ATTACHED:
@@ -329,7 +331,8 @@
                 else:
                     print("Goodbye, old thing on port A")
 
-            hub.port.A.callback(greet)
+            bh = BuildHAT()
+            bh.port.A.callback(greet)
 
     .. py:method:: mode(mode)
 

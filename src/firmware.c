@@ -33,7 +33,7 @@
     .. note::
 
         This class is not directly available to the user.  It is only
-        used to create the ``hub.hub.firmware`` instance.
+        used to create the ``build_hat.BuildHAT().firmware`` instance.
 
     A firmware update will follow these steps:
 
@@ -177,9 +177,9 @@
 
     .. py:method:: reboot()
 
-        Reboots the hat to allow a firmware upgrade to complete.  The
-        bootloader will validate any image in external flash, and if
-        valid copy it into internal flash and run it.
+        Reboots the Build HAT to allow a firmware upgrade to complete.
+        The bootloader will validate any image in external flash, and
+        if valid copy it into internal flash and run it.
 
         Note that this method is not intended as a general purpose
         reset mechanism.  It does not wait for the Hat to finish

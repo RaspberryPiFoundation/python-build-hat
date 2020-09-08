@@ -41,8 +41,8 @@
     .. note::
 
         This class is not directly available to the user.  It is only
-        used by the six motor instances, and its instances are
-        provided already initialised.
+        used by the port objects, and its instances are provided
+        already initialised.
 
     .. py:attribute:: BUSY_MODE
 
@@ -456,15 +456,6 @@
             successfully paired, or ``False`` if the pairing attempted
             timed out.
         :raises TypeError: if ``motor`` is not a :py:class:`Motor`.
-
-        .. note::
-
-            The original specifies that failing to create a pair for
-            any reason other than communications with the motor should
-            return ``None``.  This implementation raises exceptions
-            instead, and intends to replace returning ``False`` on
-            timeout with an appropriate exception.  It is easier to
-            write that way, and better API design as well.
 
         .. note::
 
