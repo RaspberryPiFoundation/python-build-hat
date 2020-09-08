@@ -403,6 +403,13 @@ Port_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static PyObject *
 Port_get_device(PortObject *self, void *closure)
 {
+    if (self->device == Py_None)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                     "There is no device attached to port %c",
+                     'A' + self->port_id);
+        return NULL;
+    }
     Py_INCREF(self->device);
     return self->device;
 }
@@ -411,6 +418,13 @@ Port_get_device(PortObject *self, void *closure)
 static PyObject *
 Port_get_motor(PortObject *self, void *closure)
 {
+    if (self->motor == Py_None)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                     "There is no motor attached to port %c",
+                     'A' + self->port_id);
+        return NULL;
+    }
     Py_INCREF(self->motor);
     return self->motor;
 }
