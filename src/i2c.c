@@ -910,7 +910,16 @@ int i2c_open_hat(void)
 #else
     if ((i2c_fd = open(I2C_DEVICE_NAME, O_RDWR)) < 0)
     {
-        PyErr_SetFromErrno(PyExc_IOError);
+        if (errno == ENOENT)
+        {
+            /* "File not found" probably means I2C is not enabled */
+            PyErr_SetString(PyExc_IOError,
+                            "Unable to access I2C: has it been enabled?");
+        }
+        else
+        {
+            PyErr_SetFromErrno(PyExc_IOError);
+        }
         return -1;
     }
     if (open_wake_gpio() < 0)
