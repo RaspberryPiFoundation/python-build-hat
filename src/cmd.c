@@ -17,6 +17,7 @@
 #include <Python.h>
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "queue.h"
 #include "cmd.h"
@@ -131,32 +132,42 @@ PyObject *cmd_version_as_unicode(uint8_t *buffer)
 }
 
 
-static uint8_t *get_response(uint8_t type)
+static uint8_t *get_response(uint8_t type, bool discard_feedback)
 {
     uint8_t *response;
 
-    if (queue_get(&response) != 0)
-        return NULL; /* Exception already raised */
-    if (response == NULL)
+    while (1)
     {
-        PyErr_SetString(hub_protocol_error, "Tx timeout");
-        return NULL;
-    }
+        if (queue_get(&response) != 0)
+            return NULL; /* Exception already raised */
+        if (response == NULL)
+        {
+            PyErr_SetString(hub_protocol_error, "Tx timeout");
+            return NULL;
+        }
 
-    /* `response` is dynamically allocated and now our responsibility */
-    if (response[1] != 0x00)
-    {
-        PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
-        free(response);
-        return NULL;
-    }
+        /* `response` is dynamically allocated and now our responsibility */
+        if (response[1] != 0x00)
+        {
+            PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
+            free(response);
+            return NULL;
+        }
 
-    /* Check for an error return */
-    if (response[2] == TYPE_GENERIC_ERROR)
-    {
-        handle_generic_error(type, response);
+        /* Check for an error return */
+        if (response[2] == TYPE_GENERIC_ERROR)
+        {
+            handle_generic_error(type, response);
+            free(response);
+            return NULL;
+        }
+
+        /* Ignore Feedback messages unless explicitly asked for them */
+        if (!discard_feedback || response[2] != TYPE_PORT_OUTPUT_FEEDBACK)
+        {
+            return response;
+        }
         free(response);
-        return NULL;
     }
 
     return response;
@@ -195,7 +206,7 @@ static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
      * it is done with it.
      */
 
-    return get_response(type);
+    return get_response(type, (type != TYPE_PORT_OUTPUT));
 }
 
 
@@ -1217,7 +1228,7 @@ int cmd_write_mode_data(uint8_t port_id,
 
     /* 'buffer' is now the responsibility of the comms thread */
 
-    if ((response = get_response(TYPE_PORT_OUTPUT)) == NULL)
+    if ((response = get_response(TYPE_PORT_OUTPUT, false)) == NULL)
         return -1;
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -1587,7 +1598,7 @@ int cmd_action_reset(void)
     {
         /* This is an old reset, from power-on most likely */
         free(response);
-        response = get_response(TYPE_HUB_ACTION);
+        response = get_response(TYPE_HUB_ACTION, true);
         if (response == NULL)
             return -1;
 
@@ -1717,7 +1728,7 @@ int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
 
     /* 'buffer' is now the responsibility of the comms thread */
 
-    if ((response = get_response(TYPE_FIRMWARE_REQUEST)) == NULL)
+    if ((response = get_response(TYPE_FIRMWARE_REQUEST, true)) == NULL)
         return -1;
     if (response[0] != 9 ||
         response[2] != TYPE_FIRMWARE_RESPONSE ||
