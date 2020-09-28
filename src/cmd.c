@@ -91,7 +91,8 @@ static void handle_generic_error(uint8_t expected_type, uint8_t *buffer)
 
 int cmd_modinit(PyObject *hub)
 {
-    hub_protocol_error = PyErr_NewException("hub.HubProtocolError", NULL, NULL);
+    hub_protocol_error = PyErr_NewException("build_hat.HubProtocolError",
+                                            NULL, NULL);
     Py_XINCREF(hub_protocol_error);
     if (PyModule_AddObject(hub, "HubProtocolError", hub_protocol_error) < 0)
     {
