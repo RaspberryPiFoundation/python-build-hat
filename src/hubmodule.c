@@ -377,6 +377,7 @@ PyInit_build_hat(void)
         return NULL;
     }
     Py_INCREF(&HubType);
+    PyModule_AddStringConstant(hub, "__version__", "0.2.2");
 
     if (device_modinit() < 0)
     {
