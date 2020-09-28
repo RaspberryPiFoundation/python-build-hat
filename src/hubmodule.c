@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <unistd.h>
 
 #include "i2c.h"
 #include "cmd.h"
@@ -201,6 +202,12 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     if (cmd_wait_for_reset_complete() < 0)
         return -1;
     self->initialised = 1;
+
+    /* Give the HAT a chance to recognise what is attached to it */
+    Py_BEGIN_ALLOW_THREADS
+    usleep(800000);
+    Py_END_ALLOW_THREADS
+
     return 0;
 }
 
@@ -447,5 +454,6 @@ PyInit_build_hat(void)
         Py_DECREF(hub);
         return NULL;
     }
+
     return hub;
 }
