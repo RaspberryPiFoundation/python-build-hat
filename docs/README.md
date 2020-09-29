@@ -1,10 +1,10 @@
-Shortcake Hub Module Documentation
-==================================
+Build HAT Module Documentation
+==============================
 
-This directory contains the documentation for the "hub" module that
-communicates with the "Shortcake" Hat.  The documentation is here as
-ReStructured Text source files, together with a Makefile for building
-it into HTML.  Other builds can be added as required.
+This directory contains the documentation for the "build_hat" module
+that communicates with the Raspberry Pi Build HAT.  The documentation
+is here as ReStructured Text source files, together with a Makefile
+for building it into HTML.  Other builds can be added as required.
 
 Building the Documentation
 --------------------------

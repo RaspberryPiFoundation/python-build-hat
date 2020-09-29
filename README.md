@@ -5,13 +5,13 @@ This Python module allows you to run the Raspberry Pi Build HAT.  It
 includes detailed documentation -- see below for how to generate and
 read it.
 
-The ``hub`` module provides a ``hub`` object that holds information on
-all of the devices attached to the HAT.  Individual motors and sensors
-can be found under ``hub.port.X`` where ``X`` is the name of the
-port.  In addition there are callbacks to inform the code that devices
-have been attached to or detached from the HAT, status functions to
-determine exactly what device is on a port, and specialist functions
-to drive motors.
+The ``build_hat`` module provides a ``BuildHAT`` class that holds
+information on all of the devices attached to the HAT.  Individual
+motors and sensors can be found under ``bh.port.X`` where ``X`` is the
+name of the port and ``bh`` is an instance ``BuildHAT``.  In addition
+there are callbacks to inform the code that devices have been attached
+to or detached from the HAT, status functions to determine exactly
+what device is on a port, and specialist functions to drive motors.
 
 
 Build and install
@@ -30,6 +30,8 @@ You may need to install the I2C development library:
 ```
 $ sudo apt install libi2c-dev
 ```
+
+and you will certainly need to turn I2C on in your boot configuration file.
 
 Now use the setup.py script to build and install the module:
 
@@ -72,25 +74,27 @@ See the detailed documentation for the Python objects available.
 To control a motor attached to port A:
 
 ```python
-from hub import hub
+from build_hat import BuildHAT
 
-hub.port.A.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
-hub.port.A.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
-hub.port.A.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
-hub.port.A.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
-hub.port.A.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
-hub.port.A.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
+bh = BuildHAT()
+bh.port.A.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
+bh.port.A.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
+bh.port.A.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
+bh.port.A.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
+bh.port.A.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
+bh.port.A.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
 ```
 
 To rotate motor attached to port once clockwise when a button attached to port B is pressed:
 
 ```python
-from hub import hub
+from build_hat import BuildHAT
 import time
 
+bh = BuildHAT()
 while True:
-	if hub.port.B.device.get() > 0: # test if button is pressed
-		hub.port.A.motor.run_for_degrees(360, 127) # turn 360 degrees clockwise at maximum speed
+	if bh.port.B.device.get() > 0: # test if button is pressed
+		bh.port.A.motor.run_for_degrees(360, 127) # turn 360 degrees clockwise at maximum speed
 		time.sleep(0.5) # Wait half a second for motor to finish turning
 
 ```
