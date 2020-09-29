@@ -132,14 +132,17 @@ PyObject *cmd_version_as_unicode(uint8_t *buffer)
 }
 
 
-static uint8_t *get_response(uint8_t type, bool discard_feedback)
+static uint8_t *get_response(uint8_t type, bool return_feedback)
 {
     uint8_t *response;
 
     while (1)
     {
         if (queue_get(&response) != 0)
-            return NULL; /* Exception already raised */
+        {
+            PyErr_SetFromErrno(hub_protocol_error);
+            return NULL;
+        }
         if (response == NULL)
         {
             PyErr_SetString(hub_protocol_error, "Tx timeout");
@@ -163,18 +166,21 @@ static uint8_t *get_response(uint8_t type, bool discard_feedback)
         }
 
         /* Ignore Feedback messages unless explicitly asked for them */
-        if (!discard_feedback || response[2] != TYPE_PORT_OUTPUT_FEEDBACK)
+        if (return_feedback || response[2] != TYPE_PORT_OUTPUT_FEEDBACK)
         {
             return response;
         }
         free(response);
     }
 
-    return response;
+    /* Unreachable code */
+    return NULL;
 }
 
 
-static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
+static uint8_t *make_request(bool return_feedback,
+                             uint8_t nbytes,
+                             uint8_t type, ...)
 {
     va_list args;
     uint8_t *buffer = malloc(nbytes);
@@ -206,14 +212,14 @@ static uint8_t *make_request(uint8_t nbytes, uint8_t type, ...)
      * it is done with it.
      */
 
-    return get_response(type, (type != TYPE_PORT_OUTPUT));
+    return get_response(type, return_feedback);
 }
 
 
 PyObject *cmd_get_hardware_version(void)
 {
     PyObject *version;
-    uint8_t *response = make_request(5, TYPE_HUB_PROPERTY,
+    uint8_t *response = make_request(false, 5, TYPE_HUB_PROPERTY,
                                      PROP_HW_VERSION,
                                      PROP_OP_REQUEST);
 
@@ -241,7 +247,7 @@ PyObject *cmd_get_hardware_version(void)
 PyObject *cmd_get_firmware_version(void)
 {
     PyObject *version;
-    uint8_t *response = make_request(5, TYPE_HUB_PROPERTY,
+    uint8_t *response = make_request(false, 5, TYPE_HUB_PROPERTY,
                                      PROP_FW_VERSION,
                                      PROP_OP_REQUEST);
 
@@ -268,7 +274,7 @@ PyObject *cmd_get_firmware_version(void)
 
 int cmd_get_port_value(uint8_t port_id)
 {
-    uint8_t *response = make_request(5, TYPE_PORT_INFO_REQ,
+    uint8_t *response = make_request(false, 5, TYPE_PORT_INFO_REQ,
                                      port_id,
                                      PORT_INFO_VALUE);
 
@@ -294,7 +300,7 @@ int cmd_get_port_value(uint8_t port_id)
 
 int cmd_get_port_modes(uint8_t port_id, port_modes_t *results)
 {
-    uint8_t *response = make_request(5, TYPE_PORT_INFO_REQ,
+    uint8_t *response = make_request(false, 5, TYPE_PORT_INFO_REQ,
                                      port_id,
                                      PORT_INFO_MODE);
 
@@ -325,7 +331,7 @@ int cmd_get_port_modes(uint8_t port_id, port_modes_t *results)
 int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi)
 {
     int i;
-    uint8_t *response = make_request(5, TYPE_PORT_INFO_REQ,
+    uint8_t *response = make_request(false, 5, TYPE_PORT_INFO_REQ,
                                      port_id,
                                      PORT_INFO_MODE_COMBINATIONS);
 
@@ -358,7 +364,7 @@ int cmd_get_combi_modes(uint8_t port_id, combi_mode_t combi)
 
 int cmd_get_mode_name(uint8_t port_id, uint8_t mode_id, char *name)
 {
-    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+    uint8_t *response = make_request(false, 6, TYPE_PORT_MODE_REQ,
                                      port_id,
                                      mode_id,
                                      MODE_INFO_NAME);
@@ -402,7 +408,7 @@ static int get_mode_min_max(uint8_t port_id,
                             uint8_t info_type,
                             const char *info_name)
 {
-    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+    uint8_t *response = make_request(false, 6, TYPE_PORT_MODE_REQ,
                                      port_id,
                                      mode_id,
                                      info_type);
@@ -473,7 +479,7 @@ int cmd_get_mode_si(uint8_t port_id,
 
 int cmd_get_mode_symbol(uint8_t port_id, uint8_t mode_id, char *symbol)
 {
-    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+    uint8_t *response = make_request(false, 6, TYPE_PORT_MODE_REQ,
                                      port_id,
                                      mode_id,
                                      MODE_INFO_SYMBOL);
@@ -515,7 +521,7 @@ int cmd_get_mode_mapping(uint8_t port_id,
                          uint8_t *pinput_mapping,
                          uint8_t *poutput_mapping)
 {
-    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+    uint8_t *response = make_request(false, 6, TYPE_PORT_MODE_REQ,
                                      port_id,
                                      mode_id,
                                      MODE_INFO_MAPPING);
@@ -545,7 +551,7 @@ int cmd_get_mode_capability(uint8_t port_id,
                             uint8_t mode_id,
                             uint8_t capability[6])
 {
-    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+    uint8_t *response = make_request(false, 6, TYPE_PORT_MODE_REQ,
                                      port_id,
                                      mode_id,
                                      MODE_INFO_CAPABILITY);
@@ -574,7 +580,7 @@ int cmd_get_mode_format(uint8_t port_id,
                         uint8_t mode_id,
                         value_format_t *format)
 {
-    uint8_t *response = make_request(6, TYPE_PORT_MODE_REQ,
+    uint8_t *response = make_request(false, 6, TYPE_PORT_MODE_REQ,
                                      port_id,
                                      mode_id,
                                      MODE_INFO_FORMAT);
@@ -603,9 +609,66 @@ int cmd_get_mode_format(uint8_t port_id,
 }
 
 
+static int wait_for_complete_feedback(uint8_t port_id, uint8_t *response)
+{
+    int rv = 0;
+    uint8_t *buffer = response;
+
+    while (rv == 0)
+    {
+        if (buffer != NULL)
+        {
+            if (buffer[1] != 0x00)
+            {
+                PyErr_Format(hub_protocol_error,
+                             "Bad hub ID 0x%02x", buffer[1]);
+                free(buffer);
+                return -1;
+            }
+            if (buffer[0] != 5 ||
+                buffer[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
+                buffer[3] != port_id)
+            {
+                free(buffer);
+                PyErr_SetString(hub_protocol_error,
+                                "Unexpected reply to Output command");
+                return -1;
+            }
+            if (buffer[2] == TYPE_GENERIC_ERROR)
+            {
+                handle_generic_error(TYPE_PORT_OUTPUT, buffer);
+                free(buffer);
+                return -1;
+            }
+            if ((buffer[4] & 0x04) != 0)
+            {
+                /* "Current Command(s) Discarded" bit set */
+                free(buffer);
+                PyErr_SetString(hub_protocol_error, "Port busy");
+                return -1;
+            }
+            if ((buffer[4] & 0x02) != 0)
+            {
+                /* "Current command(s) Complete" bit set */
+                free(buffer);
+                return 0;
+            }
+            free(buffer);
+        }
+
+        /* Try again */
+        rv = queue_get(&buffer);
+    }
+
+    /* Something went wrong, check with errno */
+    PyErr_SetFromErrno(hub_protocol_error);
+    return -1;
+}
+
+
 int cmd_set_pwm(uint8_t port_id, int8_t pwm)
 {
-    uint8_t *response = make_request(7, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 7, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -614,29 +677,13 @@ int cmd_set_pwm(uint8_t port_id, int8_t pwm)
     if (response == NULL)
         return -1;
 
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Start Power");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
 int cmd_set_pwm_pair(uint8_t port_id, int8_t pwm0, int8_t pwm1)
 {
-    uint8_t *response = make_request(8, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 8, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -646,30 +693,14 @@ int cmd_set_pwm_pair(uint8_t port_id, int8_t pwm0, int8_t pwm1)
     if (response == NULL)
         return -1;
 
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Start Power LR");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
 
 int cmd_set_acceleration(uint8_t port_id, uint32_t accel)
 {
-    uint8_t *response = make_request(9, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 9, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -680,29 +711,13 @@ int cmd_set_acceleration(uint8_t port_id, uint32_t accel)
     if (response == NULL)
         return -1;
 
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Set Accel");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
 int cmd_set_deceleration(uint8_t port_id, uint32_t decel)
 {
-    uint8_t *response = make_request(9, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 9, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -713,29 +728,13 @@ int cmd_set_deceleration(uint8_t port_id, uint32_t decel)
     if (response == NULL)
         return -1;
 
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Set Decel");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
 int cmd_set_pid(uint8_t port_id, uint32_t pid[3])
 {
-    uint8_t *response = make_request(22, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 22, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -747,29 +746,13 @@ int cmd_set_pid(uint8_t port_id, uint32_t pid[3])
     if (response == NULL)
         return -1;
 
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Write PID");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
 int cmd_set_stall(uint8_t port_id, int stall)
 {
-    uint8_t *response = make_request(7, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 7, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -778,23 +761,7 @@ int cmd_set_stall(uint8_t port_id, int stall)
     if (response == NULL)
         return -1;
 
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Stall Control");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
@@ -803,7 +770,7 @@ int cmd_start_speed(uint8_t port_id,
                     uint8_t max_power,
                     uint8_t use_profile)
 {
-    uint8_t *response = make_request(9, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 9, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -814,23 +781,7 @@ int cmd_start_speed(uint8_t port_id,
     if (response == NULL)
         return -1;
 
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Start Speed");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
@@ -840,7 +791,7 @@ int cmd_start_speed_pair(uint8_t port_id,
                          uint8_t max_power,
                          uint8_t use_profile)
 {
-    uint8_t *response = make_request(10, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(/*XXX:*/true, 10, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -852,23 +803,7 @@ int cmd_start_speed_pair(uint8_t port_id,
     if (response == NULL)
         return -1;
 
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Start Speed");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
@@ -877,9 +812,10 @@ int cmd_start_speed_for_time(uint8_t port_id,
                              int8_t speed,
                              uint8_t max_power,
                              uint8_t stop,
-                             uint8_t use_profile)
+                             uint8_t use_profile,
+                             bool blocking)
 {
-    uint8_t *response = make_request(12, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 12, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -891,6 +827,8 @@ int cmd_start_speed_for_time(uint8_t port_id,
                                      use_profile);
     if (response == NULL)
         return -1;
+    if (blocking)
+        return wait_for_complete_feedback(port_id, response);
 
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -918,9 +856,10 @@ int cmd_start_speed_for_time_pair(uint8_t port_id,
                                   int8_t speed1,
                                   uint8_t max_power,
                                   uint8_t stop,
-                                  uint8_t use_profile)
+                                  uint8_t use_profile,
+                                  bool blocking)
 {
-    uint8_t *response = make_request(13, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 13, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -933,6 +872,8 @@ int cmd_start_speed_for_time_pair(uint8_t port_id,
                                      use_profile);
     if (response == NULL)
         return -1;
+    if (blocking)
+        return wait_for_complete_feedback(port_id, response);
 
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -959,9 +900,10 @@ int cmd_start_speed_for_degrees(uint8_t port_id,
                                 int8_t speed,
                                 uint8_t max_power,
                                 uint8_t stop,
-                                uint8_t use_profile)
+                                uint8_t use_profile,
+                                bool blocking)
 {
-    uint8_t *response = make_request(14, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 14, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -973,6 +915,8 @@ int cmd_start_speed_for_degrees(uint8_t port_id,
                                      use_profile);
     if (response == NULL)
         return -1;
+    if (blocking)
+        return wait_for_complete_feedback(port_id, response);
 
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -1000,9 +944,10 @@ int cmd_start_speed_for_degrees_pair(uint8_t port_id,
                                      int8_t speed1,
                                      uint8_t max_power,
                                      uint8_t stop,
-                                     uint8_t use_profile)
+                                     uint8_t use_profile,
+                                     bool blocking)
 {
-    uint8_t *response = make_request(15, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 15, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -1015,6 +960,8 @@ int cmd_start_speed_for_degrees_pair(uint8_t port_id,
                                      use_profile);
     if (response == NULL)
         return -1;
+    if (blocking)
+        return wait_for_complete_feedback(port_id, response);
 
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -1041,9 +988,10 @@ int cmd_goto_abs_position(uint8_t port_id,
                           int8_t speed,
                           uint8_t max_power,
                           uint8_t stop,
-                          uint8_t use_profile)
+                          uint8_t use_profile,
+                          bool blocking)
 {
-    uint8_t *response = make_request(14, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 14, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -1055,6 +1003,8 @@ int cmd_goto_abs_position(uint8_t port_id,
                                      use_profile);
     if (response == NULL)
         return -1;
+    if (blocking)
+        return wait_for_complete_feedback(port_id, response);
 
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -1082,9 +1032,10 @@ int cmd_goto_abs_position_pair(uint8_t port_id,
                                int8_t speed,
                                uint8_t max_power,
                                uint8_t stop,
-                               uint8_t use_profile)
+                               uint8_t use_profile,
+                               bool blocking)
 {
-    uint8_t *response = make_request(18, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 18, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -1097,6 +1048,8 @@ int cmd_goto_abs_position_pair(uint8_t port_id,
                                      use_profile);
     if (response == NULL)
         return -1;
+    if (blocking)
+        return wait_for_complete_feedback(port_id, response);
 
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -1120,7 +1073,7 @@ int cmd_goto_abs_position_pair(uint8_t port_id,
 
 int cmd_preset_encoder(uint8_t port_id, int32_t position)
 {
-    uint8_t *response = make_request(10, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 10, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -1128,24 +1081,7 @@ int cmd_preset_encoder(uint8_t port_id, int32_t position)
                                      U32_TO_BYTE_ARG((uint32_t)position));
     if (response == NULL)
         return -1;
-
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Preset Encoder");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
@@ -1153,7 +1089,7 @@ int cmd_preset_encoder_pair(uint8_t port_id,
                             int32_t position0,
                             int32_t position1)
 {
-    uint8_t *response = make_request(14, TYPE_PORT_OUTPUT,
+    uint8_t *response = make_request(true, 14, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -1162,24 +1098,7 @@ int cmd_preset_encoder_pair(uint8_t port_id,
                                      U32_TO_BYTE_ARG((uint32_t)position1));
     if (response == NULL)
         return -1;
-
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Preset Encoder");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
+    return wait_for_complete_feedback(port_id, response);
 }
 
 
@@ -1228,7 +1147,7 @@ int cmd_write_mode_data(uint8_t port_id,
 
     /* 'buffer' is now the responsibility of the comms thread */
 
-    if ((response = get_response(TYPE_PORT_OUTPUT, false)) == NULL)
+    if ((response = get_response(TYPE_PORT_OUTPUT, true)) == NULL)
         return -1;
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -1255,7 +1174,7 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
     uint8_t *response;
 
     /* Mode zero appears to be a legacy */
-    response = make_request(10, TYPE_PORT_FORMAT_SETUP_SINGLE,
+    response = make_request(false, 10, TYPE_PORT_FORMAT_SETUP_SINGLE,
                             port_id,
                             mode,
                             1, 0, 0, 0, /* Delta = 1 */
@@ -1287,7 +1206,7 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
      * mode.  First the mode is set as for mode 0 above, then
      * issue a device reset, then set the mode again.
      */
-    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
                             port_id,
                             INFO_FORMAT_RESET);
     if (response == NULL)
@@ -1307,7 +1226,7 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
     }
 
     /* Now set the mode again */
-    response = make_request(10, TYPE_PORT_FORMAT_SETUP_SINGLE,
+    response = make_request(false, 10, TYPE_PORT_FORMAT_SETUP_SINGLE,
                             port_id,
                             mode,
                             1, 0, 0, 0, /* Delta = 1 */
@@ -1347,7 +1266,7 @@ int cmd_set_combi_mode(uint8_t port_id,
     uint16_t combi_map;
 
     /* First reset the device's mode */
-    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
                             port_id,
                             INFO_FORMAT_RESET);
     if (response == NULL)
@@ -1367,7 +1286,7 @@ int cmd_set_combi_mode(uint8_t port_id,
     free(response);
 
     /* Now lock the device against actual mode changes */
-    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
                             port_id,
                             INFO_FORMAT_LOCK);
     if (response == NULL)
@@ -1477,7 +1396,7 @@ int cmd_set_combi_mode(uint8_t port_id,
     /* No response is expected */
 
     /* Unlock and restart the device: this does get the COMBI response */
-    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
                             port_id,
                             INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_DISABLED);
     if (response == NULL)
@@ -1507,7 +1426,7 @@ int cmd_set_combi_mode(uint8_t port_id,
 
 emergency_reset:
     /* Try to put the device back in a known state */
-    response = make_request(5, TYPE_PORT_FORMAT_SETUP_COMBINED,
+    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
                             port_id,
                             INFO_FORMAT_RESET);
     free(response);
@@ -1580,7 +1499,7 @@ int cmd_disconnect_virtual_port(uint8_t port_id)
 /* Send a reset command to the hub, and wait for its response */
 int cmd_action_reset(void)
 {
-    uint8_t *response = make_request(4, TYPE_HUB_ACTION, ACTION_RESET);
+    uint8_t *response = make_request(false, 4, TYPE_HUB_ACTION, ACTION_RESET);
 
     if (response == NULL)
         return -1;
@@ -1598,7 +1517,7 @@ int cmd_action_reset(void)
     {
         /* This is an old reset, from power-on most likely */
         free(response);
-        response = get_response(TYPE_HUB_ACTION, true);
+        response = get_response(TYPE_HUB_ACTION, false);
         if (response == NULL)
             return -1;
 
@@ -1728,7 +1647,7 @@ int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
 
     /* 'buffer' is now the responsibility of the comms thread */
 
-    if ((response = get_response(TYPE_FIRMWARE_REQUEST, true)) == NULL)
+    if ((response = get_response(TYPE_FIRMWARE_REQUEST, false)) == NULL)
         return -1;
     if (response[0] != 9 ||
         response[2] != TYPE_FIRMWARE_RESPONSE ||
@@ -1758,7 +1677,7 @@ int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
 
 int cmd_firmware_length(void)
 {
-    uint8_t *response = make_request(4, TYPE_FIRMWARE_REQUEST,
+    uint8_t *response = make_request(false, 4, TYPE_FIRMWARE_REQUEST,
                                      FIRMWARE_READLENGTH);
     uint32_t nbytes;
 
@@ -1787,7 +1706,7 @@ int cmd_firmware_length(void)
 
 int cmd_firmware_checksum(uint8_t request_type, uint32_t *pchecksum)
 {
-    uint8_t *response = make_request(5, TYPE_FIRMWARE_REQUEST,
+    uint8_t *response = make_request(false, 5, TYPE_FIRMWARE_REQUEST,
                                      FIRMWARE_CHECKSUM, request_type);
 
     if (response == NULL)
@@ -1817,7 +1736,7 @@ int cmd_firmware_validate_image(int *pvalid,
                                 uint32_t *pstored_checksum,
                                 uint32_t *pcalc_checksum)
 {
-    uint8_t *response = make_request(4, TYPE_FIRMWARE_REQUEST,
+    uint8_t *response = make_request(false, 4, TYPE_FIRMWARE_REQUEST,
                                      FIRMWARE_VALIDATE);
 
     if (response == NULL)
@@ -1858,7 +1777,7 @@ int cmd_firmware_validate_image(int *pvalid,
 
 int cmd_firmware_get_flash_devid(uint32_t *pdev_id)
 {
-    uint8_t *response = make_request(4, TYPE_FIRMWARE_REQUEST,
+    uint8_t *response = make_request(false, 4, TYPE_FIRMWARE_REQUEST,
                                      FIRMWARE_FLASH_DEVID);
 
     if (response == NULL)
@@ -1886,7 +1805,7 @@ int cmd_firmware_get_flash_devid(uint32_t *pdev_id)
 
 int cmd_firmware_read_flash(uint32_t addr, uint8_t *buffer)
 {
-    uint8_t *response = make_request(8, TYPE_FIRMWARE_REQUEST,
+    uint8_t *response = make_request(false, 8, TYPE_FIRMWARE_REQUEST,
                                      FIRMWARE_READ_FLASH,
                                      U32_TO_BYTE_ARG(addr));
 
@@ -1993,7 +1912,7 @@ int cmd_disable_alert(uint8_t alert)
 
 int cmd_request_alert(uint8_t alert)
 {
-    uint8_t *response = make_request(5, TYPE_HUB_ALERT,
+    uint8_t *response = make_request(false, 5, TYPE_HUB_ALERT,
                                      alert,
                                      ALERT_OP_REQUEST);
     uint32_t result;

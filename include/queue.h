@@ -66,7 +66,7 @@ extern int queue_check(uint8_t **pbuffer);
 /* Wait on the queue from the comms Rx thread for a buffer.
  *
  * Times out after a second if no buffer is queued.  Timeouts are
- * considered an error, returning ETIMEOUT.
+ * not considered an error, returning 0 but with `pbuffer` NULL.
  *
  * Returns 0 on success, with `pbuffer` pointing to the received buffer.
  * On failure, returns a standard errno and raises a Python exception.

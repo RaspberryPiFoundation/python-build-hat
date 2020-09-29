@@ -20,6 +20,7 @@
 #include <Python.h>
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Return type for cmd_get_port_modes() */
 typedef struct port_modes_s
@@ -236,7 +237,8 @@ extern int cmd_start_speed_for_time(uint8_t port_id,
                                     int8_t speed,
                                     uint8_t max_power,
                                     uint8_t stop,
-                                    uint8_t use_profile);
+                                    uint8_t use_profile,
+                                    bool blocking);
 
 /* Sends a Port Output command to run a motor pair for a given number
  * of milliseconds.  Returns 0 on success, -1 on error (when a Python
@@ -248,7 +250,8 @@ extern int cmd_start_speed_for_time_pair(uint8_t port_id,
                                          int8_t speed1,
                                          uint8_t max_power,
                                          uint8_t stop,
-                                         uint8_t use_profile);
+                                         uint8_t use_profile,
+                                         bool blocking);
 
 /* Sends a Port Output command to run a motor through a given angle.
  * Returns 0 on success, -1 on error (when a Python exception will
@@ -259,7 +262,8 @@ extern int cmd_start_speed_for_degrees(uint8_t port_id,
                                        int8_t speed,
                                        uint8_t max_power,
                                        uint8_t stop,
-                                       uint8_t use_profile);
+                                       uint8_t use_profile,
+                                       bool blocking);
 
 /* Sends a Port Output command to run a motor pair through a given
  * angle.  Returns 0 on success, -1 on error (when a Python exception
@@ -271,18 +275,23 @@ extern int cmd_start_speed_for_degrees_pair(uint8_t port_id,
                                             int8_t speed1,
                                             uint8_t max_power,
                                             uint8_t stop,
-                                            uint8_t use_profile);
+                                            uint8_t use_profile,
+                                            bool blocking);
 
 /* Sends a Port Output command to run a motor to a specified
  * position.  Returns 0 on success, -1 on error (when a Python
  * exception will have been raised).
+ *
+ * Sadly it seems the underlying "Goto Absolute Position" command
+ * actually goes to the _relative_ position.
  */
 extern int cmd_goto_abs_position(uint8_t port_id,
                                  int32_t position,
                                  int8_t speed,
                                  uint8_t max_power,
                                  uint8_t stop,
-                                 uint8_t use_profile);
+                                 uint8_t use_profile,
+                                 bool blocking);
 
 /* Sends a Port Output command to run a motor pair to specified
  * positions.  Returns 0 on success, -1 on error (when a Python
@@ -294,7 +303,8 @@ extern int cmd_goto_abs_position_pair(uint8_t port_id,
                                       int8_t speed,
                                       uint8_t max_power,
                                       uint8_t stop,
-                                      uint8_t use_profile);
+                                      uint8_t use_profile,
+                                      bool blocking);
 
 /* Sends a Port Output command to set the motor's "zero" position.
  * Returns 0 on success, or -1 on error (when a Python exception will

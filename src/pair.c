@@ -184,7 +184,8 @@
             150ms.
 
     .. py:method:: run_for_time(msec, speed0, speed1[, max_power, \
-                                stop, acceleration, deceleration])
+                                stop, acceleration, deceleration, \
+                                blocking])
 
         Runs the motors for the given period.
 
@@ -214,9 +215,13 @@
             full speed (0 - 10000).  Out of range values are silently
             clipped to the correct range.  If omitted, the default is
             150ms.
+        :param bool blocking: waits for the motors to stop if true
+            (the default), otherwise returns early to allow other
+            commands to be executed.
 
     .. py:method:: run_for_degrees(degrees, speed0, speed1[, max_power, \
-                                stop, acceleration, deceleration])
+                                stop, acceleration, deceleration, \
+                                blocking])
 
         Runs the motor through the given angle.
 
@@ -246,9 +251,13 @@
             full speed (0 - 10000).  Out of range values are silently
             clipped to the correct range.  If omitted, the default is
             150ms.
+        :param bool blocking: waits for the motor to stop if true
+            (the default), otherwise returns early to allow other
+            commands to be executed.
 
     .. py:method:: run_to_position(position0, position1, speed[, max_power, \
-                                   stop, acceleration, deceleration])
+                                   stop, acceleration, deceleration, \
+                                   blocking])
 
         Runs the motors to the given absolute positions.
 
@@ -276,6 +285,9 @@
             full speed (0 - 10000).  Out of range values are silently
             clipped to the correct range.  If omitted, the default is
             150ms.
+        :param bool blocking: waits for the motor to stop if true
+            (the default), otherwise returns early to allow other
+            commands to be executed.
 
  */
 
@@ -769,7 +781,7 @@ MotorPair_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
     MotorPairObject *pair = (MotorPairObject *)self;
     static char *kwlist[] = {
         "msec", "speed0", "speed1", "max_power", "stop",
-        "acceleration", "deceleration",
+        "acceleration", "deceleration", "blocking",
         NULL
     };
     uint32_t time;
@@ -780,12 +792,13 @@ MotorPair_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
     uint32_t stop = MOTOR_STOP_USE_DEFAULT;
     uint8_t use_profile = 0;
     int parsed_stop;
+    int blocking = 1;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "Iii|IIII:run_for_time", kwlist,
+                                     "Iii|IIIIp:run_for_time", kwlist,
                                      &time, &speed0, &speed1,
                                      &power, &stop,
-                                     &accel, &decel))
+                                     &accel, &decel, &blocking))
         return NULL;
 
     time = CLIP(time, RUN_TIME_MIN, RUN_TIME_MAX);
@@ -810,7 +823,8 @@ MotorPair_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
 
     if (cmd_start_speed_for_time_pair(pair->id, time,
                                       speed0, speed1, power,
-                                      (uint8_t)parsed_stop, use_profile) < 0)
+                                      (uint8_t)parsed_stop, use_profile,
+                                      blocking) < 0)
         return NULL;
 
     Py_RETURN_NONE;
@@ -823,7 +837,7 @@ MotorPair_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
     MotorPairObject *pair = (MotorPairObject *)self;
     static char *kwlist[] = {
         "degrees", "speed0", "speed1", "max_power", "stop",
-        "acceleration", "deceleration",
+        "acceleration", "deceleration", "blocking",
         NULL
     };
     int32_t degrees;
@@ -834,12 +848,13 @@ MotorPair_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
     uint32_t stop = MOTOR_STOP_USE_DEFAULT;
     uint8_t use_profile = 0;
     int parsed_stop;
+    int blocking = 1;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "iii|IIII:run_for_degrees", kwlist,
+                                     "iii|IIIIp:run_for_degrees", kwlist,
                                      &degrees, &speed0, &speed1,
                                      &power, &stop,
-                                     &accel, &decel))
+                                     &accel, &decel, &blocking))
         return NULL;
 
     /* If the object is invalid, return False */
@@ -864,7 +879,7 @@ MotorPair_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
     if (cmd_start_speed_for_degrees_pair(pair->id, degrees,
                                          speed0, speed1, power,
                                          (uint8_t)parsed_stop,
-                                         use_profile) < 0)
+                                         use_profile, blocking) < 0)
         return NULL;
 
     Py_RETURN_NONE;
@@ -877,7 +892,7 @@ MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     MotorPairObject *pair = (MotorPairObject *)self;
     static char *kwlist[] = {
         "position0", "position1", "speed", "max_power", "stop",
-        "acceleration", "deceleration",
+        "acceleration", "deceleration", "blocking",
         NULL
     };
     int32_t position0, position1;
@@ -888,12 +903,13 @@ MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     uint32_t stop = MOTOR_STOP_USE_DEFAULT;
     uint8_t use_profile = 0;
     int parsed_stop;
+    int blocking = 1;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "iii|IIII:run_to_position", kwlist,
+                                     "iii|IIIIp:run_to_position", kwlist,
                                      &position0, &position1, &speed,
                                      &power, &stop,
-                                     &accel, &decel))
+                                     &accel, &decel, &blocking))
         return NULL;
 
     /* If the object is invalid, return False */
@@ -918,7 +934,7 @@ MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
                                    position0, position1,
                                    speed, power,
                                    (uint8_t)parsed_stop,
-                                   use_profile) < 0)
+                                   use_profile, blocking) < 0)
         return NULL;
 
     Py_RETURN_NONE;
