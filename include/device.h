@@ -69,5 +69,31 @@ extern PyObject *device_is_busy(PyObject *self, int type);
 /* Mark the device as detached from the port */
 extern void device_detach(PyObject *self);
 
+/* Check if the device is in the given mode as a simple mode, or that
+ * the device is in a combination mode and the mode together with any
+ * dataset is in that combination.  This is only intended to support
+ * motors looking for Absolute Position mode, so may be of limited
+ * other utility.
+ */
+extern int device_is_in_mode(PyObject *self, int mode);
+
+/* Read the value associated with the first dataset found for this
+ * mode, assuming the mode is present (i.e. device_is_in_mode() has
+ * returned True).  Return 0 on success with the value written to the
+ * long passed in (which means that the value must not be floating
+ * point), -1 on failure.  This is only intended to support motors
+ * looking for Absolute Position mode information, so may be of
+ * limited other utility.
+ */
+extern int device_read_mode_value(PyObject *self, int mode, long *pvalue);
+
+/* Save the current mode (simple or combi) and set the given simple
+ * mode.  Returns 0 on success, -1 on failure.
+ */
+extern int device_push_mode(PyObject *self, int mode);
+
+/* Restore the previously pushed mode */
+extern int device_pop_mode(PyObject *self);
+
 
 #endif /* RPI_STRAWBERRY_DEVICE_H_INCLUDED */

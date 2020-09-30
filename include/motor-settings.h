@@ -34,6 +34,10 @@
 #define MOTOR_STOP_HOLD  2
 #define MOTOR_STOP_USE_DEFAULT 3
 
+#define DIRECTION_CLOCKWISE     0
+#define DIRECTION_ANTICLOCKWISE 1
+#define DIRECTION_SHORTEST      2
+
 /* Values passed to the cmd functions */
 #define STOP_FLOAT 0
 #define STOP_HOLD 126

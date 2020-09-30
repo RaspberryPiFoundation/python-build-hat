@@ -156,17 +156,22 @@ typedef struct
     PyObject *hw_revision;
     PyObject *fw_revision;
     int      current_mode;
-    uint8_t  flags;
-    uint8_t  rx_error;
-    uint8_t  num_modes;
+    int      saved_current_mode;
     uint16_t type_id;
     uint16_t input_mode_mask;
     uint16_t output_mode_mask;
+    uint8_t  flags;
+    uint8_t  rx_error;
+    uint8_t  num_modes;
     uint8_t  is_unreported;
     uint8_t  is_mode_busy;
     uint8_t  is_motor_busy;
     uint8_t  num_combi_modes;
+    uint8_t  combi_index;
+    uint8_t  saved_num_combi_modes;
+    uint8_t  saved_combi_index;
     uint8_t  combi_mode[MAX_DATASETS];
+    uint8_t  saved_combi_mode[MAX_DATASETS];
     combi_mode_t combi_modes;
     mode_info_t modes[16];
 } DeviceObject;
@@ -307,6 +312,7 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->port = Py_None;
         Py_INCREF(Py_None);
         self->current_mode = 0;
+        self->saved_current_mode = 0;
         self->flags = 0;
         self->rx_error = 0;
         self->is_unreported = 0;
@@ -379,6 +385,39 @@ Device_pwm(PyObject *self, PyObject *args)
 }
 
 
+/* Handle the internals around a simple mode setting, since it
+ * too now happens in more than one place.
+ */
+static int set_simple_mode(DeviceObject *device, int mode)
+{
+    mode_info_t *mode_info;
+
+    if (cmd_set_mode(port_get_id(device->port), mode) < 0)
+        return -1;
+    device->current_mode = mode;
+
+    /* Set up list for handling input values */
+    mode_info = &device->modes[mode];
+    if (mode_info->format.datasets != PyList_Size(device->values))
+    {
+        /* Need to resize the list */
+        PyObject *new_list = PyList_New(mode_info->format.datasets);
+        PyObject *old_list;
+        int i;
+
+        if (new_list == NULL)
+            return -1;
+        for (i = 0; i < mode_info->format.datasets; i++)
+            PyList_SET_ITEM(new_list, i, Py_None);
+        old_list = device->values;
+        device->values = new_list;
+        Py_XDECREF(old_list);
+        device->is_unreported = 0;
+    }
+    return 0;
+}
+
+
 /* Handle the internals around a combi-mode setting, since it is
  * quite involved and happens in more than one place.
  */
@@ -395,6 +434,7 @@ static int set_combi_mode(DeviceObject *device,
 
     memcpy(device->combi_mode, mode_and_dataset, MAX_DATASETS);
     device->num_combi_modes = num_entries;
+    device->combi_index = combi_index;
     device->current_mode = MODE_IS_COMBI;
 
     /* Set up the list for handling input values */
@@ -588,7 +628,6 @@ Device_mode(PyObject *self, PyObject *args)
     else if (PyLong_Check(arg1))
     {
         int mode = PyLong_AsLong(arg1);
-        mode_info_t *mode_info;
 
         /* Check the type conversion worked */
         if (PyErr_Occurred() != NULL)
@@ -600,30 +639,8 @@ Device_mode(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        if (cmd_set_mode(port_get_id(device->port), mode) < 0)
+        if (set_simple_mode(device, mode) < 0)
             return NULL;
-        device->current_mode = mode;
-
-        /* Set up list for handling input values */
-        mode_info = &device->modes[mode];
-        if (mode_info->format.datasets != PyList_Size(device->values))
-        {
-            /* Need to resize the list */
-            PyObject *new_list = PyList_New(mode_info->format.datasets);
-            PyObject *old_list;
-            int i;
-
-            if (new_list == NULL)
-                return NULL;
-            for (i = 0; i < mode_info->format.datasets; i++)
-            {
-                PyList_SET_ITEM(new_list, i, Py_None);
-            }
-            old_list = device->values;
-            device->values = new_list;
-            Py_XDECREF(old_list);
-            device->is_unreported = 0;
-        }
 
         if (arg2 == NULL)
         {
@@ -843,6 +860,58 @@ static PyObject *convert_raw(PyObject *value, int format, mode_info_t *mode)
 }
 
 
+static int get_value(DeviceObject *device)
+{
+    device->rx_error = DO_RXERR_NONE;
+    if (cmd_get_port_value(port_get_id(device->port)) < 0)
+    {
+        PyObject *hub_protocol_exception = cmd_get_exception();
+
+        if (PyErr_Occurred() != NULL &&
+            PyErr_ExceptionMatches(hub_protocol_exception) &&
+            device->rx_error != DO_RXERR_NONE)
+        {
+            /* Replace the error with something more informative */
+            PyErr_Clear();
+            switch (device->rx_error)
+            {
+                case DO_RXERR_NO_MODE_INFO:
+                    PyErr_SetString(
+                        hub_protocol_exception,
+                        "Mode information not ready, try again");
+                    break;
+
+                case DO_RXERR_BAD_MODE:
+                    PyErr_SetString(
+                        hub_protocol_exception,
+                        "Inconsistent mode information, please set mode");
+                    break;
+
+                case DO_RXERR_INTERNAL:
+                    PyErr_SetString(hub_protocol_exception,
+                                    "Internal error on reception");
+                    break;
+
+                case DO_RXERR_BAD_FORMAT:
+                    PyErr_SetString(hub_protocol_exception,
+                                    "Format error in received value");
+                    break;
+
+                default:
+                    PyErr_Format(
+                        hub_protocol_exception,
+                        "Unknown error (%d) receiving value",
+                        device->rx_error);
+            }
+        }
+        return -1;
+    }
+
+    return 0;
+}
+
+
+
 static PyObject *
 Device_get(PyObject *self, PyObject *args)
 {
@@ -881,52 +950,8 @@ Device_get(PyObject *self, PyObject *args)
         return NULL;
     if (!device->is_unreported)
     {
-        device->rx_error = DO_RXERR_NONE;
-        if (cmd_get_port_value(port_get_id(device->port)) < 0)
-        {
-            PyObject *hub_protocol_exception = cmd_get_exception();
-
-            if (PyErr_Occurred() != NULL &&
-                PyErr_ExceptionMatches(hub_protocol_exception) &&
-                device->rx_error != DO_RXERR_NONE)
-            {
-                /* Replace the error with something more informative */
-                PyErr_Clear();
-                switch (device->rx_error)
-                {
-                    case DO_RXERR_NO_MODE_INFO:
-                        PyErr_SetString(
-                            hub_protocol_exception,
-                            "Mode information not ready, try again");
-                        break;
-
-                    case DO_RXERR_BAD_MODE:
-                        PyErr_SetString(
-                            hub_protocol_exception,
-                            "Inconsistent mode information, please set mode");
-                        break;
-
-                    case DO_RXERR_INTERNAL:
-                        PyErr_SetString(
-                            hub_protocol_exception,
-                            "Internal error on reception");
-                        break;
-
-                    case DO_RXERR_BAD_FORMAT:
-                        PyErr_SetString(
-                            hub_protocol_exception,
-                            "Format error in received value");
-                        break;
-
-                    default:
-                        PyErr_Format(
-                            hub_protocol_exception,
-                            "Unknown error (%d) receiving value",
-                            device->rx_error);
-                }
-            }
+        if (get_value(device) < 0)
             return NULL;
-        }
     }
 
     /* "format" now contains the format code to use: Raw (0), Pct (1) or
@@ -1497,4 +1522,138 @@ void device_detach(PyObject *self)
 
     if (device != NULL && self != Py_None)
         device->flags |= DO_FLAGS_DETACHED;
+}
+
+
+int device_is_in_mode(PyObject *self, int mode)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    uint8_t i;
+
+    if (ensure_mode_info(device) < 0)
+        return 0;
+    if (device->current_mode == mode)
+        return 1;
+    if (device->current_mode != MODE_IS_COMBI)
+        return 0;
+
+    /* Search the combi-mode list for the mode, don't care which dataset */
+    for (i = 0; i < device->num_combi_modes; i++)
+        if (((device->combi_mode[i] >> 4) & 0x0f) == mode)
+            return 1;
+
+    return 0;
+}
+
+
+static int extract_value(DeviceObject *device, uint8_t index, long *pvalue)
+{
+    PyObject *value = PyList_GetItem(device->values, index);
+
+    if (value == NULL)
+        return -1;
+    if (!PyLong_Check(value))
+    {
+        PyErr_SetString(cmd_get_exception(), "Invalid value");
+        return -1;
+    }
+    *pvalue = PyLong_AsLong(value);
+    if (*pvalue == -1 && PyErr_Occurred() != NULL)
+        return -1;
+
+    return 0;
+}
+
+/* NB: only call if device_is_in_mode(mode) is true! */
+int device_read_mode_value(PyObject *self, int mode, long *pvalue)
+{
+    DeviceObject *device = (DeviceObject *)self;
+
+    if (get_value(device) < 0)
+        return -1;
+
+    if (device->current_mode == mode)
+    {
+        if (extract_value(device, 0, pvalue) < 0)
+            return -1;
+    }
+    else if (device->current_mode == MODE_IS_COMBI)
+    {
+        /* Search the combi_list for the mode */
+        int index;
+
+        for (index = 0; index < device->num_combi_modes; index++)
+            if (((device->combi_mode[index] >> 4) & 0x0f) == mode)
+                break;
+        if (index == device->num_combi_modes)
+        {
+            PyErr_SetString(cmd_get_exception(), "Mode not present");
+            return -1;
+        }
+
+        if (extract_value(device, index, pvalue) < 0)
+            return -1;
+    }
+    else
+    {
+        PyErr_SetString(cmd_get_exception(), "Mode not present");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+int device_push_mode(PyObject *self, int mode)
+{
+    DeviceObject *device = (DeviceObject *)self;
+
+    if (ensure_mode_info(device) < 0)
+        return -1;
+
+    if (mode < 0 || mode >= device->num_modes)
+    {
+        PyErr_SetString(PyExc_ValueError, "Invalid mode number");
+        return -1;
+    }
+
+    /* First stash everything */
+    device->saved_current_mode    = device->current_mode;
+    device->saved_num_combi_modes = device->num_combi_modes;
+    device->saved_combi_index     = device->combi_index;
+    memcpy(device->saved_combi_mode, device->combi_mode, MAX_DATASETS);
+
+    if (cmd_set_mode(port_get_id(device->port), mode) < 0)
+        return -1;
+    device->current_mode = mode;
+
+    if (set_simple_mode(device, mode) < 0)
+        return -1;
+
+    return 0;
+}
+
+
+int device_pop_mode(PyObject *self)
+{
+    DeviceObject *device = (DeviceObject *)self;
+
+    if (ensure_mode_info(device) < 0)
+        return -1;
+
+    if (device->saved_current_mode == MODE_IS_COMBI)
+    {
+        if (set_combi_mode(device,
+                           device->saved_combi_index,
+                           device->saved_combi_mode,
+                           device->saved_num_combi_modes) < 0)
+            return -1;
+    }
+    else
+    {
+        if (set_simple_mode(device, device->saved_current_mode) < 0)
+            return -1;
+    }
+
+    return 0;
 }

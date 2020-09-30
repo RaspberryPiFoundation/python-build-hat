@@ -151,6 +151,34 @@
         :py:class:`Motor` and :py:class:`MotorPair` "run" methods.
         Uses the motor to actively hold position on stopping.
 
+    .. py:attribute:: CLOCKWISE
+
+        :type: int
+        :value: 0
+
+        Value to pass as a ``direction`` parameter to
+        :py:meth:`Motor.run_to_position()` to cause the motor to
+        rotate clockwise to achieve the desired position.
+
+    .. py:attribute:: ANTICLOCKWISE
+
+        :type: int
+        :value: 0
+
+        Value to pass as a ``direction`` parameter to
+        :py:meth:`Motor.run_to_position()` to cause the motor to
+        rotate anticlockwise to achieve the desired position.
+
+    .. py:attribute:: SHORTEST
+
+        :type: int
+        :value: 0
+
+        Value to pass as a ``direction`` parameter to
+        :py:meth:`Motor.run_to_position()` to cause the motor to
+        rotate for the shortest distance to achieve the desired
+        position.
+
     .. py:method:: mode([mode[, mode_data]])
 
         As :py:meth:`Device.mode()`
@@ -366,9 +394,9 @@
         If any of the optional parameters are omitted, default values
         are used as specified by :py:meth:`Motor.default()`.
 
-    .. py:method:: run_to_position(position, speed[, max_stop, stop, \
+    .. py:method:: run_to_position(position, speed[, max_power, stop, \
                                    acceleration, deceleration, stall, \
-                                   blocking])
+                                   direction, blocking])
 
         Runs the motor to the given absolute position.
 
@@ -395,10 +423,18 @@
             full speed (0 - 10000).  Out of range values are silently
             clipped to the correct range.
         :param bool stall: enables or disables stall detection.
+        :param int direction: the direction the motor will turn to
+            reach its destination.  Must be one of ``0`` (clockwise),
+            ``1`` (anticlockwise) or ``2`` (shortest distance, the
+            default).  The attributes :py:const:`Motor.CLOCKWISE`,
+            :py:const:`Motor.ANTICLOCKWISE` and
+            :py:const:`Motor.SHORTEST` are provided as symbolic
+            constants for these values.
         :param bool blocking: waits for the motor to stop if true
             (the default), otherwise returns early to allow other
             commands to be executed.
-        :raises ValueError: if ``stop`` is not a valid value.
+        :raises ValueError: if ``stop`` or ``direction`` is not a
+            valid value.
 
         If any of the optional parameters are omitted, default values
         are used as specified by :py:meth:`Motor.default()`.
@@ -1128,6 +1164,31 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 
+static int32_t clockwise(int32_t target, long current)
+{
+    int32_t delta;
+
+    if (target < current)
+        delta = 360 - current + target;
+    else
+        delta = target - current;
+    return delta % 360;
+}
+
+
+static int32_t anticlockwise(int32_t target, long current)
+{
+    int32_t delta;
+
+    if (target < current)
+        delta = current - target;
+    else
+        delta = 360 + current - target;
+
+    return -(delta % 360);
+}
+
+
 static PyObject *
 Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
 {
@@ -1135,7 +1196,7 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {
         "position", "speed", "max_power", "stop",
         "acceleration", "deceleration", "stall",
-        "blocking", NULL
+        "direction", "blocking", NULL
     };
     int32_t position;
     int32_t speed;
@@ -1147,6 +1208,9 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     uint8_t use_profile = 0;
     int parsed_stop;
     int blocking = 1;
+    uint32_t direction = DIRECTION_SHORTEST;
+    long current_position;
+    int32_t position_delta;
 
     if (motor->is_detached)
     {
@@ -1155,9 +1219,10 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     if (PyArg_ParseTupleAndKeywords(args, kwds,
-                                    "ii|IIIIpp:run_to_position", kwlist,
+                                    "ii|IIIIpIp:run_to_position", kwlist,
                                     &position, &speed, &power, &stop,
-                                    &accel, &decel, &stall, &blocking) == 0)
+                                    &accel, &decel, &stall,
+                                    &direction, &blocking) == 0)
         return NULL;
 
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
@@ -1169,6 +1234,56 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_ValueError, "Invalid stop state");
         return NULL;
     }
+    if (direction > 2)
+    {
+        PyErr_SetString(PyExc_ValueError, "Invalid direction");
+        return NULL;
+    }
+
+    /* Get the motor's absolute position.  If that's part of the
+     * current mode set, we can just call get(), otherwise we need to
+     * set the mode, get the info and reset the mode.  Urgh!
+     */
+    if (device_is_in_mode(motor->device, 3))
+    {
+        /* We are already in Absolute Position mode, just read it */
+        if (device_read_mode_value(motor->device, 3, &current_position) < 0)
+            return NULL;
+    }
+    else
+    {
+        /* First switch modes */
+        if (device_push_mode(motor->device, 3) < 0 ||
+            device_read_mode_value(motor->device, 3, &current_position) < 0 ||
+            device_pop_mode(motor->device) < 0)
+        {
+            return NULL;
+        }
+    }
+
+    /* Calculate the actual change */
+    position = position % 360;
+    switch (direction)
+    {
+        case DIRECTION_CLOCKWISE:
+            position_delta = clockwise(position, current_position);
+            break;
+
+        case DIRECTION_ANTICLOCKWISE:
+            position_delta = anticlockwise(position, current_position);
+            break;
+
+        default: /* DIRECTION_SHORTEST */
+        {
+            int32_t clk = clockwise(position, current_position);
+            int32_t aclk = anticlockwise(position, current_position);
+
+            if (abs(clk) < abs(aclk))
+                position_delta = clk;
+            else
+                position_delta = aclk;
+        }
+    }
 
     if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
@@ -1176,7 +1291,7 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
 
     if (cmd_goto_abs_position(port_get_id(motor->port),
-                              position, speed, power,
+                              position_delta, speed, power,
                               (uint8_t)parsed_stop, use_profile,
                               blocking) < 0)
         return NULL;
@@ -1436,6 +1551,27 @@ static PyGetSetDef Motor_getsetters[] =
         (getter)Motor_get_constant,
         NULL,
         "Stop mode: actively hold position on stopping",
+        (void *)2
+    },
+    {
+        "CLOCKWISE",
+        (getter)Motor_get_constant,
+        NULL,
+        "Value to pass as a 'direction' parameter",
+        (void *)0
+    },
+    {
+        "ANTICLOCKWISE",
+        (getter)Motor_get_constant,
+        NULL,
+        "Value to pass as a 'direciton' parameter",
+        (void *)1
+    },
+    {
+        "SHORTEST",
+        (getter)Motor_get_constant,
+        NULL,
+        "Value to pass as a 'direction' parameter",
         (void *)2
     },
     { NULL }
