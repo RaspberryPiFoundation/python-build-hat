@@ -48,7 +48,6 @@
 #define I2C_DEVICE_NAME "/dev/i2c-1"
 #define HAT_ADDRESS 0x12
 
-#ifndef USE_DUMMY_I2C
 #define I2C_GPIO_NUMBER "5"
 #define BASE_DIRECTORY "/sys/class/gpio"
 #define EXPORT_PSEUDOFILE BASE_DIRECTORY "/export"
@@ -60,7 +59,6 @@
 
 static int gpio_fd = -1;
 static int gpio_state = 0;
-#endif /* !USE_DUMMY_I2C */
 
 static int i2c_fd = -1;
 static int rx_event_fd = -1;
@@ -70,12 +68,6 @@ static int shutdown = 0;
 
 static PyObject *firmware_object = NULL;
 
-
-#ifdef USE_DUMMY_I2C
-#include "dummy-i2c.h"
-#define read(f,b,n) dummy_i2c_read(f,b,n)
-#define write(f,b,n) dummy_i2c_write(f,b,n)
-#endif
 
 /* Bit manipulation macros for multi-word bitmaps */
 #define BITS_PER_WORD 32
@@ -112,7 +104,6 @@ static inline uint32_t extract_uint32(uint8_t *buffer)
 }
 
 
-#ifndef USE_DUMMY_I2C
 static int read_wake_gpio(void)
 {
     char buffer;
@@ -234,7 +225,6 @@ static void close_wake_gpio(void)
     gpio_fd = -1;
     unexport_gpio();
 }
-#endif
 
 
 static void report_comms_error(void)
@@ -263,28 +253,6 @@ static int read_rx_event(void)
 }
 
 
-#ifdef USE_DUMMY_I2C
-static int poll_for_rx(void)
-{
-    struct pollfd pfds[2];
-
-    pfds[0].fd = i2c_fd;
-    pfds[0].events = POLLIN;
-    pfds[0].revents = 0;
-    pfds[1].fd = rx_event_fd;
-    pfds[1].events = POLLIN;
-    pfds[1].revents = 0;
-
-    if (poll(pfds, 2, -1) < 0)
-    {
-        report_comms_error();
-        return 0;
-    }
-    if ((pfds[1].revents & POLLIN) != 0)
-        read_rx_event();
-    return pfds[0].revents & POLLIN;
-}
-#else /* !USE_DUMMY_I2C */
 static int poll_for_rx(void)
 {
     struct pollfd pfds[2];
@@ -336,7 +304,6 @@ static int poll_for_rx(void)
     /* Loop for another check just in case */
     return 0;
 }
-#endif
 
 
 static int read_message(uint8_t **pbuffer)
@@ -348,11 +315,9 @@ static int read_message(uint8_t **pbuffer)
 
     *pbuffer = NULL;
 
-#ifndef USE_DUMMY_I2C
     DEBUG0(I2C, START_IOCTL);
     if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
         return -1;
-#endif
 
     /* Read in the length */
     DEBUG0(I2C, READ_LEN);
@@ -851,7 +816,6 @@ static void *run_comms_tx(void *args __attribute__((unused)))
             log_i2c(buffer, 1);
 #endif
 
-#ifndef USE_DUMMY_I2C
             if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
             {
                 report_comms_error();
@@ -859,7 +823,6 @@ static void *run_comms_tx(void *args __attribute__((unused)))
                 continue;
             }
             DEBUG0(I2C, TX_IOCTL_DONE);
-#endif
 
             /* This is the Port Info request asking for the value? */
             if (buffer[0] < 0x80)
@@ -900,14 +863,6 @@ int i2c_open_hat(void)
 {
     int rv;
 
-#ifdef USE_DUMMY_I2C
-    const char *err_str;
-    if ((i2c_fd = open_dummy_i2c_socket(&err_str)) < 0)
-    {
-        PyErr_SetString(PyExc_IOError, err_str);
-        return -1;
-    }
-#else
     if ((i2c_fd = open(I2C_DEVICE_NAME, O_RDWR)) < 0)
     {
         if (errno == ENOENT)
@@ -924,7 +879,6 @@ int i2c_open_hat(void)
     }
     if (open_wake_gpio() < 0)
         return -1; /* Exception already raised */
-#endif /* USE_DUMMY_I2C */
 
 #ifdef DEBUG_I2C
     if (log_i2c_init() < 0)
@@ -938,9 +892,7 @@ int i2c_open_hat(void)
     if ((rv = queue_init()) != 0)
     {
         errno = rv;
-#ifndef USE_DUMMY_I2C
         close_wake_gpio();
-#endif
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
         return -1;
@@ -950,9 +902,7 @@ int i2c_open_hat(void)
     if ((rx_event_fd = eventfd(0, 0)) == -1)
     {
         errno = rv;
-#ifndef USE_DUMMY_I2C
         close_wake_gpio();
-#endif
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
         return -1;
@@ -964,9 +914,7 @@ int i2c_open_hat(void)
     if ((rv = pthread_create(&comms_rx_thread, NULL, run_comms_rx, NULL)) != 0)
     {
         errno = rv;
-#ifndef USE_DUMMY_I2C
         close_wake_gpio();
-#endif
         close(rx_event_fd);
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
@@ -981,9 +929,7 @@ int i2c_open_hat(void)
         errno = rv;
         PyErr_SetFromErrno(PyExc_IOError);
 
-#ifndef USE_DUMMY_I2C
         close_wake_gpio();
-#endif
         close(rx_event_fd);
         close(i2c_fd);
         i2c_fd = -1;
@@ -1018,9 +964,7 @@ int i2c_close_hat(void)
         rx_event_fd = -1;
     }
 
-#ifndef USE_DUMMY_I2C
     close_wake_gpio();
-#endif
 
     tmp = firmware_object;
     firmware_object = NULL;
