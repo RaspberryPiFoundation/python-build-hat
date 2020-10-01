@@ -57,6 +57,9 @@
 #define INTERRUPT_PSEUDOFILE GPIO_DIRECTORY "/edge"
 #define VALUE_PSEUDOFILE GPIO_DIRECTORY "/value"
 
+#define RESET_GPIO_NUMBER "4"
+#define BOOT0_GPIO_NUMBER "22"
+
 static int gpio_fd = -1;
 static int gpio_state = 0;
 
@@ -118,45 +121,74 @@ static int read_wake_gpio(void)
 }
 
 
-static void unexport_gpio(void)
+static int export_gpio(const char *gpio)
 {
     int fd;
-    const char *unexport = I2C_GPIO_NUMBER;
+    int rv = 0;
 
-    if ((fd = open(UNEXPORT_PSEUDOFILE, O_WRONLY)) < 0)
-        return;
-    if (write(fd, unexport, strlen(unexport)) < 0)
-        fprintf(stderr, "Error unexporting wake GPIO");
-    close(fd);
-}
-
-
-static int open_wake_gpio(void)
-{
-    int fd;
-    const char *export = I2C_GPIO_NUMBER;
-    const char *direction = "in";
-    const char *edge = "both";
-    struct timespec timeout = { 0, 50000000 }; /* 50ms */
-    struct timespec remaining;
-
-    /* First export the GPIO */
     if ((fd = open(EXPORT_PSEUDOFILE, O_WRONLY)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
         return -1;
     }
-    if (write(fd, export, strlen(export)) < 0)
+    if (write(fd, gpio, strlen(gpio)) < 0)
     {
-        /* EBUSY implies the GPIO is already exported.  Let it through */
-	if (errno != EBUSY)
+        /* EBUSY implies the GPIO is already exported.  That's OK */
+        if (errno != EBUSY)
         {
             PyErr_SetFromErrno(PyExc_IOError);
-            close(fd);
-            return -1;
+            rv = -1;
         }
     }
     close(fd);
+
+    return rv;
+}
+
+
+static void unexport_gpio(const char *gpio)
+{
+    int fd;
+
+    if ((fd = open(UNEXPORT_PSEUDOFILE, O_WRONLY)) < 0)
+        return;
+    if (write(fd, gpio, strlen(gpio)) < 0)
+        fprintf(stderr, "Error unexporting wake GPIO");
+    close(fd);
+}
+
+
+static int set_gpio_direction(const char *direction_pseudofile,
+                              const char *direction)
+{
+    int fd;
+
+    if ((fd = open(direction_pseudofile, O_WRONLY)) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    if (write(fd, direction, strlen(direction)) < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        close(fd);
+        return -1;
+    }
+    close(fd);
+
+    return 0;
+}
+
+
+static int open_writeable_gpio(const char *gpio)
+{
+    int fd;
+    struct timespec timeout = { 0, 50000000 }; /* 50ms */
+    struct timespec remaining;
+    char filename[64];
+
+    if (export_gpio(gpio) < 0)
+        return -1;
 
     /* Give Linux a moment to get its act together */
     while (nanosleep(&timeout, &remaining) < 0 && errno == EINTR)
@@ -165,33 +197,149 @@ static int open_wake_gpio(void)
     }
 
     /* Now set the direction */
-    if ((fd = open(DIRECTION_PSEUDOFILE, O_WRONLY)) < 0)
+    sprintf(filename, "/sys/class/gpio/gpio%s/direction", gpio);
+    if (set_gpio_direction(filename, "out") < 0)
     {
-        PyErr_SetFromErrno(PyExc_IOError);
-        unexport_gpio();
+        unexport_gpio(gpio);
         return -1;
     }
-    if (write(fd, direction, 2) < 0)
+
+    /* And open for writing */
+    sprintf(filename, "/sys/class/gpio/gpio%s/value", gpio);
+    if ((fd = open(filename, O_WRONLY)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
-        close(fd);
-        unexport_gpio();
+        unexport_gpio(gpio);
         return -1;
     }
+
+    return fd;
+}
+
+
+static void close_gpio(int fd, const char *gpio)
+{
     close(fd);
+    unexport_gpio(gpio);
+}
+
+
+static int write_gpio(int fd, int value)
+{
+    char buffer = value ? '1' : '0';
+    ssize_t rv = write(fd, &buffer, 1);
+
+    if (rv < 0)
+    {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    else if (rv != 1)
+    {
+        PyErr_SetString(PyExc_IOError, "Unable to write to GPIO");
+        return -1;
+    }
+    return 0;
+}
+
+
+static int reset_hat(void)
+{
+    int boot0_fd, reset_fd;
+    struct timespec timeout = { 0, 10000000 }; /* 10ms */
+    struct timespec remaining;
+
+    /* First acquire the boot0 pin and set it low */
+    /* Otherwise we could reset the hat into its embedded bootloader */
+    if ((boot0_fd = open_writeable_gpio(BOOT0_GPIO_NUMBER)) < 0)
+        return -1;
+    if (write_gpio(boot0_fd, 0) < 0)
+    {
+        close_gpio(boot0_fd, BOOT0_GPIO_NUMBER);
+        return -1;
+    }
+
+    /* Now acquire the reset pin and set it low,
+     * putting the chip in reset.
+     */
+    if ((reset_fd = open_writeable_gpio(RESET_GPIO_NUMBER)) < 0)
+    {
+        close_gpio(boot0_fd, BOOT0_GPIO_NUMBER);
+        return -1;
+    }
+    if (write_gpio(reset_fd, 0) < 0)
+    {
+        close_gpio(boot0_fd, BOOT0_GPIO_NUMBER);
+        close_gpio(reset_fd, RESET_GPIO_NUMBER);
+        return -1;
+    }
+
+    /* Give ourselves a good 10ms for the reset to take */
+    while (nanosleep(&timeout, &remaining) < 0 && errno == EINTR)
+    {
+        timeout = remaining;
+    }
+
+    /* Now set the reset pin back high (out of reset) */
+    if (write_gpio(reset_fd, 1) < 0)
+    {
+        close_gpio(boot0_fd, BOOT0_GPIO_NUMBER);
+        close_gpio(reset_fd, RESET_GPIO_NUMBER);
+        return -1;
+    }
+
+    /* And rest awhile again */
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = 50000000;
+    while (nanosleep(&timeout, &remaining) < 0 && errno == EINTR)
+    {
+        timeout = remaining;
+    }
+
+    /* Release our hold on the pins */
+    close_gpio(boot0_fd, BOOT0_GPIO_NUMBER);
+    close_gpio(reset_fd, RESET_GPIO_NUMBER);
+
+    return 0;
+}
+
+
+static int open_wake_gpio(void)
+{
+    int fd;
+    const char *edge = "both";
+    struct timespec timeout = { 0, 50000000 }; /* 50ms */
+    struct timespec remaining;
+
+    /* First export the GPIO */
+    if (export_gpio(I2C_GPIO_NUMBER) < 0)
+        return -1;
+
+    /* Give Linux a moment to get its act together */
+    while (nanosleep(&timeout, &remaining) < 0 && errno == EINTR)
+    {
+        timeout = remaining;
+    }
+
+    /* Now set the direction */
+    if (set_gpio_direction(DIRECTION_PSEUDOFILE, "in") < 0)
+    {
+        unexport_gpio(I2C_GPIO_NUMBER);
+        return -1;
+    }
 
     /* ...and the interrupt generation */
     if ((fd = open(INTERRUPT_PSEUDOFILE, O_WRONLY)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
-        unexport_gpio();
+        unexport_gpio(I2C_GPIO_NUMBER);
         return -1;
     }
     if (write(fd, edge, 4) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
         close(fd);
-        unexport_gpio();
+        unexport_gpio(I2C_GPIO_NUMBER);
         return -1;
     }
 
@@ -199,7 +347,7 @@ static int open_wake_gpio(void)
     if ((gpio_fd = open(VALUE_PSEUDOFILE, O_RDWR)) < 0)
     {
         PyErr_SetFromErrno(PyExc_IOError);
-        unexport_gpio();
+        unexport_gpio(I2C_GPIO_NUMBER);
         return -1;
     }
     /* ...and read it */
@@ -208,7 +356,7 @@ static int open_wake_gpio(void)
         PyErr_SetFromErrno(PyExc_IOError);
         close(gpio_fd);
         gpio_fd = -1;
-        unexport_gpio();
+        unexport_gpio(I2C_GPIO_NUMBER);
         return -1;
     }
 
@@ -223,7 +371,7 @@ static void close_wake_gpio(void)
 
     close(gpio_fd);
     gpio_fd = -1;
-    unexport_gpio();
+    unexport_gpio(I2C_GPIO_NUMBER);
 }
 
 
@@ -887,6 +1035,15 @@ int i2c_open_hat(void)
         return -1;
     }
 #endif /* DEBUG_I2C */
+
+    /* Reset the hat */
+    if (reset_hat() < 0)
+    {
+        /* Exception already raised */
+        close_wake_gpio();
+        close(i2c_fd);
+        return -1;
+    }
 
     /* Initialise thread work queues */
     if ((rv = queue_init()) != 0)
