@@ -1188,7 +1188,6 @@ static int32_t anticlockwise(int32_t target, long current)
     return -(delta % 360);
 }
 
-
 static PyObject *
 Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
 {
@@ -1209,7 +1208,7 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     int parsed_stop;
     int blocking = 1;
     uint32_t direction = DIRECTION_SHORTEST;
-    long current_position;
+    long pos_from_zero, pos_from_preset;
     int32_t position_delta;
 
     if (motor->is_detached)
@@ -1240,43 +1239,25 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    /* Get the motor's absolute position.  If that's part of the
-     * current mode set, we can just call get(), otherwise we need to
-     * set the mode, get the info and reset the mode.  Urgh!
-     */
-    if (device_is_in_mode(motor->device, 3))
-    {
-        /* We are already in Absolute Position mode, just read it */
-        if (device_read_mode_value(motor->device, 3, &current_position) < 0)
-            return NULL;
-    }
-    else
-    {
-        /* First switch modes */
-        if (device_push_mode(motor->device, 3) < 0 ||
-            device_read_mode_value(motor->device, 3, &current_position) < 0 ||
-            device_pop_mode(motor->device) < 0)
-        {
-            return NULL;
-        }
-    }
+    if (motor_get_position(self, &pos_from_zero, &pos_from_preset) < 0)
+        return NULL;
 
     /* Calculate the actual change */
     position = position % 360;
     switch (direction)
     {
         case DIRECTION_CLOCKWISE:
-            position_delta = clockwise(position, current_position);
+            position_delta = clockwise(position, pos_from_zero);
             break;
 
         case DIRECTION_ANTICLOCKWISE:
-            position_delta = anticlockwise(position, current_position);
+            position_delta = anticlockwise(position, pos_from_zero);
             break;
 
         default: /* DIRECTION_SHORTEST */
         {
-            int32_t clk = clockwise(position, current_position);
-            int32_t aclk = anticlockwise(position, current_position);
+            int32_t clk = clockwise(position, pos_from_zero);
+            int32_t aclk = anticlockwise(position, pos_from_zero);
 
             if (abs(clk) < abs(aclk))
                 position_delta = clk;
@@ -1284,6 +1265,7 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
                 position_delta = aclk;
         }
     }
+    position_delta += pos_from_preset;
 
     if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
@@ -1684,4 +1666,50 @@ void motor_detach(PyObject *self)
 
     if (motor != NULL && self != Py_None)
         motor->is_detached = 1;
+}
+
+
+int get_value_in_mode(PyObject *self, int mode, long *pvalue)
+{
+    MotorObject *motor = (MotorObject *)self;
+    int is_in_mode;
+
+    /* Get the motor's absolute position.  If that's part of the
+     * current mode set we can just call get(), otherwise we need to
+     * set the mode, get the info and reset the mode.  Urgh!
+     */
+    if ((is_in_mode = device_is_in_mode(motor->device, mode)) < 0)
+    {
+        return -1;
+    }
+    else if (is_in_mode)
+    {
+        /* We are already in Absolute Position mode, just read it */
+        if (device_read_mode_value(motor->device, mode, pvalue) < 0)
+            return -1;
+    }
+    else
+    {
+        /* First switch modes */
+        if (device_push_mode(motor->device, mode) < 0 ||
+            device_read_mode_value(motor->device, mode, pvalue) < 0 ||
+            device_pop_mode(motor->device) < 0)
+        {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
+int motor_get_position(PyObject *self,
+                       long *ppos_from_zero,
+                       long *ppos_from_preset)
+{
+    if (get_value_in_mode(self, 3, ppos_from_zero) < 0 ||
+        get_value_in_mode(self, 2, ppos_from_preset) < 0)
+    {
+        return -1;
+    }
+    return 0;
 }

@@ -1531,7 +1531,7 @@ int device_is_in_mode(PyObject *self, int mode)
     uint8_t i;
 
     if (ensure_mode_info(device) < 0)
-        return 0;
+        return -1;
     if (device->current_mode == mode)
         return 1;
     if (device->current_mode != MODE_IS_COMBI)

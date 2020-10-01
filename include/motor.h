@@ -42,4 +42,9 @@ extern void motor_detach(PyObject *self);
      (dt) == ID_STONE_GREY_MOTOR_MEDIUM ||     \
      (dt) == ID_STONE_GREY_MOTOR_LARGE)
 
+/* Read the position of the motor */
+extern int motor_get_position(PyObject *self,
+                              long *ppos_from_zero,
+                              long *ppos_from_preset);
+
 #endif /* RPI_STRAWBERRY_MOTOR_H_INCLUDED */
