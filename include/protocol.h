@@ -64,9 +64,9 @@ typedef enum protocol_action_e
 {
     ACTION_VCC_PORT_CONTROL_ON = 3,
     ACTION_VCC_PORT_CONTROL_OFF = 4,
-    ACTION_RESET = 7,
-    ACTION_WILL_RESET = 0x34,
-    ACTION_HAS_RESET = 0x35
+    ACTION_RESET = 8,
+    ACTION_WILL_RESET = 0x35,
+    ACTION_HAS_RESET = 0x36
 } protocol_action_t;
 
 /* Hub Alert types */

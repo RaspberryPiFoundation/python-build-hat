@@ -201,11 +201,6 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     old = self->firmware;
     Py_DECREF(old);
     self->firmware = new;
-
-//    if (cmd_action_reset() < 0)
-//        return -1;
-//    if (cmd_wait_for_reset_complete() < 0)
-//        return -1;
     self->initialised = 1;
 
     /* Give the HAT a chance to recognise what is attached to it */

@@ -521,7 +521,8 @@ Firmware_reboot(PyObject *self, PyObject *args)
     if (!check_fw_status(firmware))
         return NULL;
 
-    if (cmd_action_reset() < 0)
+    /* NB: never do this lightly */
+    if (i2c_reset_hat() < 0)
         return NULL;
     Py_RETURN_NONE;
 }

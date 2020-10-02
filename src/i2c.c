@@ -243,7 +243,7 @@ static int write_gpio(int fd, int value)
 }
 
 
-static int reset_hat(void)
+int i2c_reset_hat(void)
 {
     int boot0_fd, reset_fd;
     struct timespec timeout = { 0, 10000000 }; /* 10ms */
@@ -1037,7 +1037,7 @@ int i2c_open_hat(void)
 #endif /* DEBUG_I2C */
 
     /* Reset the hat */
-    if (reset_hat() < 0)
+    if (i2c_reset_hat() < 0)
     {
         /* Exception already raised */
         close_wake_gpio();

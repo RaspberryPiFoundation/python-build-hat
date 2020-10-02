@@ -34,4 +34,13 @@ extern int i2c_close_hat(void);
  */
 extern void i2c_register_firmware_object(PyObject *firmware);
 
+/* Pulses the reset line to the HAT, with the BOOT0 pin held low to
+ * boot into firmware rather than the embedded bootloader.  Note that
+ * this is AN EXTREMELY DANGEROUS THING TO DO: you must be sure no I2C
+ * communications are in progress, otherwise the library's comms will
+ * break.
+ */
+extern int i2c_reset_hat(void);
+
+
 #endif /* RPI_STRAWBERRY_I2C_H_INCLUDED */
