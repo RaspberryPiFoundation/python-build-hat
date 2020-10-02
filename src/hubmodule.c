@@ -33,6 +33,11 @@
 #include "debug-i2c.h"
 #endif
 
+
+/* Hijinks is required to pass a string through compiler defines */
+#define XSTR(s) #s
+#define STRING(s) XSTR(s)
+
 /**
 
 This module provides access to the Build HAT.
@@ -384,7 +389,7 @@ PyInit_build_hat(void)
         return NULL;
     }
     Py_INCREF(&HubType);
-    PyModule_AddStringConstant(hub, "__version__", "0.2.2");
+    PyModule_AddStringConstant(hub, "__version__", STRING(LIB_VERSION));
 
     if (device_modinit() < 0)
     {
