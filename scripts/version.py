@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
-from hub import hub
+from build_hat import BuildHAT
 
-info = hub.info()
+bh = BuildHAT()
+info = bh.info()
 print("Firmware version:", info["firmware_revision"])

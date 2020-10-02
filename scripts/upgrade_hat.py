@@ -17,11 +17,12 @@ Invoke it as:
 #     Copyright (c) 2020 Kynesim Ltd
 
 
-import hub
+from build_hat import BuildHAT
 import sys
 from time import sleep
 
-firmware = hub.hub.firmware
+bh = BuildHAT()
+firmware = bh.firmware
 
 erase_complete_flag = 0
 
@@ -42,8 +43,8 @@ with open(sys.argv[1], "rb") as firmware_file:
     firmware_bytes = firmware_file.read()
 
 
-firmware.callback(erase_callback)
-firmware.appl_image_initialize(len(firmware_bytes))
+bh.firmware.callback(erase_callback)
+bh.firmware.appl_image_initialize(len(firmware_bytes))
 
 # It will take some time (~9 seconds) for initialisation to complete
 
@@ -68,18 +69,18 @@ bytes_remaining = len(firmware_bytes)
 while bytes_remaining >= 1024:
     print("\rWriting {}%".format(100*bytes_written // len(firmware_bytes)), end="")
     sys.stdout.flush()
-    firmware.appl_image_store(firmware_bytes[bytes_written:bytes_written+1024])
+    bh.firmware.appl_image_store(firmware_bytes[bytes_written:bytes_written+1024])
     bytes_written += 1024
     bytes_remaining -= 1024
 
 if bytes_remaining != 0:
     print("\rWriting {}%".format(100*bytes_written // len(firmware_bytes)), end="")
     sys.stdout.flush()
-    firmware.appl_image_store(firmware_bytes[bytes_written:])
+    bh.firmware.appl_image_store(firmware_bytes[bytes_written:])
 
 print("\rWriting 100%")
 print("Checking...")
-info = firmware.info()
+info = bh.firmware.info()
 
 if not info["new_appl_valid"]:
     print("***New application invalid, will not be used")
@@ -90,5 +91,5 @@ if not info["new_appl_valid"]:
     sys.exit(1)
 
 print("Rebooting to complete upgrade")
-firmware.reboot()
+bh.firmware.reboot()
 print("Wait for the LEDs to go out before running more programs")
