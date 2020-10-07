@@ -21,6 +21,7 @@
 
 #include "device.h"
 #include "port.h"
+#include "motor.h"
 
 /**
 
@@ -256,6 +257,11 @@ static default_mode_t default_modes[NUM_DEFAULT_MODES] = {
     }
 };
 #undef MODE
+
+
+/* Forward declarations */
+static int get_value(DeviceObject *self);
+static int extract_value(DeviceObject *self, uint8_t index, long *pvalue);
 
 
 static default_mode_t *
@@ -526,21 +532,40 @@ get_mode_info(DeviceObject *device, uint8_t port_id)
                  default_mode->mode_mask) == default_mode->mode_mask)
             {
                 /* This has all the modes we need */
-                return set_combi_mode(device, combi_index,
-                                      default_mode->mode_list,
-                                      default_mode->num_modes);
+                if (set_combi_mode(device, combi_index,
+                                   default_mode->mode_list,
+                                   default_mode->num_modes) < 0)
+                    return -1;
+                break;
             }
         }
-        /* We can't find a suitable combi-mode.  Oh well */
+
+        /* Assert that any formally recognised motor is set up to Get
+         * the Speed, Position, Absolute Position and Power, and needs
+         * to have its delta (preset) calculated.
+         */
+        if (motor_is_motor(device->type_id))
+        {
+            long position_from_zero;
+
+            if (get_value(device) < 0)
+                return -1;
+            if (extract_value(device, 2, &position_from_zero) < 0)
+                return -1;
+            if (port_set_motor_preset(device->port, position_from_zero) < 0)
+                return -1;
+        }
     }
 
     return 0;
 }
 
 
-static int
-ensure_mode_info(DeviceObject *device)
+int
+device_ensure_mode_info(PyObject *self)
 {
+    DeviceObject *device = (DeviceObject *)self;
+
     if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
         return get_mode_info(device, port_get_id(device->port));
 
@@ -562,7 +587,7 @@ Device_mode(PyObject *self, PyObject *args)
     }
     if (!PyArg_ParseTuple(args, "|OO:mode", &arg1, &arg2))
         return NULL;
-    if (ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(device) < 0)
         return NULL;
 
     if (arg1 == NULL)
@@ -946,7 +971,7 @@ Device_get(PyObject *self, PyObject *args)
         }
     }
 
-    if (ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(device) < 0)
         return NULL;
     if (!device->is_unreported)
     {
@@ -1530,7 +1555,7 @@ int device_is_in_mode(PyObject *self, int mode)
     DeviceObject *device = (DeviceObject *)self;
     uint8_t i;
 
-    if (ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(device) < 0)
         return -1;
     if (device->current_mode == mode)
         return 1;
@@ -1608,7 +1633,7 @@ int device_push_mode(PyObject *self, int mode)
 {
     DeviceObject *device = (DeviceObject *)self;
 
-    if (ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(device) < 0)
         return -1;
 
     if (mode < 0 || mode >= device->num_modes)
@@ -1638,7 +1663,7 @@ int device_pop_mode(PyObject *self)
 {
     DeviceObject *device = (DeviceObject *)self;
 
-    if (ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(device) < 0)
         return -1;
 
     if (device->saved_current_mode == MODE_IS_COMBI)

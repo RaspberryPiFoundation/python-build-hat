@@ -1219,3 +1219,14 @@ int ports_handle_callback(uint8_t overpower_state)
 
     return rv;
 }
+
+
+int port_set_motor_preset(PyObject *self, long position)
+{
+    PortObject *port = (PortObject *)self;
+
+    if (port->motor == Py_None)
+        return -1;
+    motor_set_preset(port->motor, position);
+    return 0;
+}

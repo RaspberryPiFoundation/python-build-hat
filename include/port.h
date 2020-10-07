@@ -73,6 +73,7 @@ extern PyObject *port_get_device(PyObject *port);
 extern PyObject *ports_get_value_dict(PyObject *portset);
 extern PyObject *port_get_motor(PyObject *port);  /* Returns new reference */
 extern int port_is_motor(PyObject *port); /* True if a motor is connected */
+extern int port_set_motor_preset(PyObject *port, long position);
 
 /* The following are called only from the callback thread */
 extern int port_handle_callback(uint8_t port_id, uint8_t event);

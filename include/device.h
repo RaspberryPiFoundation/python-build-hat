@@ -95,5 +95,10 @@ extern int device_push_mode(PyObject *self, int mode);
 /* Restore the previously pushed mode */
 extern int device_pop_mode(PyObject *self);
 
+/* Ensures that the initialisation that cannot be done in the background
+ * has in fact been done.
+ */
+extern int device_ensure_mode_info(PyObject *self);
+
 
 #endif /* RPI_STRAWBERRY_DEVICE_H_INCLUDED */

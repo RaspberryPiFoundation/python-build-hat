@@ -258,7 +258,7 @@
 
     .. py:method:: run_to_position(position0, position1, speed[, max_power, \
                                    stop, acceleration, deceleration, \
-                                   direction, blocking])
+                                   blocking])
 
         Runs the motors to the given absolute positions.
 
@@ -286,10 +286,6 @@
             full speed (0 - 10000).  Out of range values are silently
             clipped to the correct range.  If omitted, the default is
             150ms.
-        :param int direction: the direction the motor will turn to
-            reach its destination.  Must be one of ``0`` (clockwise),
-            ``1`` (anticlockwise) or ``2`` (shortest distance, the
-            default).
         :param bool blocking: waits for the motor to stop if true
             (the default), otherwise returns early to allow other
             commands to be executed.
@@ -486,6 +482,10 @@ MotorPair_init(MotorPairObject *self, PyObject *args, PyObject *kwds)
     self->secondary_id = port_get_id(secondary);
 
     if (cmd_connect_virtual_port(self->primary_id, self->secondary_id) < 0)
+        return -1;
+
+    if (motor_ensure_mode_info(primary) < 0 ||
+        motor_ensure_mode_info(secondary) < 0)
         return -1;
 
     return 0;
@@ -730,6 +730,7 @@ MotorPair_preset(PyObject *self, PyObject *args)
 {
     MotorPairObject *pair = (MotorPairObject *)self;
     int32_t position0, position1;
+    long from_preset0, from_preset1;
 
     if (!PyArg_ParseTuple(args, "ii", &position0, &position1))
         return NULL;
@@ -738,8 +739,14 @@ MotorPair_preset(PyObject *self, PyObject *args)
     if (pair->id == INVALID_ID)
         Py_RETURN_FALSE;
 
+    if (motor_get_position(pair->primary, &from_preset0) < 0 ||
+        motor_get_position(pair->secondary, &from_preset1) < 0)
+        return NULL;
+
     if (cmd_preset_encoder_pair(pair->id, position0, position1) < 0)
         return NULL;
+    motor_update_preset(pair->primary, position0 - from_preset0);
+    motor_update_preset(pair->secondary, position1 - from_preset1);
 
     Py_RETURN_NONE;
 }
@@ -897,38 +904,13 @@ MotorPair_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 
-static int32_t clockwise(int32_t target, long current)
-{
-    int32_t delta;
-
-    if (target < current)
-        delta = 360 - current + target;
-    else
-        delta = target - current;
-    return delta % 360;
-}
-
-
-static int32_t anticlockwise(int32_t target, long current)
-{
-    int32_t delta;
-
-    if (target < current)
-        delta = current - target;
-    else
-        delta = 360 + current - target;
-
-    return -(delta % 360);
-}
-
-
 static PyObject *
 MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
 {
     MotorPairObject *pair = (MotorPairObject *)self;
     static char *kwlist[] = {
         "position0", "position1", "speed", "max_power", "stop",
-        "acceleration", "deceleration", "direction", "blocking",
+        "acceleration", "deceleration", "blocking",
         NULL
     };
     int32_t position0, position1;
@@ -940,17 +922,13 @@ MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     uint8_t use_profile = 0;
     int parsed_stop;
     int blocking = 1;
-    uint32_t direction = DIRECTION_SHORTEST;
-    long current_from_z_0, current_from_z_1;
-    long current_from_p_0, current_from_p_1;
-    int32_t delta0, delta1;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "iii|IIIIIp:run_to_position", kwlist,
+                                     "iii|IIIIp:run_to_position", kwlist,
                                      &position0, &position1, &speed,
                                      &power, &stop,
                                      &accel, &decel,
-                                     &direction, &blocking))
+                                     &blocking))
         return NULL;
 
     /* If the object is invalid, return False */
@@ -966,57 +944,16 @@ MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_ValueError, "Invalid stop state");
         return NULL;
     }
-    if (direction > 2)
-    {
-        PyErr_SetString(PyExc_ValueError, "Invalid direction");
-        return NULL;
-    }
 
-    /* Get the absolute positions of the motors.  This is more
-     * involved than you might hope.
-     */
-    if (motor_get_position(port_get_motor(pair->primary),
-                           &current_from_z_0,
-                           &current_from_p_0) < 0 ||
-        motor_get_position(port_get_motor(pair->secondary),
-                           &current_from_z_1,
-                           &current_from_p_1) < 0)
-        return NULL;
-
-    position0 %= 360;
-    position1 %= 360;
-    switch (direction)
-    {
-        case DIRECTION_CLOCKWISE:
-            delta0 = clockwise(position0, current_from_z_0);
-            delta1 = clockwise(position1, current_from_z_1);
-            break;
-
-        case DIRECTION_ANTICLOCKWISE:
-            delta0 = anticlockwise(position0, current_from_z_0);
-            delta1 = anticlockwise(position1, current_from_z_1);
-            break;
-
-        default: /* DIRECTION_SHORTEST */
-        {
-            int32_t clk0  = clockwise(position0, current_from_z_0);
-            int32_t aclk0 = anticlockwise(position0, current_from_z_0);
-            int32_t clk1  = clockwise(position1, current_from_z_1);
-            int32_t aclk1 = anticlockwise(position1, current_from_z_1);
-
-            delta0 = (abs(clk0) < abs(aclk0)) ? clk0 : aclk0;
-            delta1 = (abs(clk1) < abs(aclk1)) ? clk1 : aclk1;
-        }
-    }
-    delta0 += current_from_p_0;
-    delta1 += current_from_p_1;
+    position0 -= motor_get_position_offset(pair->primary);
+    position1 -= motor_get_position_offset(pair->secondary);
 
     if (set_acceleration(pair, accel, &use_profile) < 0 ||
         set_deceleration(pair, decel, &use_profile) < 0)
         return NULL;
 
     if (cmd_goto_abs_position_pair(pair->id,
-                                   delta0, delta1,
+                                   position0, position1,
                                    speed, power,
                                    (uint8_t)parsed_stop,
                                    use_profile, blocking) < 0)

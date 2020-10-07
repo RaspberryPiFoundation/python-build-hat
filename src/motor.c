@@ -151,34 +151,6 @@
         :py:class:`Motor` and :py:class:`MotorPair` "run" methods.
         Uses the motor to actively hold position on stopping.
 
-    .. py:attribute:: CLOCKWISE
-
-        :type: int
-        :value: 0
-
-        Value to pass as a ``direction`` parameter to
-        :py:meth:`Motor.run_to_position()` to cause the motor to
-        rotate clockwise to achieve the desired position.
-
-    .. py:attribute:: ANTICLOCKWISE
-
-        :type: int
-        :value: 0
-
-        Value to pass as a ``direction`` parameter to
-        :py:meth:`Motor.run_to_position()` to cause the motor to
-        rotate anticlockwise to achieve the desired position.
-
-    .. py:attribute:: SHORTEST
-
-        :type: int
-        :value: 0
-
-        Value to pass as a ``direction`` parameter to
-        :py:meth:`Motor.run_to_position()` to cause the motor to
-        rotate for the shortest distance to achieve the desired
-        position.
-
     .. py:method:: mode([mode[, mode_data]])
 
         As :py:meth:`Device.mode()`
@@ -396,7 +368,7 @@
 
     .. py:method:: run_to_position(position, speed[, max_power, stop, \
                                    acceleration, deceleration, stall, \
-                                   direction, blocking])
+                                   blocking])
 
         Runs the motor to the given absolute position.
 
@@ -423,18 +395,7 @@
             full speed (0 - 10000).  Out of range values are silently
             clipped to the correct range.
         :param bool stall: enables or disables stall detection.
-        :param int direction: the direction the motor will turn to
-            reach its destination.  Must be one of ``0`` (clockwise),
-            ``1`` (anticlockwise) or ``2`` (shortest distance, the
-            default).  The attributes :py:const:`Motor.CLOCKWISE`,
-            :py:const:`Motor.ANTICLOCKWISE` and
-            :py:const:`Motor.SHORTEST` are provided as symbolic
-            constants for these values.
-        :param bool blocking: waits for the motor to stop if true
-            (the default), otherwise returns early to allow other
-            commands to be executed.
-        :raises ValueError: if ``stop`` or ``direction`` is not a
-            valid value.
+        :raises ValueError: if ``stop`` is not a valid value.
 
         If any of the optional parameters are omitted, default values
         are used as specified by :py:meth:`Motor.default()`.
@@ -535,6 +496,7 @@ typedef struct
     int want_default_acceleration_set;
     int want_default_deceleration_set;
     int want_default_stall_set;
+    int32_t preset_position;
     PyObject *callback;
 } MotorObject;
 
@@ -779,6 +741,9 @@ Motor_pwm(PyObject *self, PyObject *args)
         return NULL;
     }
 
+    if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;
+
     if ((pwm_fn = PyObject_GetAttrString(motor->port, "pwm")) == NULL)
         return NULL;
     result = PyObject_CallObject(pwm_fn, args);
@@ -803,6 +768,9 @@ Motor_float(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
+    if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;
+
     return PyObject_CallMethod(motor->port, "pwm", "i", 0);
 }
 
@@ -823,6 +791,9 @@ Motor_brake(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
+    if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;
+
     return PyObject_CallMethod(motor->port, "pwm", "i", 127);
 }
 
@@ -841,6 +812,9 @@ Motor_hold(PyObject *self, PyObject *args)
     }
 
     if (!PyArg_ParseTuple(args, "|i", &max_power))
+        return NULL;
+
+    if (device_ensure_mode_info(motor->device) < 0)
         return NULL;
 
     if (max_power > 100 || max_power < 0)
@@ -887,6 +861,7 @@ Motor_preset(PyObject *self, PyObject *args)
 {
     MotorObject *motor = (MotorObject *)self;
     int32_t position;
+    long pos_from_preset;
 
     if (motor->is_detached)
     {
@@ -897,8 +872,15 @@ Motor_preset(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "i", &position))
         return NULL;
 
+    if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;
+
+    if (motor_get_position(self, &pos_from_preset) < 0)
+        return NULL;
+
     if (cmd_preset_encoder(port_get_id(motor->port), position) < 0)
         return NULL;
+    motor->preset_position -= position - pos_from_preset;
 
     Py_RETURN_NONE;
 }
@@ -1089,6 +1071,9 @@ Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall) == 0)
         return NULL;
 
+    if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;
+
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
@@ -1139,6 +1124,9 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall, &blocking) == 0)
         return NULL;
 
+    if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;
+
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
@@ -1164,30 +1152,6 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 
-static int32_t clockwise(int32_t target, long current)
-{
-    int32_t delta;
-
-    if (target < current)
-        delta = 360 - current + target;
-    else
-        delta = target - current;
-    return delta % 360;
-}
-
-
-static int32_t anticlockwise(int32_t target, long current)
-{
-    int32_t delta;
-
-    if (target < current)
-        delta = current - target;
-    else
-        delta = 360 + current - target;
-
-    return -(delta % 360);
-}
-
 static PyObject *
 Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
 {
@@ -1195,7 +1159,7 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {
         "position", "speed", "max_power", "stop",
         "acceleration", "deceleration", "stall",
-        "direction", "blocking", NULL
+        "blocking", NULL
     };
     int32_t position;
     int32_t speed;
@@ -1207,9 +1171,6 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     uint8_t use_profile = 0;
     int parsed_stop;
     int blocking = 1;
-    uint32_t direction = DIRECTION_SHORTEST;
-    long pos_from_zero, pos_from_preset;
-    int32_t position_delta;
 
     if (motor->is_detached)
     {
@@ -1218,10 +1179,13 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     if (PyArg_ParseTupleAndKeywords(args, kwds,
-                                    "ii|IIIIpIp:run_to_position", kwlist,
+                                    "ii|IIIIpp:run_to_position", kwlist,
                                     &position, &speed, &power, &stop,
                                     &accel, &decel, &stall,
-                                    &direction, &blocking) == 0)
+                                    &blocking) == 0)
+        return NULL;
+
+    if (device_ensure_mode_info(motor->device) < 0)
         return NULL;
 
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
@@ -1233,39 +1197,8 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_ValueError, "Invalid stop state");
         return NULL;
     }
-    if (direction > 2)
-    {
-        PyErr_SetString(PyExc_ValueError, "Invalid direction");
-        return NULL;
-    }
 
-    if (motor_get_position(self, &pos_from_zero, &pos_from_preset) < 0)
-        return NULL;
-
-    /* Calculate the actual change */
-    position = position % 360;
-    switch (direction)
-    {
-        case DIRECTION_CLOCKWISE:
-            position_delta = clockwise(position, pos_from_zero);
-            break;
-
-        case DIRECTION_ANTICLOCKWISE:
-            position_delta = anticlockwise(position, pos_from_zero);
-            break;
-
-        default: /* DIRECTION_SHORTEST */
-        {
-            int32_t clk = clockwise(position, pos_from_zero);
-            int32_t aclk = anticlockwise(position, pos_from_zero);
-
-            if (abs(clk) < abs(aclk))
-                position_delta = clk;
-            else
-                position_delta = aclk;
-        }
-    }
-    position_delta += pos_from_preset;
+    position -= motor->preset_position;
 
     if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
@@ -1273,7 +1206,7 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
 
     if (cmd_goto_abs_position(port_get_id(motor->port),
-                              position_delta, speed, power,
+                              position, speed, power,
                               (uint8_t)parsed_stop, use_profile,
                               blocking) < 0)
         return NULL;
@@ -1312,6 +1245,9 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
                                     "Ii|IIIIpp:run_for_time", kwlist,
                                     &time, &speed, &power, &stop,
                                     &accel, &decel, &stall, &blocking) == 0)
+        return NULL;
+
+    if (device_ensure_mode_info(motor->device) < 0)
         return NULL;
 
     time = CLIP(time, RUN_TIME_MIN, RUN_TIME_MAX);
@@ -1365,6 +1301,9 @@ Motor_pid(PyObject *self, PyObject *args)
                          &motor->default_position_pid[0],
                          &motor->default_position_pid[1],
                          &motor->default_position_pid[2]) == 0)
+        return NULL;
+
+    if (device_ensure_mode_info(motor->device) < 0)
         return NULL;
 
     if (cmd_set_pid(port_get_id(motor->port), motor->default_position_pid) < 0)
@@ -1535,27 +1474,6 @@ static PyGetSetDef Motor_getsetters[] =
         "Stop mode: actively hold position on stopping",
         (void *)2
     },
-    {
-        "CLOCKWISE",
-        (getter)Motor_get_constant,
-        NULL,
-        "Value to pass as a 'direction' parameter",
-        (void *)0
-    },
-    {
-        "ANTICLOCKWISE",
-        (getter)Motor_get_constant,
-        NULL,
-        "Value to pass as a 'direciton' parameter",
-        (void *)1
-    },
-    {
-        "SHORTEST",
-        (getter)Motor_get_constant,
-        NULL,
-        "Value to pass as a 'direction' parameter",
-        (void *)2
-    },
     { NULL }
 };
 
@@ -1669,12 +1587,12 @@ void motor_detach(PyObject *self)
 }
 
 
-int get_value_in_mode(PyObject *self, int mode, long *pvalue)
+static int get_value_in_mode(PyObject *self, int mode, long *pvalue)
 {
     MotorObject *motor = (MotorObject *)self;
     int is_in_mode;
 
-    /* Get the motor's absolute position.  If that's part of the
+    /* Get the value for a particular mode.  If that's part of the
      * current mode set we can just call get(), otherwise we need to
      * set the mode, get the info and reset the mode.  Urgh!
      */
@@ -1684,7 +1602,7 @@ int get_value_in_mode(PyObject *self, int mode, long *pvalue)
     }
     else if (is_in_mode)
     {
-        /* We are already in Absolute Position mode, just read it */
+        /* We are already in the requested mode, just read it */
         if (device_read_mode_value(motor->device, mode, pvalue) < 0)
             return -1;
     }
@@ -1702,14 +1620,42 @@ int get_value_in_mode(PyObject *self, int mode, long *pvalue)
 }
 
 
-int motor_get_position(PyObject *self,
-                       long *ppos_from_zero,
-                       long *ppos_from_preset)
+int motor_get_position(PyObject *self, long *pposition)
 {
-    if (get_value_in_mode(self, 3, ppos_from_zero) < 0 ||
-        get_value_in_mode(self, 2, ppos_from_preset) < 0)
-    {
-        return -1;
-    }
+    return get_value_in_mode(self, 2, pposition);
+}
+
+
+int motor_set_preset(PyObject *self, long position)
+{
+    MotorObject *motor = (MotorObject *)self;
+
+    motor->preset_position = position;
     return 0;
+}
+
+void motor_update_preset(PyObject *self, long position)
+{
+    MotorObject *motor = (MotorObject *)self;
+
+    motor->preset_position -= position;
+}
+
+
+int motor_ensure_mode_info(PyObject *self)
+{
+    MotorObject *motor = (MotorObject *)self;
+
+    return device_ensure_mode_info(motor->device);
+}
+
+
+int32_t motor_get_position_offset(PyObject *self)
+{
+    MotorObject *motor = (MotorObject *)self;
+
+    /* Assert that preset_position has already been set up
+     * (which is true when this is called from a MotorPair)
+     */
+    return motor->preset_position;
 }

@@ -625,33 +625,36 @@ static int wait_for_complete_feedback(uint8_t port_id, uint8_t *response)
                 free(buffer);
                 return -1;
             }
-            if (buffer[0] != 5 ||
-                buffer[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-                buffer[3] != port_id)
-            {
-                free(buffer);
-                PyErr_SetString(hub_protocol_error,
-                                "Unexpected reply to Output command");
-                return -1;
-            }
             if (buffer[2] == TYPE_GENERIC_ERROR)
             {
                 handle_generic_error(TYPE_PORT_OUTPUT, buffer);
                 free(buffer);
                 return -1;
             }
-            if ((buffer[4] & 0x04) != 0)
+            if (buffer[0] == 5 &&
+                buffer[2] == TYPE_PORT_OUTPUT_FEEDBACK &&
+                buffer[3] == port_id)
             {
-                /* "Current Command(s) Discarded" bit set */
-                free(buffer);
-                PyErr_SetString(hub_protocol_error, "Port busy");
-                return -1;
-            }
-            if ((buffer[4] & 0x02) != 0)
-            {
-                /* "Current command(s) Complete" bit set */
-                free(buffer);
-                return 0;
+                if ((buffer[4] & 0x20) != 0)
+                {
+                    /* The motor has stalled! */
+                    free(buffer);
+                    PyErr_SetString(hub_protocol_error, "Motor stalled");
+                    return -1;
+                }
+                if ((buffer[4] & 0x04) != 0)
+                {
+                    /* "Current Command(s) Discarded" bit set */
+                    free(buffer);
+                    PyErr_SetString(hub_protocol_error, "Port busy");
+                    return -1;
+                }
+                if ((buffer[4] & 0x02) != 0)
+                {
+                    /* "Current command(s) Complete" bit set */
+                    free(buffer);
+                    return 0;
+                }
             }
             free(buffer);
         }
