@@ -587,7 +587,7 @@ Device_mode(PyObject *self, PyObject *args)
     }
     if (!PyArg_ParseTuple(args, "|OO:mode", &arg1, &arg2))
         return NULL;
-    if (device_ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(self) < 0)
         return NULL;
 
     if (arg1 == NULL)
@@ -971,7 +971,7 @@ Device_get(PyObject *self, PyObject *args)
         }
     }
 
-    if (device_ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(self) < 0)
         return NULL;
     if (!device->is_unreported)
     {
@@ -1555,7 +1555,7 @@ int device_is_in_mode(PyObject *self, int mode)
     DeviceObject *device = (DeviceObject *)self;
     uint8_t i;
 
-    if (device_ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(self) < 0)
         return -1;
     if (device->current_mode == mode)
         return 1;
@@ -1633,7 +1633,7 @@ int device_push_mode(PyObject *self, int mode)
 {
     DeviceObject *device = (DeviceObject *)self;
 
-    if (device_ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(self) < 0)
         return -1;
 
     if (mode < 0 || mode >= device->num_modes)
@@ -1663,7 +1663,7 @@ int device_pop_mode(PyObject *self)
 {
     DeviceObject *device = (DeviceObject *)self;
 
-    if (device_ensure_mode_info(device) < 0)
+    if (device_ensure_mode_info(self) < 0)
         return -1;
 
     if (device->saved_current_mode == MODE_IS_COMBI)
