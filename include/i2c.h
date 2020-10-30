@@ -42,5 +42,11 @@ extern void i2c_register_firmware_object(PyObject *firmware);
  */
 extern int i2c_reset_hat(void);
 
+/* Checks to see if there has been an error on the comms background
+ * threads.  Returns 0 if all is well, otherwise returns -1 and raises
+ * an appropriate exception.
+ */
+extern int i2c_check_comms_error(void);
+
 
 #endif /* RPI_STRAWBERRY_I2C_H_INCLUDED */
