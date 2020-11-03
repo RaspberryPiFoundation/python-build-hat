@@ -484,8 +484,8 @@ MotorPair_init(MotorPairObject *self, PyObject *args, PyObject *kwds)
     if (cmd_connect_virtual_port(self->primary_id, self->secondary_id) < 0)
         return -1;
 
-    if (motor_ensure_mode_info(primary) < 0 ||
-        motor_ensure_mode_info(secondary) < 0)
+   if (motor_ensure_mode_info(port_get_motor(primary)) < 0 ||
+        motor_ensure_mode_info(port_get_motor(secondary)) < 0)
         return -1;
 
     return 0;
