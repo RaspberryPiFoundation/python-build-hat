@@ -1153,6 +1153,66 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
 
 
 static PyObject *
+Motor_run_for_rotations(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    MotorObject *motor = (MotorObject *)self;
+    static char *kwlist[] = {
+        "rotations", "speed", "max_power", "stop",
+        "acceleration", "deceleration", "stall",
+        "blocking", NULL
+    };
+    int32_t rotations;
+    int32_t speed;
+    uint32_t power = motor->default_max_power;
+    uint32_t accel = motor->default_acceleration;
+    uint32_t decel = motor->default_deceleration;
+    int stall = motor->default_stall;
+    uint32_t stop = MOTOR_STOP_USE_DEFAULT;
+    uint8_t use_profile = 0;
+    int parsed_stop;
+    int blocking = 1;
+
+    if (motor->is_detached)
+    {
+        PyErr_SetString(cmd_get_exception(), "Motor is detached");
+        return NULL;
+    }
+
+    if (PyArg_ParseTupleAndKeywords(args, kwds,
+                                    "ii|IIIIpp:run_for_rotations", kwlist,
+                                    &rotations, &speed, &power, &stop,
+                                    &accel, &decel, &stall, &blocking) == 0)
+        return NULL;
+
+    if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;
+
+    speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
+    power = CLIP(power, POWER_MIN, POWER_MAX);
+    accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
+    decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
+    if ((parsed_stop = parse_stop(motor, stop)) < 0)
+    {
+        PyErr_Format(PyExc_ValueError, "Invalid stop state: %d", stop);
+        return NULL;
+    }
+
+    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+        set_deceleration(motor, decel, &use_profile) < 0 ||
+        set_stall(motor, stall) < 0)
+        return NULL;
+
+    if (cmd_start_speed_for_degrees(port_get_id(motor->port),
+                                    rotations * 360, speed, power,
+                                    (uint8_t)parsed_stop, use_profile,
+                                    blocking) < 0)
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
 Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
 {
     MotorObject *motor = (MotorObject *)self;
@@ -1351,6 +1411,11 @@ static PyMethodDef Motor_methods[] = {
         "run_for_degrees", (PyCFunction)Motor_run_for_degrees,
         METH_VARARGS | METH_KEYWORDS,
         "Run the motor for the given angle"
+    },
+    {
+        "run_for_rotations", (PyCFunction)Motor_run_for_rotations,
+        METH_VARARGS | METH_KEYWORDS,
+        "Run the motor for rotations"
     },
     {
         "run_to_position", (PyCFunction)Motor_run_to_position,
