@@ -1080,7 +1080,7 @@ static PyMethodDef MotorPair_methods[] = {
     {
         "run_for_rotations", (PyCFunction)MotorPair_run_for_rotations,
         METH_VARARGS | METH_KEYWORDS,
-        "Run the motor pair for rotations"
+        "Run the motor pair for N rotations"
     },
     {
         "run_to_position", (PyCFunction)MotorPair_run_to_position,
