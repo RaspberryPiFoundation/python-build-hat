@@ -1193,7 +1193,7 @@ Motor_run_for_rotations(PyObject *self, PyObject *args, PyObject *kwds)
     decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
     if ((parsed_stop = parse_stop(motor, stop)) < 0)
     {
-        PyErr_SetString(PyExc_ValueError, "Invalid stop state");
+        PyErr_Format(PyExc_ValueError, "Invalid stop state: %d", stop);
         return NULL;
     }
 
