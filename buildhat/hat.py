@@ -7,6 +7,7 @@ from build_hat import BuildHAT
     method, as it allows autocompletion via the Python REPL.
 """
 
+
 def patchattr(toobj, fromobj):
     for attribute in dir(fromobj):
         if not attribute.startswith("__") and getattr(fromobj, attribute):
@@ -15,22 +16,23 @@ def patchattr(toobj, fromobj):
 
 class Device:
 
-    instance = None
+    _instance = None
 
-    def __init__(self, port):
-        if not Device.instance:
-            Device.instance = BuildHAT()
-        self.port = getattr(self.instance.port, port)
+    def __init__(self):
+        if not Device._instance:
+            Device._instance = BuildHAT()
 
 
 class Motor(Device):
-    
     def __init__(self, port):
-        super().__init__(port)
-        patchattr(self, self.port.motor)    
-    
-    """
-    def __getattr__(self, name):
-        return getattr(self.port.motor, name)
-    """
+        super().__init__()
+        self._port = getattr(self._instance.port, port)
+        self._motor = self._port.motor
+        patchattr(self, self._motor)
 
+
+class MotorPair(Device):
+    def __init__(self, motora, motorb):
+        self._motora = motora
+        self._motorb = motorb
+        patchattr(self, motora.pair(motorb._motor))

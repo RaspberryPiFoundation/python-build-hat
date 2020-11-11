@@ -1,1 +1,2 @@
-from .hat import Motor
+from .hat import (Motor,
+                  MotorPair)
