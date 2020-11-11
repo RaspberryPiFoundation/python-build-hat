@@ -1,0 +1,1 @@
+from .hat import Motor
