@@ -164,7 +164,6 @@ typedef struct
     uint8_t  flags;
     uint8_t  rx_error;
     uint8_t  num_modes;
-    uint8_t  is_unreported;
     uint8_t  is_mode_busy;
     uint8_t  is_motor_busy;
     uint8_t  num_combi_modes;
@@ -321,7 +320,6 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->saved_current_mode = 0;
         self->flags = 0;
         self->rx_error = 0;
-        self->is_unreported = 0;
         self->is_mode_busy = 0;
         self->is_motor_busy = 0;
         self->num_combi_modes = 0;
@@ -418,7 +416,6 @@ static int set_simple_mode(DeviceObject *device, int mode)
         old_list = device->values;
         device->values = new_list;
         Py_XDECREF(old_list);
-        device->is_unreported = 0;
     }
     return 0;
 }
@@ -456,7 +453,6 @@ static int set_combi_mode(DeviceObject *device,
         old_list = device->values;
         device->values = new_list;
         Py_XDECREF(old_list);
-        device->is_unreported = 0;
     }
 
     return 0;
@@ -973,11 +969,8 @@ Device_get(PyObject *self, PyObject *args)
 
     if (device_ensure_mode_info(self) < 0)
         return NULL;
-    if (!device->is_unreported)
-    {
-        if (get_value(device) < 0)
-            return NULL;
-    }
+    if (get_value(device) < 0)
+        return NULL;
 
     /* "format" now contains the format code to use: Raw (0), Pct (1) or
      * SI (2).
@@ -1037,7 +1030,6 @@ Device_get(PyObject *self, PyObject *args)
         }
     }
 
-    device->is_unreported = 0;
     return results;
 }
 
@@ -1411,7 +1403,6 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
     PyObject *old_values = device->values;
     device->values = values;
     Py_XDECREF(old_values);
-    device->is_unreported = 1;
 
     return bytes_consumed;
 }
@@ -1491,7 +1482,6 @@ int device_new_combi_value(PyObject *self,
     PyObject *old_values = device->values;
     device->values = values;
     Py_XDECREF(old_values);
-    device->is_unreported = 1;
 
     return bytes_consumed;
 }
@@ -1503,8 +1493,7 @@ int device_new_format(PyObject *self)
 
     /* A device is considered busy with its mode inbetween sending
      * the Port Input Format message confirming a mode/format change
-     * and the next Port Value message.  This may supercede the
-     * device->is_unreported flag.
+     * and the next Port Value message.
      */
     device->is_mode_busy = 1;
     return 0;
