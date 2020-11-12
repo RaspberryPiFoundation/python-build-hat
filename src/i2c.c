@@ -68,6 +68,7 @@ static int rx_event_fd = -1;
 static pthread_t comms_rx_thread;
 static pthread_t comms_tx_thread;
 static int shutdown = 0;
+static int heard_from_hat = 0;
 
 static PyObject *firmware_object = NULL;
 
@@ -378,6 +379,21 @@ static void close_wake_gpio(void)
 static void report_comms_error(void)
 {
     /* XXX: Figure out something to do here */
+}
+
+
+/* Called from foreground */
+int i2c_check_comms_error(void)
+{
+    if (!heard_from_hat)
+    {
+        PyErr_SetString(cmd_get_exception(), "HAT not responding");
+        return -1;
+    }
+    /* XXX: else return error code somehow */
+
+    /* Otherwise all is well */
+    return 0;
 }
 
 
@@ -909,6 +925,7 @@ static void *run_comms_rx(void *args __attribute__((unused)))
                 report_comms_error();
                 continue;
             }
+            heard_from_hat = 1;
             if (buffer == NULL)
                 continue; /* Nothing to do */
 

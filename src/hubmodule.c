@@ -197,7 +197,10 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
 
     new = firmware_init();
     if (new == NULL)
+    {
+        build_hat_created = 0;
         return -1;
+    }
     old = self->firmware;
     Py_DECREF(old);
     self->firmware = new;
@@ -207,6 +210,13 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     Py_BEGIN_ALLOW_THREADS
     usleep(800000);
     Py_END_ALLOW_THREADS
+
+    /* By this time we should at least have heard from the HAT */
+    if (i2c_check_comms_error() < 0)
+    {
+        build_hat_created = 0;
+        return -1;
+    }
 
     return 0;
 }
@@ -221,6 +231,7 @@ Hub_finalize(PyObject *self)
     i2c_close_hat();
     callback_finalize();
     PyErr_Restore(etype, evalue, etraceback);
+    build_hat_created = 0;
 }
 
 
