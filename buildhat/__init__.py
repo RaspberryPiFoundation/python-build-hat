@@ -1,2 +1,4 @@
 from .hat import (Motor,
-                  MotorPair)
+                  MotorPair,
+                  Force,
+                  Distance)
