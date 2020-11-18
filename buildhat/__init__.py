@@ -42,6 +42,7 @@ class Motor(PortDevice):
         super().__init__(port)
         self._motor = self._port.motor
         self.default_speed = 100
+
         # _patchattr(self, self._motor)
 
     def set_default_speed(self, default_speed):
@@ -114,6 +115,19 @@ class Motor(PortDevice):
     def stop(self):
         """Stops motor"""
         self._motor.brake()
+
+    def get_position(self):
+        """Gets position of motor with relation to preset position (can be negative or positive).
+
+        :return: Position of motor
+        :rtype: int
+        """
+
+        return self._motor.get()[2]
+
+    #def get_speed(self):
+    ##   Need to determine how to obtain motor speed    
+    #    return self._device.get()
 
 
 class MotorPair(Device):
