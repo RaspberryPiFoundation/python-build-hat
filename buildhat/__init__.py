@@ -31,6 +31,7 @@ class PortDevice(Device):
         self._device = self._port.device
         _patchattr(self, self._device)
 
+
 class Motor(PortDevice):
     """Motor device
 
@@ -40,7 +41,79 @@ class Motor(PortDevice):
     def __init__(self, port):
         super().__init__(port)
         self._motor = self._port.motor
-        _patchattr(self, self._motor)
+        self.default_speed = 100
+        # _patchattr(self, self._motor)
+
+    def set_default_speed(self, default_speed):
+        """Sets the default speed of the motor
+
+        :param default_speed: Speed ranging from -100 to 100
+        """
+
+        self.default_speed = default_speed
+
+    def run_for_rotations(self, rotations, speed=None):
+        """Runs motor for N rotations
+
+        :param rotations: Number of rotations
+        :param speed: Speed ranging from -100 to 100
+        """
+
+        if speed is None:
+            self._motor.run_for_rotations(rotations, self.default_speed)
+        else:
+            self._motor.run_for_rotations(rotations, speed)
+
+    def run_for_degrees(self, degrees, speed=None):
+        """Runs motor for N degrees
+
+        :param degrees: Number of degrees to rotate
+        :param speed: Speed ranging from -100 to 100
+        """
+
+        if speed is None:
+            self._motor.run_for_degrees(degrees, self.default_speed)
+        else:
+            self._motor.run_for_degrees(degrees, speed)
+
+    def run_to_position(self, degrees, speed=None):
+        """Runs motor to position (in degrees)
+
+        :param degrees: Position in degrees
+        :param speed: Speed ranging from -100 to 100
+        """
+
+        if speed is None:
+            self._motor.run_to_position(degrees, self.default_speed)
+        else:
+            self._motor.run_to_position(degrees, speed)
+
+    def run_for_seconds(self, seconds, speed=None):
+        """Runs motor for N seconds
+
+        :param seconds: Time in seconds
+        :param speed: Speed ranging from -100 to 100
+        """
+
+        if speed is None:
+            self._motor.run_for_time(int(seconds * 1000), self.default_speed)
+        else:
+            self._motor.run_for_time(int(seconds * 1000), speed)
+
+    def start(self, speed=None):
+        """Start motor
+
+        :param speed: Speed ranging from -100 to 100
+        """
+
+        if speed is None:
+            self._motor.run_at_speed(self.default_speed)
+        else:
+            self._motor.run_at_speed(speed)
+
+    def stop(self):
+        """Stops motor"""
+        self._motor.brake()
 
 
 class MotorPair(Device):
@@ -49,7 +122,7 @@ class MotorPair(Device):
     :param motora: One of the motors to drive
     :param motorb: Other motor in pair to drive
     """
-    
+
     def __init__(self, motora, motorb):
         self._motora = motora
         self._motorb = motorb
@@ -128,4 +201,3 @@ class DistanceSensor(PortDevice):
         :rtype: float
         """
         return self._device.get(self._device.FORMAT_PCT)[0]
-
