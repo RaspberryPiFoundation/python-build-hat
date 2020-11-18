@@ -125,9 +125,14 @@ class Motor(PortDevice):
 
         return self._motor.get()[2]
 
-    #def get_speed(self):
-    ##   Need to determine how to obtain motor speed    
-    #    return self._device.get()
+    def get_speed(self):
+        """Gets speed of motor
+
+        :return: Speed of motor
+        :rtype: int
+        """
+
+        return self._device.get()[0]
 
 
 class MotorPair(Device):
