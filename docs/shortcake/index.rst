@@ -23,3 +23,9 @@ This chapter describes the classes and functions made available in the
         motor.rst
         pair.rst
         firmware.rst
+
+     .. toctree::
+        :maxdepth: 2
+        :caption: Wrapper
+
+        wrapper.rst
