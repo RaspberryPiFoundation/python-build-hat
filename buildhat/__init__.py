@@ -36,6 +36,7 @@ class Motor(PortDevice):
     """Motor device
 
     :param port: Port of device
+    :raises RuntimeError: Occurs if there is no motor attached to port
     """
 
     def __init__(self, port):
@@ -138,6 +139,7 @@ class MotorPair(Device):
 
     :param motora: One of the motors to drive
     :param motorb: Other motor in pair to drive
+    :raises RuntimeError: Occurs if there is no motor attached to port
     """
 
     def __init__(self, leftport, rightport):
@@ -214,6 +216,7 @@ class ForceSensor(PortDevice):
     """Force sensor
 
     :param port: Port of device
+    :raises RuntimeError: Occurs if there is no force sensor attached to port
     """
 
     def __init__(self, port):
@@ -251,6 +254,7 @@ class DistanceSensor(PortDevice):
     """Distance sensor
 
     :param port: Port of device
+    :raises RuntimeError: Occurs if there is no distance sensor attached to port
     """
 
     def __init__(self, port):
