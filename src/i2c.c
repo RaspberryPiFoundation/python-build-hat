@@ -1124,9 +1124,10 @@ int i2c_close_hat(void)
     shutdown = 1;
     signal_rx_shutdown();
     queue_shutdown(); /* Kicks the tx thread */
+    Py_BEGIN_ALLOW_THREADS
     pthread_join(comms_rx_thread, NULL);
     pthread_join(comms_tx_thread, NULL);
-
+    Py_END_ALLOW_THREADS
     if (i2c_fd != -1)
     {
         close(i2c_fd);
