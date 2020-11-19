@@ -12,17 +12,17 @@ def _patchattr(toobj, fromobj):
             setattr(toobj, attribute, getattr(fromobj, attribute))
 
 
-class Device:
+class _Device:
     """Creates a single instance of the buildhat for all devices to use"""
 
     _instance = None
 
     def __init__(self):
-        if not Device._instance:
-            Device._instance = BuildHAT()
+        if not _Device._instance:
+            _Device._instance = BuildHAT()
 
 
-class PortDevice(Device):
+class _PortDevice(_Device):
     """Device which uses port"""
 
     def __init__(self, port):
@@ -32,7 +32,7 @@ class PortDevice(Device):
         _patchattr(self, self._device)
 
 
-class Motor(PortDevice):
+class Motor(_PortDevice):
     """Motor device
 
     :param port: Port of device
@@ -134,7 +134,7 @@ class Motor(PortDevice):
         return self._device.get()[0]
 
 
-class MotorPair(Device):
+class MotorPair(_Device):
     """Pair of motors
 
     :param motora: One of the motors to drive
@@ -212,7 +212,7 @@ class MotorPair(Device):
     #    else:
     #        self._pair.run_to_position(degreesl, degreesr, speed)
 
-class ForceSensor(PortDevice):
+class ForceSensor(_PortDevice):
     """Force sensor
 
     :param port: Port of device
@@ -250,7 +250,7 @@ class ForceSensor(PortDevice):
         return self._device.get()[1] == 1
 
 
-class DistanceSensor(PortDevice):
+class DistanceSensor(_PortDevice):
     """Distance sensor
 
     :param port: Port of device
