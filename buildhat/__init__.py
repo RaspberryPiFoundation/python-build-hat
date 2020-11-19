@@ -226,7 +226,7 @@ class ForceSensor(PortDevice):
         :return: The force exherted on the button
         :rtype: int
         """
-        return self._device.get(self._device.FORMAT_PCT)[2]
+        return self._device.get(self._device.FORMAT_PCT)[0]
 
     def get_force_newton(self):
         """
@@ -235,7 +235,7 @@ class ForceSensor(PortDevice):
         :return: The force exherted on the button
         :rtype: int
         """
-        return self._device.get(self._device.FORMAT_SI)[2]
+        return self._device.get(self._device.FORMAT_SI)[0]
 
     def is_pressed(self):
         """
@@ -261,7 +261,7 @@ class DistanceSensor(PortDevice):
         Returns the distance from ultrasonic sensor to object in cm
 
         :return: Distance from ultrasonic sensor
-        :rtype: float
+        :rtype: int
         """
         return self._device.get(self._device.FORMAT_SI)[0]
 
@@ -279,6 +279,6 @@ class DistanceSensor(PortDevice):
         Returns the distance from ultrasonic sensor to object in percentage
 
         :return: Distance from ultrasonic sensor
-        :rtype: float
+        :rtype: int
         """
         return self._device.get(self._device.FORMAT_PCT)[0]
