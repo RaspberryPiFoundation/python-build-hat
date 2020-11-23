@@ -60,6 +60,8 @@
 #define RESET_GPIO_NUMBER "4"
 #define BOOT0_GPIO_NUMBER "22"
 
+#define INTERVAL 50000000
+
 static int gpio_fd = -1;
 static int gpio_state = 0;
 
@@ -184,7 +186,7 @@ static int set_gpio_direction(const char *direction_pseudofile,
 static int open_writeable_gpio(const char *gpio)
 {
     int fd;
-    struct timespec timeout = { 0, 50000000 }; /* 50ms */
+    struct timespec timeout = { 0, INTERVAL }; /* 50ms */
     struct timespec remaining;
     char filename[64];
 
@@ -291,7 +293,7 @@ int i2c_reset_hat(void)
 
     /* And rest awhile again */
     timeout.tv_sec = 0;
-    timeout.tv_nsec = 50000000;
+    timeout.tv_nsec = INTERVAL;
     while (nanosleep(&timeout, &remaining) < 0 && errno == EINTR)
     {
         timeout = remaining;
@@ -309,7 +311,7 @@ static int open_wake_gpio(void)
 {
     int fd;
     const char *edge = "both";
-    struct timespec timeout = { 0, 50000000 }; /* 50ms */
+    struct timespec timeout = { 0, INTERVAL }; /* 50ms */
     struct timespec remaining;
 
     /* First export the GPIO */
