@@ -174,6 +174,7 @@ typedef struct
     uint8_t  saved_combi_mode[MAX_DATASETS];
     combi_mode_t combi_modes;
     mode_info_t modes[16];
+    PyObject *callback;
 } DeviceObject;
 
 #define DO_FLAGS_GOT_MODE_INFO 0x01
@@ -323,6 +324,8 @@ Device_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->is_mode_busy = 0;
         self->is_motor_busy = 0;
         self->num_combi_modes = 0;
+        self->callback = Py_None;
+        Py_INCREF(Py_None);
     }
     return (PyObject *)self;
 }
@@ -1033,12 +1036,65 @@ Device_get(PyObject *self, PyObject *args)
     return results;
 }
 
+static PyObject *
+Device_callback(PyObject *self, PyObject *args)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    PyObject *callable = NULL;
 
+    if ((device->flags & DO_FLAGS_DETACHED) != 0)
+    {
+        PyErr_SetString(cmd_get_exception(), "Device is detached");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "|O:callback", &callable))
+        return NULL;
+
+    if (callable == NULL)
+    {
+        /* JUst wants the current callback returned */
+        Py_INCREF(device->callback);
+        return device->callback;
+    }
+    if (callable != Py_None && !PyCallable_Check(callable))
+    {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+    Py_INCREF(callable);
+    Py_XDECREF(device->callback);
+    device->callback = callable;
+
+    Py_RETURN_NONE;
+}
+
+
+/* Called from callback thread */
+int device_callback(PyObject *self, int event)
+{
+    DeviceObject *device = (DeviceObject *)self;
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    int rv = 0;
+
+    if (device->callback != Py_None)
+    {
+        PyObject *args = Py_BuildValue("(iO)", event, device->values);
+
+        rv = (PyObject_CallObject(device->callback, args) != NULL) ? 0 : -1;
+        Py_XDECREF(args);
+    }
+
+    PyGILState_Release(gstate);
+
+    return rv;
+}
 
 static PyMethodDef Device_methods[] = {
     { "pwm", Device_pwm, METH_VARARGS, "Set the PWM level for the port" },
     { "mode", Device_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Device_get, METH_VARARGS, "Get a set of readings from the device" },
+    { "callback", Device_callback, METH_VARARGS, "Get or set the callback" },
     { NULL, NULL, 0, NULL }
 };
 
@@ -1359,13 +1415,12 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
     uint16_t bytes_consumed = 1;
 
     device->is_mode_busy = 0;
-
-    if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
-    {
-        /* The foreground has to be the one to send commands */
-        device->rx_error = DO_RXERR_NO_MODE_INFO;
-        return -1;
-    }
+    //if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
+    //{
+    //    /* The foreground has to be the one to send commands */
+    //    device->rx_error = DO_RXERR_NO_MODE_INFO;
+    //    return -1;
+    //}
 
     if (device->current_mode == MODE_IS_COMBI)
     {
@@ -1423,12 +1478,12 @@ int device_new_combi_value(PyObject *self,
 
     device->is_mode_busy = 0;
 
-    if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
-    {
-        /* The foreground has to be the one to send commands */
-        device->rx_error = DO_RXERR_NO_MODE_INFO;
-        return -1;
-    }
+    //if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
+    //{
+    //    /* The foreground has to be the one to send commands */
+    //    device->rx_error = DO_RXERR_NO_MODE_INFO;
+    //    return -1;
+    //}
 
     if (device->current_mode != MODE_IS_COMBI)
     {

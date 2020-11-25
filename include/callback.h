@@ -22,6 +22,7 @@
 #define CALLBACK_PAIR     2
 #define CALLBACK_FIRMWARE 3
 #define CALLBACK_ALERT    4
+#define CALLBACK_DEVICE   5
 
 /* Event codes for the port callbacks */
 #define CALLBACK_DETACHED 0
@@ -32,6 +33,8 @@
 #define CALLBACK_INTERRUPTED 1
 #define CALLBACK_STALLED     2
 
+/* Event codes for device callback */
+#define CALLBACK_DATA 0
 
 /* Initialise and start the callback thread.  Returns zero on success,
  * or a negative number on failure.  If the function fails, it will

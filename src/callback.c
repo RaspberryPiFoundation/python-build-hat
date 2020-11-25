@@ -172,6 +172,11 @@ static void *run_callbacks(void *arg __attribute__((unused)))
                         report_callback_error();
                 break;
 
+            case CALLBACK_DEVICE:
+                if (port_handle_device_callback(item->port_id, item->event) < 0)
+                    report_callback_error();
+                break;
+
             default:
                 report_callback_error();
         }
