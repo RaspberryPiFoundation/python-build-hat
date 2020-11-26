@@ -5,7 +5,6 @@ import sys
 import os
 from collections import OrderedDict
 
-
 sys.path.insert(0, os.path.abspath('.'))
 
 # Need this to correctly find the docstrings for python modules

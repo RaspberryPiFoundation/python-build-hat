@@ -42,7 +42,9 @@ class Motor(_PortDevice):
     def __init__(self, port):
         super().__init__(port)
         self._motor = self._port.motor
+        self._device.mode([(1, 0), (2, 0)])
         self.default_speed = 100
+        self._when_rotated = None
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
@@ -113,6 +115,7 @@ class Motor(_PortDevice):
 
     def stop(self):
         """Stops motor"""
+
         self._motor.brake()
 
     def get_position(self):
@@ -132,6 +135,24 @@ class Motor(_PortDevice):
         """
 
         return self._device.get()[0]
+
+    @property
+    def when_rotated(self):
+        """
+        Handles rotatation events
+
+        :getter: Returns function to be called when rotated
+        :setter: Sets function to be called when rotated
+        """
+
+        return self._when_rotated
+
+    @when_rotated.setter
+    def when_rotated(self, value):
+        """Calls back, when motor has been rotated"""
+
+        self._when_rotated = value
+        self._device.callback(value)
 
 
 class MotorPair(_Device):
@@ -168,7 +189,9 @@ class MotorPair(_Device):
         """
 
         if speedl is None and speedr is None:
-            self._pair.run_for_degrees(int(rotations * 360), self.default_speed, self.default_speed)
+            self._pair.run_for_degrees(
+                int(rotations * 360), self.default_speed, self.default_speed
+            )
         else:
             self._pair.run_for_degrees(int(rotations * 360), speedl, speedr)
 
@@ -194,12 +217,13 @@ class MotorPair(_Device):
         """
 
         if speedl is None and speedr is None:
-            self._pair.run_for_time(int(seconds * 1000), self.default_speed, self.default_speed)
+            self._pair.run_for_time(
+                int(seconds * 1000), self.default_speed, self.default_speed
+            )
         else:
             self._pair.run_for_time(int(seconds * 1000), speedl, speedr)
 
-
-    #def run_to_position(self, degreesl, degreesr, speed=None):
+    # def run_to_position(self, degreesl, degreesr, speed=None):
     #    """Runs pair to position (in degrees)
     #
     #    :param degreesl: Position in degrees for left motor
@@ -211,6 +235,7 @@ class MotorPair(_Device):
     #        self._pair.run_to_position(degreesl, degreesr, self.default_speed)
     #    else:
     #        self._pair.run_to_position(degreesl, degreesr, speed)
+
 
 class ForceSensor(_PortDevice):
     """Force sensor
