@@ -1079,7 +1079,7 @@ int device_callback(PyObject *self, int event)
 
     if (device->callback != Py_None)
     {
-        PyObject *args = Py_BuildValue("(iO)", event, device->values);
+        PyObject *args = Py_BuildValue("(O)", device->values);
 
         rv = (PyObject_CallObject(device->callback, args) != NULL) ? 0 : -1;
         Py_XDECREF(args);
