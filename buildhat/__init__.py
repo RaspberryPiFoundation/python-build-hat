@@ -246,6 +246,8 @@ class ForceSensor(_PortDevice):
 
     def __init__(self, port):
         super().__init__(port)
+        self._device.mode([(0,0),(1,0)])
+        self._when_force = None
 
     def get_force_percentage(self):
         """
@@ -274,6 +276,24 @@ class ForceSensor(_PortDevice):
         """
         return self._device.get()[1] == 1
 
+    @property
+    def when_force(self):
+        """
+        Handles force events
+
+        :getter: Returns function to be called when force
+        :setter: Sets function to be called when force
+        """
+
+        return self._when_force
+
+    @when_force.setter
+    def when_force(self, value):
+        """Calls back, when force has changed"""
+
+        self._when_force = value
+        self._device.callback(value)
+
 
 class DistanceSensor(_PortDevice):
     """Distance sensor
@@ -284,6 +304,8 @@ class DistanceSensor(_PortDevice):
 
     def __init__(self, port):
         super().__init__(port)
+        self._device.mode(0)
+        self._when_motion = None
 
     def get_distance_cm(self):
         """
@@ -311,3 +333,23 @@ class DistanceSensor(_PortDevice):
         :rtype: int
         """
         return self._device.get(self._device.FORMAT_PCT)[0]
+
+    @property
+    def when_motion(self):
+        """
+        Handles motion events
+
+        :getter: Returns function to be called when movement
+        :setter: Sets function to be called when movement
+        """
+
+        return self._when_motion
+
+    @when_motion.setter
+    def when_motion(self, value):
+        """Calls back, when distance has changed"""
+
+        self._when_motion = value
+        self._device.callback(value)
+
+
