@@ -151,8 +151,8 @@ class Motor(_PortDevice):
     def when_rotated(self, value):
         """Calls back, when motor has been rotated"""
 
-        self._when_rotated = value
-        self._device.callback(value)
+        self._when_rotated = lambda lst: value(lst[0], lst[1])
+        self._device.callback(self._when_rotated)
 
 
 class MotorPair(_Device):
@@ -291,8 +291,8 @@ class ForceSensor(_PortDevice):
     def when_force(self, value):
         """Calls back, when force has changed"""
 
-        self._when_force = value
-        self._device.callback(value)
+        self._when_force = lambda lst: value(lst[0],lst[1])
+        self._device.callback(self._when_force)
 
 
 class DistanceSensor(_PortDevice):
@@ -349,7 +349,7 @@ class DistanceSensor(_PortDevice):
     def when_motion(self, value):
         """Calls back, when distance has changed"""
 
-        self._when_motion = value
-        self._device.callback(value)
+        self._when_motion = lambda lst: value(lst[0])
+        self._device.callback(self._when_motion)
 
 
