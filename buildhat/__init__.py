@@ -1,5 +1,5 @@
 from build_hat import BuildHAT
-
+import threading
 
 def _patchattr(toobj, fromobj):
     """
@@ -250,8 +250,7 @@ class ForceSensor(_PortDevice):
         self._when_force = None
 
     def get_force_percentage(self):
-        """
-        Returns the force in percentage
+        """Returns the force in percentage
 
         :return: The force exherted on the button
         :rtype: int
@@ -259,8 +258,7 @@ class ForceSensor(_PortDevice):
         return self._device.get(self._device.FORMAT_PCT)[0]
 
     def get_force_newton(self):
-        """
-        Returns the force in newtons
+        """Returns the force in newtons
 
         :return: The force exherted on the button
         :rtype: int
@@ -268,8 +266,7 @@ class ForceSensor(_PortDevice):
         return self._device.get(self._device.FORMAT_SI)[0]
 
     def is_pressed(self):
-        """
-        Gets whether the button is pressed
+        """Gets whether the button is pressed
 
         :return: If button is pressed
         :rtype: bool
@@ -278,8 +275,7 @@ class ForceSensor(_PortDevice):
 
     @property
     def when_force(self):
-        """
-        Handles force events
+        """Handles force events
 
         :getter: Returns function to be called when force
         :setter: Sets function to be called when force
@@ -294,6 +290,42 @@ class ForceSensor(_PortDevice):
         self._when_force = lambda lst: value(lst[0],lst[1])
         self._device.callback(self._when_force)
 
+    def wait_until_pressed(self):
+        """Waits until the button is pressed
+        """
+
+        oldcall = self._when_force
+        lock = threading.Lock()
+        
+        def both(lst):
+            if lst[1] == 1:
+                lock.release()
+            oldcall(lst)
+
+        self._device.callback(both)
+        lock.acquire()
+        lock.acquire()
+
+        self._device.callback(oldcall)
+
+    def wait_until_released(self):
+        """Waits until the button is released
+        """
+
+        oldcall = self._when_force
+        lock = threading.Lock()
+        
+        def both(lst):
+            if lst[1] == 0:
+                lock.release()
+            oldcall(lst)
+
+        self._device.callback(both)
+        lock.acquire()
+        lock.acquire()
+
+        self._device.callback(oldcall)
+        
 
 class DistanceSensor(_PortDevice):
     """Distance sensor
