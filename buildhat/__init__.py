@@ -125,7 +125,7 @@ class Motor(_PortDevice):
         :rtype: int
         """
 
-        return self._motor.get()[2]
+        return self._motor.get()[1]
 
     def get_speed(self):
         """Gets speed of motor
@@ -384,4 +384,42 @@ class DistanceSensor(_PortDevice):
         self._when_motion = lambda lst: value(lst[0])
         self._device.callback(self._when_motion)
 
+    def wait_until_distance_farther_cm(self, distance):
+        """Waits until distance is farther than specified distance
 
+        :param distance: Distance in cm
+        """
+
+        oldcall = self._when_motion
+        lock = threading.Lock()
+        
+        def both(lst):
+            if lst[0]/10 > distance:
+                lock.release()
+            oldcall(lst)
+
+        self._device.callback(both)
+        lock.acquire()
+        lock.acquire()
+
+        self._device.callback(oldcall)
+
+    def wait_until_distance_closer_cm(self, distance):
+        """Waits until distance is closer than specified distance
+
+        :param distance: Distance in cm
+        """
+
+        oldcall = self._when_motion
+        lock = threading.Lock()
+        
+        def both(lst):
+            if lst[0] != -1 and lst[0]/10 < distance:
+                lock.release()
+            oldcall(lst)
+
+        self._device.callback(both)
+        lock.acquire()
+        lock.acquire()
+
+        self._device.callback(oldcall)
