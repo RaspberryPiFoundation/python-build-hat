@@ -230,7 +230,9 @@ int callback_finalize(void)
     if (write(cb_event_fd, (uint8_t *)&dummy, 8) < 0)
         rv = 1;
     /* Push on anyway if there is an error */
+    Py_BEGIN_ALLOW_THREADS
     pthread_join(callback_thread, NULL);
+    Py_END_ALLOW_THREADS
 
     return rv;
 }
