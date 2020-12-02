@@ -7,7 +7,6 @@ class Motor(PortDevice):
     :param port: Port of device
     :raises RuntimeError: Occurs if there is no motor attached to port
     """
-
     def __init__(self, port):
         super().__init__(port)
         self._motor = self._port.motor
@@ -20,7 +19,6 @@ class Motor(PortDevice):
 
         :param default_speed: Speed ranging from -100 to 100
         """
-
         self.default_speed = default_speed
 
     def run_for_rotations(self, rotations, speed=None):
@@ -29,7 +27,6 @@ class Motor(PortDevice):
         :param rotations: Number of rotations
         :param speed: Speed ranging from -100 to 100
         """
-
         if speed is None:
             self._motor.run_for_rotations(rotations, self.default_speed)
         else:
@@ -41,7 +38,6 @@ class Motor(PortDevice):
         :param degrees: Number of degrees to rotate
         :param speed: Speed ranging from -100 to 100
         """
-
         if speed is None:
             self._motor.run_for_degrees(degrees, self.default_speed)
         else:
@@ -53,7 +49,6 @@ class Motor(PortDevice):
         :param degrees: Position in degrees
         :param speed: Speed ranging from -100 to 100
         """
-
         if speed is None:
             self._motor.run_to_position(degrees, self.default_speed)
         else:
@@ -65,7 +60,6 @@ class Motor(PortDevice):
         :param seconds: Time in seconds
         :param speed: Speed ranging from -100 to 100
         """
-
         if speed is None:
             self._motor.run_for_time(int(seconds * 1000), self.default_speed)
         else:
@@ -76,7 +70,6 @@ class Motor(PortDevice):
 
         :param speed: Speed ranging from -100 to 100
         """
-
         if speed is None:
             self._motor.run_at_speed(self.default_speed)
         else:
@@ -84,7 +77,6 @@ class Motor(PortDevice):
 
     def stop(self):
         """Stops motor"""
-
         self._motor.brake()
 
     def get_position(self):
@@ -93,7 +85,6 @@ class Motor(PortDevice):
         :return: Position of motor
         :rtype: int
         """
-
         return self._motor.get()[1]
 
     def get_speed(self):
@@ -102,7 +93,6 @@ class Motor(PortDevice):
         :return: Speed of motor
         :rtype: int
         """
-
         return self._device.get()[0]
 
     @property
@@ -113,13 +103,11 @@ class Motor(PortDevice):
         :getter: Returns function to be called when rotated
         :setter: Sets function to be called when rotated
         """
-
         return self._when_rotated
 
     @when_rotated.setter
     def when_rotated(self, value):
         """Calls back, when motor has been rotated"""
-
         self._when_rotated = lambda lst: value(lst[0], lst[1])
         self._device.callback(self._when_rotated)
 
