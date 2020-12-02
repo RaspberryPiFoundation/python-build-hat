@@ -4,10 +4,14 @@ from buildhat import Motor, ForceSensor
 motor = Motor('C')
 button = ForceSensor('A')
 
+print("Waiting for button to be pressed and released")
+
 button.wait_until_pressed()
+button.wait_until_released()
+
 motor.run_for_rotations(1)
 
-button.wait_until_released()
+print("Wait for button to be pressed")
 
 button.wait_until_pressed()
 motor.run_for_rotations(2) 

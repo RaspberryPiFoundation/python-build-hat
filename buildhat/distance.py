@@ -68,7 +68,7 @@ class DistanceSensor(PortDevice):
         lock = threading.Lock()
         
         def both(lst):
-            if lst[0]/10 > distance:
+            if lst[0] > distance:
                 lock.release()
             oldcall(lst)
 
@@ -88,7 +88,7 @@ class DistanceSensor(PortDevice):
         lock = threading.Lock()
         
         def both(lst):
-            if lst[0] != -1 and lst[0]/10 < distance:
+            if lst[0] != 0 and lst[0] < distance:
                 lock.release()
             oldcall(lst)
 
