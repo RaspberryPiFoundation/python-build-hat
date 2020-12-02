@@ -5,3 +5,8 @@ Motor
    :members:
    :inherited-members:
 
+Example
+-------
+
+.. literalinclude:: motor.py
+
