@@ -5,3 +5,7 @@ DistanceSensor
    :members:
    :inherited-members:
 
+Example
+=======
+
+.. literalinclude:: distance.py
