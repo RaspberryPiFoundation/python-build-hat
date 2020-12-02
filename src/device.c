@@ -1415,12 +1415,6 @@ int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
     uint16_t bytes_consumed = 1;
 
     device->is_mode_busy = 0;
-    //if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
-    //{
-    //    /* The foreground has to be the one to send commands */
-    //    device->rx_error = DO_RXERR_NO_MODE_INFO;
-    //    return -1;
-    //}
 
     if (device->current_mode == MODE_IS_COMBI)
     {
@@ -1477,13 +1471,6 @@ int device_new_combi_value(PyObject *self,
     int i;
 
     device->is_mode_busy = 0;
-
-    //if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
-    //{
-    //    /* The foreground has to be the one to send commands */
-    //    device->rx_error = DO_RXERR_NO_MODE_INFO;
-    //    return -1;
-    //}
 
     if (device->current_mode != MODE_IS_COMBI)
     {
