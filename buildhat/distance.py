@@ -47,13 +47,11 @@ class DistanceSensor(PortDevice):
         :getter: Returns function to be called when movement
         :setter: Sets function to be called when movement
         """
-
         return self._when_motion
 
     @when_motion.setter
     def when_motion(self, value):
         """Calls back, when distance has changed"""
-
         self._when_motion = lambda lst: value(lst[0])
         self._device.callback(self._when_motion)
 
