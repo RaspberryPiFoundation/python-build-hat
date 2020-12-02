@@ -7,7 +7,6 @@ class DistanceSensor(PortDevice):
     :param port: Port of device
     :raises RuntimeError: Occurs if there is no distance sensor attached to port
     """
-
     def __init__(self, port):
         super().__init__(port)
         self._device.mode(0)
@@ -63,7 +62,6 @@ class DistanceSensor(PortDevice):
 
         :param distance: Distance in cm
         """
-
         oldcall = self._when_motion
         lock = threading.Lock()
         
@@ -83,7 +81,6 @@ class DistanceSensor(PortDevice):
 
         :param distance: Distance in cm
         """
-
         oldcall = self._when_motion
         lock = threading.Lock()
         

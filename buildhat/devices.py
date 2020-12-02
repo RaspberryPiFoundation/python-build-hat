@@ -29,6 +29,3 @@ class PortDevice(Device):
         self._port = getattr(self._instance.port, port)
         self._device = self._port.device
         patchattr(self, self._device)
-
-
-

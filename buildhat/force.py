@@ -7,7 +7,6 @@ class ForceSensor(PortDevice):
     :param port: Port of device
     :raises RuntimeError: Occurs if there is no force sensor attached to port
     """
-
     def __init__(self, port):
         super().__init__(port)
         self._device.mode([(0,0),(1,0)])
@@ -57,7 +56,6 @@ class ForceSensor(PortDevice):
     def wait_until_pressed(self):
         """Waits until the button is pressed
         """
-
         oldcall = self._when_force
         lock = threading.Lock()
         
@@ -75,7 +73,6 @@ class ForceSensor(PortDevice):
     def wait_until_released(self):
         """Waits until the button is released
         """
-
         oldcall = self._when_force
         lock = threading.Lock()
         
@@ -89,4 +86,3 @@ class ForceSensor(PortDevice):
         lock.acquire()
 
         self._device.callback(oldcall)
-

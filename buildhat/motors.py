@@ -119,7 +119,6 @@ class MotorPair(Device):
     :param motorb: Other motor in pair to drive
     :raises RuntimeError: Occurs if there is no motor attached to port
     """
-
     def __init__(self, leftport, rightport):
         super().__init__()
         self._leftport = getattr(self._instance.port, leftport)
