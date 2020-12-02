@@ -146,7 +146,6 @@ class MotorPair(Device):
 
         :param default_speed: Speed ranging from -100 to 100
         """
-
         self.default_speed = default_speed
 
     def run_for_rotations(self, rotations, speedl=None, speedr=None):
@@ -156,13 +155,11 @@ class MotorPair(Device):
         :param speedl: Speed ranging from -100 to 100
         :param speedr: Speed ranging from -100 to 100
         """
-
-        if speedl is None and speedr is None:
-            self._pair.run_for_degrees(
-                int(rotations * 360), self.default_speed, self.default_speed
-            )
-        else:
-            self._pair.run_for_degrees(int(rotations * 360), speedl, speedr)
+        if speedl is None:
+            speedl = self.default_speed
+        if speedr is None:
+            speedr = self.default_speed
+        self._pair.run_for_degrees(int(rotations * 360), speedl, speedr)
 
     def run_for_degrees(self, degrees, speedl=None, speedr=None):
         """Runs pair of motors for degrees
@@ -171,11 +168,11 @@ class MotorPair(Device):
         :param speedl: Speed ranging from -100 to 100
         :param speedr: Speed ranging from -100 to 100
         """
-
-        if speedl is None and speedr is None:
-            self._pair.run_for_degrees(degrees, self.default_speed, self.default_speed)
-        else:
-            self._pair.run_for_degrees(degrees, speedl, speedr)
+        if speedl is None:
+            speedl = self.default_speed
+        if speedr is None:
+            speedr = self.default_speed
+        self._pair.run_for_degrees(degrees, speedl, speedr)
 
     def run_for_seconds(self, seconds, speedl=None, speedr=None):
         """Runs pair for N seconds
@@ -184,13 +181,11 @@ class MotorPair(Device):
         :param speedl: Speed ranging from -100 to 100
         :param speedr: Speed ranging from -100 to 100
         """
-
-        if speedl is None and speedr is None:
-            self._pair.run_for_time(
-                int(seconds * 1000), self.default_speed, self.default_speed
-            )
-        else:
-            self._pair.run_for_time(int(seconds * 1000), speedl, speedr)
+        if speedl is None:
+            speedl = self.default_speed
+        if speedr is None:
+            speedr = self.default_speed
+        self._pair.run_for_time(int(seconds * 1000), speedl, speedr)
 
     # def run_to_position(self, degreesl, degreesr, speed=None):
     #    """Runs pair to position (in degrees)
