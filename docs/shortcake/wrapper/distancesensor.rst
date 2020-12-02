@@ -6,6 +6,6 @@ DistanceSensor
    :inherited-members:
 
 Example
-=======
+-------
 
 .. literalinclude:: distance.py
