@@ -970,6 +970,9 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
     }
 
     PyGILState_Release(gstate);
+    if(rv > 0)
+        callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
+
     return rv;
 }
 
@@ -1004,6 +1007,9 @@ int port_new_combi_value(uint8_t port_id,
     }
 
     PyGILState_Release(gstate);
+    if(rv > 0)
+        callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
+
     return rv;
 }
 
@@ -1192,6 +1198,22 @@ int port_handle_motor_callback(uint8_t port_id, uint8_t event)
     port = (PortObject *)port_set->ports[port_id];
     if (port->motor != NULL)
         return motor_callback(port->motor, event);
+
+    return 0;
+}
+
+
+/* Called from callback thread */
+int port_handle_device_callback(uint8_t port_id, uint8_t event)
+{
+    PortObject *port;
+
+    if (port_id >= NUM_HUB_PORTS)
+        return 0;
+
+    port = (PortObject *)port_set->ports[port_id];
+    if (port->device != NULL)
+        return device_callback(port->device, event);
 
     return 0;
 }
