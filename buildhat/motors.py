@@ -174,6 +174,21 @@ class MotorPair(Device):
             speedr = self.default_speed
         self._pair.run_for_time(int(seconds * 1000), speedl, speedr)
 
+    def start(self, speedl=None, speedr=None):
+        """Start motors
+
+        :param speed: Speed ranging from -100 to 100
+        """
+        if speedl is None:
+            speedl = self.default_speed
+        if speedr is None:
+            speedr = self.default_speed
+        self._pair.run_at_speed(speedl, speedr)
+
+    def stop(self):
+        """Stop motors"""
+        self._pair.brake()
+
     # def run_to_position(self, degreesl, degreesr, speed=None):
     #    """Runs pair to position (in degrees)
     #
