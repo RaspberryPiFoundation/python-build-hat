@@ -22,3 +22,6 @@ clean:
 
 html:
 	$(BUILD) $(FORCE) -b html $(SFLAGS) $(BUILDDIR)/html
+
+latex:
+	$(BUILD) $(FORCE) -b latex $(SFLAGS) $(BUILDDIR)/latex

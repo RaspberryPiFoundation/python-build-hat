@@ -39,4 +39,5 @@ setup(name='build_hat',
       long_description_content_type="text/markdown",
       author='Rhodri James',
       author_email='rhodri@kynesim.co.uk',
+      packages=['buildhat'],
       ext_modules=[hub_module])

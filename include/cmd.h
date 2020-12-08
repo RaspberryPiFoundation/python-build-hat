@@ -333,7 +333,7 @@ extern int cmd_write_mode_data(uint8_t port_id,
  * to set the mode used on the given port.  Returns 0 on success, -1
  * on error (when a Python exception will have been raised already).
  */
-extern int cmd_set_mode(uint8_t port_id, uint8_t mode);
+extern int cmd_set_mode(uint8_t port_id, uint8_t mode, uint8_t notifications);
 
 /* Sends the required set of Port Input Format Setup Combined commands
  * to set the combi mode used on the given port.  Returns 0 on
@@ -344,7 +344,8 @@ extern int cmd_set_mode(uint8_t port_id, uint8_t mode);
 extern int cmd_set_combi_mode(uint8_t port,
                               int combi_index,
                               uint8_t *modes,
-                              int num_modes);
+                              int num_modes,
+                              uint8_t notifications);
 
 
 /* Sends a Virtual Port Setup command to connect two ports as a pair.

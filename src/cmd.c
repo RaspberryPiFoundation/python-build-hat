@@ -143,6 +143,7 @@ static uint8_t *get_response(uint8_t type, bool return_feedback)
             PyErr_SetFromErrno(hub_protocol_error);
             return NULL;
         }
+        
         if (response == NULL)
         {
             PyErr_SetString(hub_protocol_error, "Tx timeout");
@@ -1172,7 +1173,7 @@ int cmd_write_mode_data(uint8_t port_id,
 }
 
 
-int cmd_set_mode(uint8_t port_id, uint8_t mode)
+int cmd_set_mode(uint8_t port_id, uint8_t mode, uint8_t notifications)
 {
     uint8_t *response;
 
@@ -1181,7 +1182,7 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
                             port_id,
                             mode,
                             1, 0, 0, 0, /* Delta = 1 */
-                            0); /* Notification disabled */
+                            notifications);
     if (response == NULL)
         return -1;
 
@@ -1193,7 +1194,7 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
         response[6] != 0 ||
         response[7] != 0 ||
         response[8] != 0 ||
-        response[9] != 0)
+        response[9] != notifications)
     {
         free(response);
         PyErr_SetString(hub_protocol_error,
@@ -1233,7 +1234,7 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
                             port_id,
                             mode,
                             1, 0, 0, 0, /* Delta = 1 */
-                            0); /* Notification disabled */
+                            notifications); 
     if (response == NULL)
         return -1;
 
@@ -1245,7 +1246,7 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
         response[6] != 0 ||
         response[7] != 0 ||
         response[8] != 0 ||
-        response[9] != 0)
+        response[9] != notifications)
     {
         free(response);
         PyErr_SetString(hub_protocol_error,
@@ -1261,7 +1262,8 @@ int cmd_set_mode(uint8_t port_id, uint8_t mode)
 int cmd_set_combi_mode(uint8_t port_id,
                        int combi_index,
                        uint8_t *modes,
-                       int num_modes)
+                       int num_modes,
+                       uint8_t notifications)
 {
     uint8_t *response;
     uint8_t *buffer;
@@ -1327,7 +1329,7 @@ int cmd_set_combi_mode(uint8_t port_id,
         buffer[6] = 0;
         buffer[7] = 0;
         buffer[8] = 0;
-        buffer[9] = 0; /* Notification disabled */
+        buffer[9] = notifications;
 
         if (queue_add_buffer(buffer) != 0)
         {
@@ -1356,7 +1358,7 @@ int cmd_set_combi_mode(uint8_t port_id,
             response[6] != 0 ||
             response[7] != 0 ||
             response[8] != 0 ||
-            response[9] != 0)
+            response[9] != notifications)
         {
             free(response);
             PyErr_Format(hub_protocol_error,

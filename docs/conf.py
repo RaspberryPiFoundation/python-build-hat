@@ -5,8 +5,10 @@ import sys
 import os
 from collections import OrderedDict
 
-
 sys.path.insert(0, os.path.abspath('.'))
+
+# Need this to correctly find the docstrings for python modules
+sys.path.insert(0, os.path.abspath('..'))
 
 # Common strings
 PORT = 'hub'
@@ -47,6 +49,7 @@ extensions = [
     'sphinx_selective_exclude.search_auto_exclude',
     'sphinxcontrib.cmtinc-shortcake',
 ]
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']

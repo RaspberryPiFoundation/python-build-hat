@@ -172,6 +172,7 @@ typedef struct
     uint8_t  saved_combi_index;
     uint8_t  combi_mode[MAX_DATASETS];
     uint8_t  saved_combi_mode[MAX_DATASETS];
+    uint8_t  notifications;
     combi_mode_t combi_modes;
     mode_info_t modes[16];
     PyObject *callback;
@@ -399,7 +400,7 @@ static int set_simple_mode(DeviceObject *device, int mode)
 {
     mode_info_t *mode_info;
 
-    if (cmd_set_mode(port_get_id(device->port), mode) < 0)
+    if (cmd_set_mode(port_get_id(device->port), mode, device->notifications) < 0)
         return -1;
     device->current_mode = mode;
 
@@ -435,7 +436,8 @@ static int set_combi_mode(DeviceObject *device,
     if (cmd_set_combi_mode(port_get_id(device->port),
                            combi_index,
                            mode_and_dataset,
-                           num_entries) < 0)
+                           num_entries,
+                           device->notifications) < 0)
         return -1;
 
     memcpy(device->combi_mode, mode_and_dataset, MAX_DATASETS);
@@ -1066,6 +1068,24 @@ Device_callback(PyObject *self, PyObject *args)
     Py_XDECREF(device->callback);
     device->callback = callable;
 
+    if (callable != Py_None)
+        device->notifications = 1;
+    else
+        device->notifications = 0;
+
+    if(device->num_combi_modes == 0)
+    {
+        if (set_simple_mode(device, device->current_mode) < 0){
+            return NULL;
+        }
+    }
+    else
+    {
+        if (set_combi_mode(device, device->combi_index, device->combi_mode, device->num_combi_modes) < 0){
+            return NULL;
+        }
+    }
+ 
     Py_RETURN_NONE;
 }
 
@@ -1075,11 +1095,71 @@ int device_callback(PyObject *self, int event)
 {
     DeviceObject *device = (DeviceObject *)self;
     PyGILState_STATE gstate = PyGILState_Ensure();
+
     int rv = 0;
+    int format = DEVICE_FORMAT_SI;
+    PyObject *results;
+    mode_info_t *mode;
+    int result_count, i;
 
     if (device->callback != Py_None)
     {
-        PyObject *args = Py_BuildValue("(O)", device->values);
+
+        if (device->current_mode != MODE_IS_COMBI)
+        {
+            /* Simple (single) mode */
+            /* Get the current mode data */
+            mode = &device->modes[device->current_mode];
+            result_count = PyList_Size(device->values);
+            if (result_count != mode->format.datasets)
+            {
+                PyErr_SetString(cmd_get_exception(),
+                            "Device value length mismatch");
+                return -1;
+            }
+
+            /* We wish to return a list with "mode->format->datasets" data
+             * values.
+             */
+            if ((results = PyList_New(mode->format.datasets)) == NULL)
+                return -1;
+
+            /* device->values is a list containing result_count elements */
+            for (i = 0; i < result_count; i++)
+            {
+                PyObject *value = PyList_GetItem(device->values, i);
+                value = convert_raw(value, format, mode);
+                if (value == NULL)
+                {
+                    Py_DECREF(results);
+                    return -1;
+                }
+                PyList_SET_ITEM(results, i, value);
+            }
+        }
+        else
+        {
+            /* Combination mode */
+            if ((results = PyList_New(device->num_combi_modes)) == NULL)
+                return -1;
+            for (i = 0; i < device->num_combi_modes; i++)
+            {
+                PyObject *value;
+                uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
+
+                mode = &device->modes[mode_number];
+                value = PyList_GetItem(device->values, i);
+                value = convert_raw(value, format, mode);
+                if (value == NULL)
+                {
+                    Py_DECREF(results);
+                    return -1;
+                }
+                PyList_SET_ITEM(results, i, value);
+            }
+        }
+
+        PyObject *args = Py_BuildValue("(O)", results);
 
         rv = (PyObject_CallObject(device->callback, args) != NULL) ? 0 : -1;
         Py_XDECREF(args);
@@ -1679,7 +1759,7 @@ int device_push_mode(PyObject *self, int mode)
     device->saved_combi_index     = device->combi_index;
     memcpy(device->saved_combi_mode, device->combi_mode, MAX_DATASETS);
 
-    if (cmd_set_mode(port_get_id(device->port), mode) < 0)
+    if (cmd_set_mode(port_get_id(device->port), mode, device->notifications) < 0)
         return -1;
     device->current_mode = mode;
 

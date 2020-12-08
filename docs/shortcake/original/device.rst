@@ -1,7 +1,7 @@
 Device
 ======
 
-.. include-comment:: ../../src/device.c
+.. include-comment:: ../../../src/device.c
 
 
 Modes
