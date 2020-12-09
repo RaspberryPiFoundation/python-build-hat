@@ -10,7 +10,8 @@ Wrapper
 
 .. toctree::
    :maxdepth: 2
-   
+  
+   wrapper/colorsensor.rst 
    wrapper/distancesensor.rst
    wrapper/forcesensor.rst
    wrapper/motor.rst
