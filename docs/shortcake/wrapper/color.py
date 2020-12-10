@@ -14,4 +14,4 @@ print("Found color red!")
 
 while True:
     c = color.wait_for_new_color()
-    print("Found new colour", c)
+    print("Found new color", c)

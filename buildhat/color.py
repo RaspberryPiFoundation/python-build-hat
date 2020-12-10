@@ -17,7 +17,7 @@ class ColorSensor(PortDevice):
     def segment_color(self, h, s, v):
         """Returns the color name from HSV
 
-        :return: Name of the colour as a string
+        :return: Name of the color as a string
         :rtype: str
         """
         if h < 15:
