@@ -7,7 +7,7 @@
 from setuptools import setup, Extension
 from os import getenv
 
-LIB_VERSION="0.2.6"
+LIB_VERSION="0.3.0"
 
 with open("README.md") as readme:
     long_description = readme.read()
