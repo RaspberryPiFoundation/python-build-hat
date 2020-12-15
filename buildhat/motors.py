@@ -86,6 +86,9 @@ class Motor(PortDevice):
         """
         return self._motor.get()[2]
 
+    def get_aposition(self):
+        return self._motor.get()[3]
+
     def get_speed(self):
         """Gets speed of motor
 
@@ -188,16 +191,15 @@ class MotorPair(Device):
         """Stop motors"""
         self._pair.brake()
 
-    # def run_to_position(self, degreesl, degreesr, speed=None):
-    #    """Runs pair to position (in degrees)
-    #
-    #    :param degreesl: Position in degrees for left motor
-    #    :param degreesr: Position in degrees for right motor
-    #    :param speed: Speed ranging from -100 to 100
-    #    """
-    #
-    #    if speed is None:
-    #        self._pair.run_to_position(degreesl, degreesr, self.default_speed)
-    #    else:
-    #        self._pair.run_to_position(degreesl, degreesr, speed)
+    def run_to_position(self, degreesl, degreesr, speed=None):
+        """Runs pair to position (in degrees)
+
+           :param degreesl: Position in degrees for left motor
+           :param degreesr: Position in degrees for right motor
+           :param speed: Speed ranging from -100 to 100
+        """
+        if speed is None:
+            self._pair.run_to_position(degreesl, degreesr, self.default_speed)
+        else:
+            self._pair.run_to_position(degreesl, degreesr, speed)
 

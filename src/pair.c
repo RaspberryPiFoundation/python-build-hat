@@ -739,14 +739,14 @@ MotorPair_preset(PyObject *self, PyObject *args)
     if (pair->id == INVALID_ID)
         Py_RETURN_FALSE;
 
-    if (motor_get_position(pair->primary, &from_preset0) < 0 ||
-        motor_get_position(pair->secondary, &from_preset1) < 0)
+    if (motor_get_position(port_get_motor(pair->primary), &from_preset0) < 0 ||
+        motor_get_position(port_get_motor(pair->secondary), &from_preset1) < 0)
         return NULL;
 
     if (cmd_preset_encoder_pair(pair->id, position0, position1) < 0)
         return NULL;
-    motor_update_preset(pair->primary, position0 - from_preset0);
-    motor_update_preset(pair->secondary, position1 - from_preset1);
+    motor_update_preset(port_get_motor(pair->primary), position0 - from_preset0);
+    motor_update_preset(port_get_motor(pair->secondary), position1 - from_preset1);
 
     Py_RETURN_NONE;
 }
@@ -1000,8 +1000,8 @@ MotorPair_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    position0 -= motor_get_position_offset(pair->primary);
-    position1 -= motor_get_position_offset(pair->secondary);
+    position0 -= motor_get_position_offset(port_get_motor(pair->primary));
+    position1 -= motor_get_position_offset(port_get_motor(pair->secondary));
 
     if (set_acceleration(pair, accel, &use_profile) < 0 ||
         set_deceleration(pair, decel, &use_profile) < 0)
