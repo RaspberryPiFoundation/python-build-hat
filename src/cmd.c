@@ -203,7 +203,8 @@ static uint8_t *get_response(uint8_t type, bool return_feedback, int8_t portid)
         free(response);
     }
 
-    if(count != 0){
+    if(count != 0)
+    {
         for(int i=0;i<count;i++)
             queue_return_buffer(skip[i]);
     }
@@ -232,7 +233,8 @@ static uint8_t *make_request(bool return_feedback,
     buffer[2] = type;
 
     va_start(args, type);
-    for (i = 3; i < nbytes; i++){
+    for (i = 3; i < nbytes; i++)
+    {
         buffer[i] = va_arg(args, int);
         if(i == 3)
             portid = buffer[i];
