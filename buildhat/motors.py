@@ -1,6 +1,7 @@
 from .devices import PortDevice, Device
 import threading
 
+# See hub-python-module/drivers/m_sched_shortcake.h
 MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
 
 class Motor(PortDevice):
