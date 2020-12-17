@@ -10,7 +10,7 @@ class Motor(PortDevice):
     def __init__(self, port):
         super().__init__(port)
         self._motor = self._port.motor
-        self.default_speed = 100
+        self.default_speed = 10
         self._when_rotated = None
 
     def set_default_speed(self, default_speed):
@@ -128,7 +128,7 @@ class MotorPair(Device):
         self._leftmotor = self._leftport.motor
         self._rightmotor = self._rightport.motor
         self._pair = self._leftmotor.pair(self._rightmotor)
-        self.default_speed = 100
+        self.default_speed = 10
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
