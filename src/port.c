@@ -1005,11 +1005,7 @@ int port_new_combi_value(uint8_t port_id,
     {
         rv = device_new_combi_value(port->device, entry, buffer, nbytes);
     }
-
     PyGILState_Release(gstate);
-    if(rv > 0)
-        callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
-
     return rv;
 }
 
