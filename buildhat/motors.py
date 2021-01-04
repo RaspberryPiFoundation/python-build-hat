@@ -1,6 +1,9 @@
 from .devices import PortDevice, Device
 import threading
 
+# See hub-python-module/drivers/m_sched_shortcake.h
+MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
+
 class Motor(PortDevice):
     """Motor device
 
@@ -9,6 +12,8 @@ class Motor(PortDevice):
     """
     def __init__(self, port):
         super().__init__(port)
+        if self._port.info()['type'] not in MOTOR_SET:
+            raise RuntimeError('There is not a motor connected to port %s' % port)
         self._motor = self._port.motor
         self.default_speed = 10
         self._when_rotated = None
@@ -125,6 +130,10 @@ class MotorPair(Device):
         super().__init__()
         self._leftport = getattr(self._instance.port, leftport)
         self._rightport = getattr(self._instance.port, rightport)
+        if self._leftport.info()['type'] not in MOTOR_SET:
+            raise RuntimeError('There is not a motor connected to port %s' % leftport)
+        if self._rightport.info()['type'] not in MOTOR_SET:
+            raise RuntimeError('There is not a motor connected to port %s' % rightport)
         self._leftmotor = self._leftport.motor
         self._rightmotor = self._rightport.motor
         self._pair = self._leftmotor.pair(self._rightmotor)

@@ -9,6 +9,8 @@ class ForceSensor(PortDevice):
     """
     def __init__(self, port):
         super().__init__(port)
+        if self._port.info()['type'] != 63:
+            raise RuntimeError('There is not a force sensor connected to port %s' % port)
         self._device.mode([(0,0),(1,0)])
         self._when_force = None
 

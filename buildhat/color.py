@@ -10,6 +10,8 @@ class ColorSensor(PortDevice):
     """
     def __init__(self, port):
         super().__init__(port)
+        if self._port.info()['type'] != 61:
+            raise RuntimeError('There is not a color sensor connected to port %s' % port)
         self._device.mode(6)
         self.avg_reads = 15
         self._old_color = None
