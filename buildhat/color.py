@@ -13,29 +13,39 @@ class ColorSensor(PortDevice):
         if self._port.info()['type'] != 61:
             raise RuntimeError('There is not a color sensor connected to port %s' % port)
         self._device.mode(6)
-        self.avg_reads = 15
+        self.avg_reads = 30
         self._old_color = None
 
-    def segment_color(self, h, s, v):
+    def segment_color(self, r, g, b):
         """Returns the color name from HSV
 
         :return: Name of the color as a string
         :rtype: str
         """
-        if h < 15:
-            return "red"
-        elif h < 30:
-            return "orange"
-        elif h < 75:
-            return "yellow"
-        elif h < 140:
-            return "green"
-        elif h < 260:
-            return "blue"
-        elif h < 330:
-            return "magenta"
-        else:
-            return "red"
+        table = [("white",(100,100,100)),
+                 ("silver",(75,75,75)),
+                 ("gray",(50,50,50)),
+                 ("black",(0,0,0)),
+                 ("red",(100,0,0)),
+                 ("maroon",(50,0,0)),
+                 ("yellow",(100,100,0)),
+                 ("olive",(50,50,0)),
+                 ("lime",(0,100,0)),
+                 ("green",(0,50,0)),
+                 ("aqua",(0,100,100)),
+                 ("teal",(0,50,50)),
+                 ("blue",(0,0,100)),
+                 ("navy",(100,0,100)),
+                 ("fuschia",(100,0,100)),
+                 ("purple",(50,0,50))]
+        near = ""
+        euc = math.inf
+        for itm in table:
+            cur = math.sqrt((r - int(itm[1][0]*2.55))**2 + (g - int(itm[1][1]*2.55))**2 + (b - int(itm[1][2]*2.55))**2)
+            if cur < euc:
+                near = itm[0]
+                euc = cur
+        return near
     
     def rgb_to_hsv(self, r, g, b):
         """Convert RGB to HSV
@@ -70,8 +80,8 @@ class ColorSensor(PortDevice):
         :return: Name of the color as a string
         :rtype: str
         """
-        hue, sat, val = self.get_color_hsv()
-        return self.segment_color(hue, sat, val)
+        r, g, b, _ = self.get_color_rgbi()
+        return self.segment_color(r, g, b)
 
     def get_ambient_light(self):
         """Returns the ambient light
@@ -106,7 +116,9 @@ class ColorSensor(PortDevice):
         self._device.mode(5)
         readings = []
         for i in range(self.avg_reads):
-            readings.append(self._device.get(self._device.FORMAT_SI))
+            read = self._device.get(self._device.FORMAT_SI)
+            read = [int((read[0]/1024)*255), int((read[1]/1024)*255), int((read[2]/1024)*255), int((read[3]/1024)*255)]
+            readings.append(read)
         rgbi = []
         for i in range(4):
             rgbi.append(int(sum([rgbi[i] for rgbi in readings]) / len(readings)))
@@ -121,7 +133,9 @@ class ColorSensor(PortDevice):
         self._device.mode(6)
         readings = []
         for i in range(self.avg_reads):
-            readings.append(self._device.get(self._device.FORMAT_SI))
+            read = self._device.get(self._device.FORMAT_SI)
+            read = [read[0], int((read[1]/1024)*100), int((read[2]/1024)*100)]
+            readings.append(read)
         s = c = 0
         for hsv in readings:
             hue = hsv[0]
@@ -144,8 +158,7 @@ class ColorSensor(PortDevice):
         def both(lst):
             r, g, b = lst[2:]
             r, g, b = int((r/1024)*255), int((g/1024)*255), int((b/1024)*255)
-            h, s, v = self.rgb_to_hsv(r, g, b)
-            seg = self.segment_color(h, s, v)
+            seg = self.segment_color(r, g, b)
             if seg == color:
                 lock.release()
 
@@ -168,8 +181,7 @@ class ColorSensor(PortDevice):
         def both(lst):
             r, g, b = lst[2:]
             r, g, b = int((r/1024)*255), int((g/1024)*255), int((b/1024)*255)
-            h, s, v = self.rgb_to_hsv(r, g, b)
-            seg = self.segment_color(h, s, v)
+            seg = self.segment_color(r, g, b)
             if seg != self._old_color:
                 self._old_color = seg
                 lock.release()
