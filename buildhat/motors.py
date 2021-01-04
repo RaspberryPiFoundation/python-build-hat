@@ -27,9 +27,9 @@ class Motor(PortDevice):
         :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            self._motor.run_for_rotations(rotations, self.default_speed)
+            self._motor.run_for_degrees(int(rotations * 360), self.default_speed)
         else:
-            self._motor.run_for_rotations(rotations, speed)
+            self._motor.run_for_degrees(int(rotations * 360), speed)
 
     def run_for_degrees(self, degrees, speed=None):
         """Runs motor for N degrees
