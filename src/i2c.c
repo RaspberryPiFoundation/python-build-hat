@@ -719,6 +719,7 @@ static int handle_port_value_combi(uint8_t *buffer,
                 errno = EPROTO;
                 return -1;
             }
+            callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
             return 1; /* Packet has been handled */
         }
         if ((entry_mask & (1 << i)) != 0)
@@ -742,6 +743,7 @@ static int handle_port_value_combi(uint8_t *buffer,
     }
 
     /* Packet has been handled */
+    callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
     return 1;
 }
 

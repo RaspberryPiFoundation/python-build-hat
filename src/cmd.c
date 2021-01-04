@@ -132,22 +132,28 @@ PyObject *cmd_version_as_unicode(uint8_t *buffer)
 }
 
 
-static uint8_t *get_response(uint8_t type, bool return_feedback)
+static uint8_t *get_response(uint8_t type, bool return_feedback, int8_t portid)
 {
     uint8_t *response;
+    uint8_t MAX_SKIPS=20;
+    uint8_t *skip[MAX_SKIPS];
+    int count = 0;
 
     while (1)
     {
+
         if (queue_get(&response) != 0)
         {
             PyErr_SetFromErrno(hub_protocol_error);
-            return NULL;
+            response = NULL;
+            break;
         }
         
         if (response == NULL)
         {
             PyErr_SetString(hub_protocol_error, "Tx timeout");
-            return NULL;
+            response = NULL;
+            break;
         }
 
         /* `response` is dynamically allocated and now our responsibility */
@@ -155,7 +161,8 @@ static uint8_t *get_response(uint8_t type, bool return_feedback)
         {
             PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
             free(response);
-            return NULL;
+            response = NULL;
+            break;
         }
 
         /* Check for an error return */
@@ -163,19 +170,46 @@ static uint8_t *get_response(uint8_t type, bool return_feedback)
         {
             handle_generic_error(type, response);
             free(response);
-            return NULL;
+            response = NULL;
+            break;
+        }
+
+        /* Check if response is for correct port
+         *
+         * If response isn't for our port, skip it 
+         * for now and look for next response.
+         */
+
+        if(portid != -1 && response[3] != portid)
+        {
+            if(count > MAX_SKIPS)
+            {
+                queue_return_buffer(response);
+                PyErr_SetString(hub_protocol_error, "Max skips exceeded");
+                response = NULL;
+                break;
+            }
+            skip[count] = response;
+            count++;
+            continue;
         }
 
         /* Ignore Feedback messages unless explicitly asked for them */
         if (return_feedback || response[2] != TYPE_PORT_OUTPUT_FEEDBACK)
         {
-            return response;
+            break;
         }
+
         free(response);
     }
 
-    /* Unreachable code */
-    return NULL;
+    if(count != 0)
+    {
+        for(int i=0;i<count;i++)
+            queue_return_buffer(skip[i]);
+    }
+
+    return response;
 }
 
 
@@ -186,6 +220,7 @@ static uint8_t *make_request(bool return_feedback,
     va_list args;
     uint8_t *buffer = malloc(nbytes);
     int i;
+    int portid = -1;
 
     if (buffer == NULL)
     {
@@ -199,7 +234,11 @@ static uint8_t *make_request(bool return_feedback,
 
     va_start(args, type);
     for (i = 3; i < nbytes; i++)
+    {
         buffer[i] = va_arg(args, int);
+        if(i == 3)
+            portid = buffer[i];
+    }
     va_end(args);
 
     if (queue_clear_responses() != 0 || queue_add_buffer(buffer) != 0)
@@ -213,7 +252,7 @@ static uint8_t *make_request(bool return_feedback,
      * it is done with it.
      */
 
-    return get_response(type, return_feedback);
+    return get_response(type, return_feedback, portid);
 }
 
 
@@ -1151,7 +1190,7 @@ int cmd_write_mode_data(uint8_t port_id,
 
     /* 'buffer' is now the responsibility of the comms thread */
 
-    if ((response = get_response(TYPE_PORT_OUTPUT, true)) == NULL)
+    if ((response = get_response(TYPE_PORT_OUTPUT, true, port_id)) == NULL)
         return -1;
     if (response[0] != 5 ||
         response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
@@ -1574,7 +1613,7 @@ int cmd_firmware_store(const uint8_t *data, uint32_t nbytes)
 
     /* 'buffer' is now the responsibility of the comms thread */
 
-    if ((response = get_response(TYPE_FIRMWARE_REQUEST, false)) == NULL)
+    if ((response = get_response(TYPE_FIRMWARE_REQUEST, false, -1)) == NULL)
         return -1;
     if (response[0] != 9 ||
         response[2] != TYPE_FIRMWARE_RESPONSE ||

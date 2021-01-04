@@ -500,7 +500,6 @@ typedef struct
     PyObject *callback;
 } MotorObject;
 
-
 /* Utility functions for dealing with common parameters */
 static int parse_stop(MotorObject *motor, uint32_t stop)
 {
@@ -880,6 +879,7 @@ Motor_preset(PyObject *self, PyObject *args)
 
     if (cmd_preset_encoder(port_get_id(motor->port), position) < 0)
         return NULL;
+
     motor->preset_position -= position - pos_from_preset;
 
     Py_RETURN_NONE;
@@ -1694,7 +1694,6 @@ int motor_get_position(PyObject *self, long *pposition)
 int motor_set_preset(PyObject *self, long position)
 {
     MotorObject *motor = (MotorObject *)self;
-
     motor->preset_position = position;
     return 0;
 }
@@ -1702,7 +1701,6 @@ int motor_set_preset(PyObject *self, long position)
 void motor_update_preset(PyObject *self, long position)
 {
     MotorObject *motor = (MotorObject *)self;
-
     motor->preset_position -= position;
 }
 
