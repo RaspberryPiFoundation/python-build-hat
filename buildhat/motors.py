@@ -92,7 +92,12 @@ class Motor(PortDevice):
         return self._motor.get()[2]
 
     def get_aposition(self):
-        return self._motor.get()[3]
+        """Gets absolute position of motor
+
+        :return: Absolute position of motor
+        :rtype: int
+        """
+        return self._motor.get()[1]
 
     def get_speed(self):
         """Gets speed of motor
