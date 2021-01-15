@@ -10,7 +10,7 @@ class DistanceSensor(PortDevice):
     def __init__(self, port):
         super().__init__(port)
         if self._port.info()['type'] != 62:
-            raise RuntimeError('There is not a distance sensor connected to port %s' % port)
+            raise RuntimeError('There is not a distance sensor connected to port %s (Found %s)' % (port, self.whatami(port)))
         self._device.mode(0)
         self._when_motion = None
 
