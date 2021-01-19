@@ -13,7 +13,7 @@ class Motor(PortDevice):
     def __init__(self, port):
         super().__init__(port)
         if self._port.info()['type'] not in MOTOR_SET:
-            raise RuntimeError('There is not a motor connected to port %s' % port)
+            raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (port, self.whatami(port)))
         self._motor = self._port.motor
         self.default_speed = 10
         self._when_rotated = None
@@ -136,9 +136,9 @@ class MotorPair(Device):
         self._leftport = getattr(self._instance.port, leftport)
         self._rightport = getattr(self._instance.port, rightport)
         if self._leftport.info()['type'] not in MOTOR_SET:
-            raise RuntimeError('There is not a motor connected to port %s' % leftport)
+            raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (leftport, self.whatami(leftport)))
         if self._rightport.info()['type'] not in MOTOR_SET:
-            raise RuntimeError('There is not a motor connected to port %s' % rightport)
+            raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (rightport, self.whatami(rightport)))
         self._leftmotor = self._leftport.motor
         self._rightmotor = self._rightport.motor
         self._pair = self._leftmotor.pair(self._rightmotor)
