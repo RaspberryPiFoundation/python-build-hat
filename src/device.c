@@ -588,8 +588,8 @@ Device_mode(PyObject *self, PyObject *args)
     }
     if (!PyArg_ParseTuple(args, "|OO:mode", &arg1, &arg2))
         return NULL;
-    if (device_ensure_mode_info(self) < 0)
-        return NULL;
+    /*if (device_ensure_mode_info(self) < 0)
+        return NULL;*/
 
     if (arg1 == NULL)
     {
@@ -732,13 +732,13 @@ Device_mode(PyObject *self, PyObject *args)
             PyObject *mode_obj, *dataset_obj;
             long mode, dataset;
 
-            if (!PyTuple_Check(entry) || PyTuple_Size(entry) != 2)
+            /*if (!PyTuple_Check(entry) || PyTuple_Size(entry) != 2)
             {
                 PyErr_SetString(
                     PyExc_TypeError,
                     "Invalid combination mode: must be a list of 2-tuples of ints");
                 return NULL;
-            }
+            }*/
             mode_obj = PyTuple_GET_ITEM(entry, 0);
             dataset_obj = PyTuple_GET_ITEM(entry, 1);
             if (!PyLong_Check(mode_obj) || !PyLong_Check(dataset_obj))
@@ -754,7 +754,7 @@ Device_mode(PyObject *self, PyObject *args)
             if ((dataset = PyLong_AsLong(dataset_obj)) == -1 &&
                 PyErr_Occurred() != NULL)
                 return NULL;
-            if (mode < 0 ||
+            /*if (mode < 0 ||
                 mode >= device->num_modes ||
                 dataset < 0 ||
                 dataset >= device->modes[mode].format.datasets)
@@ -763,31 +763,33 @@ Device_mode(PyObject *self, PyObject *args)
                              "Invalid mode/dataset combination (%d/%d)",
                              mode, dataset);
                 return NULL;
-            }
+            }*/
 
             /* This one is valid.  Hoorah. */
             mode_and_dataset[i] = (mode << 4) | dataset;
             mode_map |= (1 << mode);
         }
-
         /* Check if this combination is permitted */
-        for (combi_index = 0; combi_index < MAX_COMBI_MODES; combi_index++)
+        /*for (combi_index = 0; combi_index < MAX_COMBI_MODES; combi_index++)
         {
             if (device->combi_modes[combi_index] == 0)
             {
-                /* We haven't found a match */
+                // We haven't found a match
                 PyErr_SetString(PyExc_ValueError, "Invalid mode combination");
                 return NULL;
             }
             if ((device->combi_modes[combi_index] & mode_map) == mode_map)
-                break; /* Yes, this combination is permitted */
-        }
-        if (combi_index == MAX_COMBI_MODES)
+                break; // Yes, this combination is permitted
+        }*/
+
+        combi_index = 0;
+
+        /*if (combi_index == MAX_COMBI_MODES)
         {
-            /* We haven't found a match */
+            // We haven't found a match
             PyErr_SetString(PyExc_ValueError, "Invalid mode combination");
             return NULL;
-        }
+        }*/
 
         if (set_combi_mode(device,
                            combi_index,
@@ -951,11 +953,11 @@ Device_get(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "|O:get", &arg1))
         return NULL;
 
-    if ((device->flags & DO_FLAGS_DETACHED) != 0)
+    /*if ((device->flags & DO_FLAGS_DETACHED) != 0)
     {
         PyErr_SetString(cmd_get_exception(), "Device is detached");
         return NULL;
-    }
+    }*/
 
     if (arg1 != NULL)
     {
@@ -971,6 +973,8 @@ Device_get(PyObject *self, PyObject *args)
             }
         }
     }
+
+    return results;
 
     if (device_ensure_mode_info(self) < 0)
         return NULL;
@@ -1059,11 +1063,13 @@ Device_callback(PyObject *self, PyObject *args)
         Py_INCREF(device->callback);
         return device->callback;
     }
+
     if (callable != Py_None && !PyCallable_Check(callable))
     {
         PyErr_SetString(PyExc_TypeError, "callback must be callable");
         return NULL;
     }
+
     Py_INCREF(callable);
     Py_XDECREF(device->callback);
     device->callback = callable;
@@ -1081,9 +1087,9 @@ Device_callback(PyObject *self, PyObject *args)
     }
     else
     {
-        if (set_combi_mode(device, device->combi_index, device->combi_mode, device->num_combi_modes) < 0){
+        /*if (set_combi_mode(device, device->combi_index, device->combi_mode, device->num_combi_modes) < 0){
             return NULL;
-        }
+        }*/
     }
  
     Py_RETURN_NONE;
@@ -1098,18 +1104,18 @@ int device_callback(PyObject *self, int event)
 
     int rv = 0;
     int format = DEVICE_FORMAT_SI;
-    PyObject *results;
+    PyObject *results = NULL;
     mode_info_t *mode;
-    int result_count, i;
+    int i;
 
     if (device->callback != Py_None)
     {
-
         if (device->current_mode != MODE_IS_COMBI)
         {
+
             /* Simple (single) mode */
             /* Get the current mode data */
-            mode = &device->modes[device->current_mode];
+            /*mode = &device->modes[device->current_mode];
             result_count = PyList_Size(device->values);
             if (result_count != mode->format.datasets)
             {
@@ -1118,13 +1124,12 @@ int device_callback(PyObject *self, int event)
                 return -1;
             }
 
-            /* We wish to return a list with "mode->format->datasets" data
-             * values.
-             */
+            // We wish to return a list with "mode->format->datasets" data
+            // values.
             if ((results = PyList_New(mode->format.datasets)) == NULL)
                 return -1;
 
-            /* device->values is a list containing result_count elements */
+            // device->values is a list containing result_count elements
             for (i = 0; i < result_count; i++)
             {
                 PyObject *value = PyList_GetItem(device->values, i);
@@ -1135,21 +1140,21 @@ int device_callback(PyObject *self, int event)
                     return -1;
                 }
                 PyList_SET_ITEM(results, i, value);
-            }
+            }*/
         }
         else
         {
             /* Combination mode */
             if ((results = PyList_New(device->num_combi_modes)) == NULL)
                 return -1;
+
             for (i = 0; i < device->num_combi_modes; i++)
             {
                 PyObject *value;
                 uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
-
                 mode = &device->modes[mode_number];
                 value = PyList_GetItem(device->values, i);
-                value = convert_raw(value, format, mode);
+                //value = convert_raw(value, format, mode);
                 if (value == NULL)
                 {
                     Py_DECREF(results);
@@ -1432,6 +1437,7 @@ static int read_value(uint8_t format_type,
                       PyObject **pvalue)
 {
     *pvalue = NULL;
+
     switch (format_type)
     {
         case FORMAT_8BIT:
@@ -1552,12 +1558,12 @@ int device_new_combi_value(PyObject *self,
 
     device->is_mode_busy = 0;
 
-    if (device->current_mode != MODE_IS_COMBI)
+    /*if (device->current_mode != MODE_IS_COMBI)
     {
-        /* A combined value in a simple mode is probably a race */
+        // A combined value in a simple mode is probably a race
         device->rx_error = DO_RXERR_BAD_MODE;
         return -1;
-    }
+    }*/
 
     mode_number = (device->combi_mode[entry] >> 4) & 0x0f;
     mode = &device->modes[mode_number];
@@ -1791,5 +1797,14 @@ int device_pop_mode(PyObject *self)
             return -1;
     }
 
+    return 0;
+}
+
+int device_set_device_format(PyObject *device, uint8_t modei, uint8_t type)
+{
+    DeviceObject *dev = (DeviceObject *)device;
+    mode_info_t *mode;
+    mode = &dev->modes[modei];
+    mode->format.type = type;
     return 0;
 }

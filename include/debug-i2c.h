@@ -81,10 +81,13 @@ extern void log_i2c_dump(void);
     }                                           \
     } while (0)
 
+#define DEBUG_PRINT(...) { fprintf( stderr, __VA_ARGS__ ); fflush(stderr);  }
+
 #else /* DEBUG_I2C */
 
 #define DEBUG0(m,r)
 #define DEBUG1(m,r,p0)
+#define DEBUG_PRINT(...) do {} while ( false )
 
 #endif /* DEBUG_I2C */
 

@@ -135,9 +135,8 @@ PyObject *cmd_version_as_unicode(uint8_t *buffer)
 static uint8_t *get_response(uint8_t type, bool return_feedback, int8_t portid)
 {
     uint8_t *response;
-    uint8_t MAX_SKIPS=20;
-    uint8_t *skip[MAX_SKIPS];
-    int count = 0;
+    //uint8_t MAX_SKIPS=20;
+    //uint8_t *skip[MAX_SKIPS];
 
     while (1)
     {
@@ -157,13 +156,13 @@ static uint8_t *get_response(uint8_t type, bool return_feedback, int8_t portid)
         }
 
         /* `response` is dynamically allocated and now our responsibility */
-        if (response[1] != 0x00)
+        /*if (response[1] != 0x00)
         {
             PyErr_Format(hub_protocol_error, "Bad hub ID 0x%02x", response[1]);
             free(response);
             response = NULL;
             break;
-        }
+        }*/
 
         /* Check for an error return */
         if (response[2] == TYPE_GENERIC_ERROR)
@@ -180,7 +179,7 @@ static uint8_t *get_response(uint8_t type, bool return_feedback, int8_t portid)
          * for now and look for next response.
          */
 
-        if(portid != -1 && response[3] != portid)
+        /*if(portid != -1 && response[3] != portid)
         {
             if(count > MAX_SKIPS)
             {
@@ -192,7 +191,7 @@ static uint8_t *get_response(uint8_t type, bool return_feedback, int8_t portid)
             skip[count] = response;
             count++;
             continue;
-        }
+        }*/
 
         /* Ignore Feedback messages unless explicitly asked for them */
         if (return_feedback || response[2] != TYPE_PORT_OUTPUT_FEEDBACK)
@@ -203,15 +202,40 @@ static uint8_t *get_response(uint8_t type, bool return_feedback, int8_t portid)
         free(response);
     }
 
-    if(count != 0)
+    /*if(count != 0)
     {
         for(int i=0;i<count;i++)
             queue_return_buffer(skip[i]);
-    }
+    }*/
 
     return response;
 }
 
+
+static uint8_t *make_request_uart(bool return_feedback, uint8_t type, uint8_t port_id, char *cmd)
+{
+    uint8_t *buffer = malloc(strlen(cmd)+1);
+    memcpy(buffer, cmd, strlen(cmd));
+    buffer[strlen(cmd)] = 0;
+
+    if (buffer == NULL)
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    if (queue_clear_responses() != 0 || queue_add_buffer(buffer) != 0)
+    {
+        /* Exception already raised */
+        free(buffer);
+        return NULL;
+    }
+
+    /* `buffer` now belongs to the comms thread, which will free it when
+     * it is done with it.
+     */
+    return get_response(type, return_feedback, port_id);
+}
 
 static uint8_t *make_request(bool return_feedback,
                              uint8_t nbytes,
@@ -671,30 +695,31 @@ static int wait_for_complete_feedback(uint8_t port_id, uint8_t *response)
                 free(buffer);
                 return -1;
             }
-            if (buffer[0] == 5 &&
-                buffer[2] == TYPE_PORT_OUTPUT_FEEDBACK &&
+
+            if (/*buffer[0] == 5 &&
+                buffer[2] == TYPE_PORT_OUTPUT_FEEDBACK &&*/
                 buffer[3] == port_id)
             {
-                if ((buffer[4] & 0x20) != 0)
+                /*if ((buffer[4] & 0x20) != 0)
                 {
-                    /* The motor has stalled! */
+                    // The motor has stalled!
                     free(buffer);
                     PyErr_SetString(hub_protocol_error, "Motor stalled");
                     return -1;
                 }
                 if ((buffer[4] & 0x04) != 0)
                 {
-                    /* "Current Command(s) Discarded" bit set */
+                    // "Current Command(s) Discarded" bit set
                     free(buffer);
                     PyErr_SetString(hub_protocol_error, "Port busy");
                     return -1;
                 }
                 if ((buffer[4] & 0x02) != 0)
-                {
-                    /* "Current command(s) Complete" bit set */
+                {*/
+                    // "Current command(s) Complete" bit set
                     free(buffer);
                     return 0;
-                }
+               // }
             }
             free(buffer);
         }
@@ -711,12 +736,10 @@ static int wait_for_complete_feedback(uint8_t port_id, uint8_t *response)
 
 int cmd_set_pwm(uint8_t port_id, int8_t pwm)
 {
-    uint8_t *response = make_request(true, 7, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_START_POWER,
-                                     (uint8_t)pwm);
+    char buf[100];
+    sprintf(buf, "port %u ; set %f\r", port_id, ((float)pwm) / 100.0);
+    uint8_t * response = make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
+
     if (response == NULL)
         return -1;
 
@@ -1305,176 +1328,31 @@ int cmd_set_combi_mode(uint8_t port_id,
                        uint8_t notifications)
 {
     uint8_t *response;
-    uint8_t *buffer;
     int i;
-    uint16_t combi_map;
+    //uint16_t combi_map;
 
-    /* First reset the device's mode */
-    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
-                            port_id,
-                            INFO_FORMAT_RESET);
+    char buf[200];
+    char modestr[20];
+    char mod[20];
+
+    memset(modestr, 0, sizeof modestr);
+    for(i = 0; i < num_modes; i++){
+        memset(mod, 0, sizeof mod);
+        sprintf(mod, "%d %d ", modes[i] >> 4, modes[i] & 0xf);
+        strcat(modestr, mod);
+    }
+
+    notifications = 1;
+    if(notifications)
+        sprintf(buf, "port %u ; combi %d %s ; select %d\r", port_id, combi_index, modestr, combi_index);
+    else
+        sprintf(buf, "port %u ; combi %d %s\r", port_id, combi_index, modestr);
+
+    response = make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     if (response == NULL)
         return -1;
-
-    /* See above */
-    if (response[0] != 10 ||
-        response[2] != TYPE_PORT_FORMAT_SINGLE ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port Format Combi Setup Reset");
-        return -1;
-    }
-
-    free(response);
-
-    /* Now lock the device against actual mode changes */
-    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
-                            port_id,
-                            INFO_FORMAT_LOCK);
-    if (response == NULL)
-        return -1;
-
-    /* This also gets a PORT_FORMAT_SETUP_SINGLE in response */
-    if (response[0] != 10 ||
-        response[2] != TYPE_PORT_FORMAT_SINGLE ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port Format Combi Setup Lock");
-        return -1;
-    }
-
-    free(response);
-
-    /* For each mode, do a Format Single Setup on it */
-    for (i = 0; i < num_modes; i++)
-    {
-        /* We do not expect a response, so we can't use make_request() */
-        if ((buffer = malloc(10)) == NULL)
-        {
-            PyErr_NoMemory();
-            return -1;
-        }
-
-        buffer[0] = 10;
-        buffer[1] = 0x00; /* Hub ID */
-        buffer[2] = TYPE_PORT_FORMAT_SETUP_SINGLE;
-        buffer[3] = port_id;
-        buffer[4] = modes[i] >> 4;
-        buffer[5] = 0; /* Delta = 0 ? */
-        buffer[6] = 0;
-        buffer[7] = 0;
-        buffer[8] = 0;
-        buffer[9] = notifications;
-
-        if (queue_add_buffer(buffer) != 0)
-        {
-            /* Exception already raised */
-            free(buffer);
-            /* Do an emergency reset rather than just leave this unsafe */
-            goto emergency_reset;
-        }
-    }
-
-    /* Now we should get the responses */
-    for (i = 0; i < num_modes; i++)
-    {
-        if (queue_get(&response) != 0)
-            goto emergency_reset;
-        if (response == NULL)
-        {
-            PyErr_SetString(hub_protocol_error, "Rx timeout");
-            goto emergency_reset;
-        }
-        if (response[0] != 10 ||
-            response[2] != TYPE_PORT_FORMAT_SINGLE ||
-            response[3] != port_id ||
-            response[4] != modes[i] >> 4 ||
-            response[5] != 0 ||
-            response[6] != 0 ||
-            response[7] != 0 ||
-            response[8] != 0 ||
-            response[9] != notifications)
-        {
-            free(response);
-            PyErr_Format(hub_protocol_error,
-                         "Unexpected reply formatting mode %d",
-                         modes[i] >> 4);
-
-            /* Do an emergency reset rather than just leave this unsafe */
-            goto emergency_reset;
-        }
-        free(response);
-    }
-
-    /* Now set the combination.  This one we can't make_request() */
-    /* The documentation claims this is 7 bytes long, then promptly
-     * declares a variable length structure.  Sigh.  The real answer
-     * is that we need 6 bytes plus one per mode/dataset combination.
-     */
-    if ((buffer = malloc(6 + num_modes)) == NULL)
-    {
-        PyErr_NoMemory();
-        /* Again, reset rather than just give up. */
-        goto emergency_reset;
-    }
-
-    buffer[0] = 6 + num_modes;
-    buffer[1] = 0x00;
-    buffer[2] = TYPE_PORT_FORMAT_SETUP_COMBINED;
-    buffer[3] = port_id;
-    buffer[4] = INFO_FORMAT_SET;
-    buffer[5] = combi_index;
-    memcpy(buffer+6, modes, num_modes);
-
-    if (queue_clear_responses() != 0 || queue_add_buffer(buffer) != 0)
-    {
-        /* Exception already raised */
-        free(buffer);
-        goto emergency_reset;
-    }
-
-    /* No response is expected */
-
-    /* Unlock and restart the device: this does get the COMBI response */
-    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
-                            port_id,
-                            INFO_FORMAT_UNLOCK_AND_START_MULTI_UPDATE_DISABLED);
-    if (response == NULL)
-        return -1;
-
-    combi_map = (1 << num_modes) - 1;
-    if (response[0] != 7 ||
-        response[2] != TYPE_PORT_FORMAT_COMBINED ||
-        response[3] != port_id ||
-/* The colour sensor returns a bad value for combi_index,
- * so don't check it.
- */
-//        response[4] != combi_index ||
-        response[5] != (combi_map & 0xff) ||
-        response[6] != ((combi_map >> 8) & 0xff))
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port Format Combi Setup Start");
-        return -1;
-    }
-
-    free(response);
 
     return 0;
-
-
-emergency_reset:
-    /* Try to put the device back in a known state */
-    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
-                            port_id,
-                            INFO_FORMAT_RESET);
-    free(response);
-    return -1;
 }
 
 /* For a virtual port connection, we do not expect a reply as such.

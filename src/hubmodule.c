@@ -212,11 +212,11 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     Py_END_ALLOW_THREADS
 
     /* By this time we should at least have heard from the HAT */
-    if (i2c_check_comms_error() < 0)
+    /*if (i2c_check_comms_error() < 0)
     {
         build_hat_created = 0;
         return -1;
-    }
+    }*/
 
     return 0;
 }

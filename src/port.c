@@ -1248,3 +1248,17 @@ int port_set_motor_preset(PyObject *self, long position)
     motor_set_preset(port->motor, position);
     return 0;
 }
+
+int port_set_device_format(uint8_t port_id, uint8_t mode, uint8_t type)
+{
+    PortObject *port;
+
+    if (port_id >= NUM_HUB_PORTS)
+        return 0;
+
+    port = (PortObject *)port_set->ports[port_id];
+    if (port->device == NULL)
+        return 0;
+
+    return device_set_device_format(port->device, mode, type);
+}

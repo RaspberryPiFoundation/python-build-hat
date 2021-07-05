@@ -31,6 +31,12 @@
 #include <poll.h>
 #include <sys/eventfd.h>
 #include <time.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <errno.h>
+#include <sys/epoll.h>
+#include <sys/types.h>
+#include <sys/un.h>
 
 #include <linux/i2c-dev.h>
 #include <i2c/smbus.h>
@@ -44,9 +50,18 @@
 #include "protocol.h"
 #include "debug-i2c.h"
 
+#define IMAGEBUFSIZE (240*1024)
+unsigned char imagebuf[IMAGEBUFSIZE + 1];
 
-#define I2C_DEVICE_NAME "/dev/i2c-1"
+#define BAUD B115200
+#define MAX_EVENTS 10
+#define I2C_DEVICE_NAME "/dev/serial0"
 #define HAT_ADDRESS 0x12
+
+#define DISCONNECTED "disconnected"
+#define CONNECTED "connected to active ID "
+#define MODE "  M"
+#define FORMAT "    format "
 
 #define I2C_GPIO_NUMBER "5"
 #define BASE_DIRECTORY "/sys/class/gpio"
@@ -61,9 +76,6 @@
 #define BOOT0_GPIO_NUMBER "22"
 
 #define INTERVAL 100000000
-
-static int gpio_fd = -1;
-static int gpio_state = 0;
 
 static int i2c_fd = -1;
 static int rx_event_fd = -1;
@@ -108,21 +120,6 @@ static inline uint32_t extract_uint32(uint8_t *buffer)
         (buffer[2] << 16) |
         (buffer[3] << 24);
 }
-
-
-static int read_wake_gpio(void)
-{
-    char buffer;
-
-    if (lseek(gpio_fd, 0, SEEK_SET) == (off_t)-1 ||
-        read(gpio_fd, &buffer, 1) < 0)
-    {
-        return -1;
-    }
-    gpio_state =  (buffer == '1') ? 1 : 0;
-    return 0;
-}
-
 
 static int export_gpio(const char *gpio)
 {
@@ -307,77 +304,6 @@ int i2c_reset_hat(void)
 }
 
 
-static int open_wake_gpio(void)
-{
-    int fd;
-    const char *edge = "both";
-    struct timespec timeout = { 0, INTERVAL };
-    struct timespec remaining;
-
-    /* First export the GPIO */
-    if (export_gpio(I2C_GPIO_NUMBER) < 0)
-        return -1;
-
-    /* Give Linux a moment to get its act together */
-    while (nanosleep(&timeout, &remaining) < 0 && errno == EINTR)
-    {
-        timeout = remaining;
-    }
-
-    /* Now set the direction */
-    if (set_gpio_direction(DIRECTION_PSEUDOFILE, "in") < 0)
-    {
-        unexport_gpio(I2C_GPIO_NUMBER);
-        return -1;
-    }
-
-    /* ...and the interrupt generation */
-    if ((fd = open(INTERRUPT_PSEUDOFILE, O_WRONLY)) < 0)
-    {
-        PyErr_SetFromErrno(PyExc_IOError);
-        unexport_gpio(I2C_GPIO_NUMBER);
-        return -1;
-    }
-    if (write(fd, edge, 4) < 0)
-    {
-        PyErr_SetFromErrno(PyExc_IOError);
-        close(fd);
-        unexport_gpio(I2C_GPIO_NUMBER);
-        return -1;
-    }
-
-    /* Finally open the GPIO for reading */
-    if ((gpio_fd = open(VALUE_PSEUDOFILE, O_RDWR)) < 0)
-    {
-        PyErr_SetFromErrno(PyExc_IOError);
-        unexport_gpio(I2C_GPIO_NUMBER);
-        return -1;
-    }
-    /* ...and read it */
-    if (read_wake_gpio() < 0)
-    {
-        PyErr_SetFromErrno(PyExc_IOError);
-        close(gpio_fd);
-        gpio_fd = -1;
-        unexport_gpio(I2C_GPIO_NUMBER);
-        return -1;
-    }
-
-    return 0;
-}
-
-
-static void close_wake_gpio(void)
-{
-    if (gpio_fd == -1)
-        return;
-
-    close(gpio_fd);
-    gpio_fd = -1;
-    unexport_gpio(I2C_GPIO_NUMBER);
-}
-
-
 static void report_comms_error(void)
 {
     /* XXX: Figure out something to do here */
@@ -407,509 +333,127 @@ static int signal_rx_shutdown(void)
     return 0;
 }
 
+int lastmode = 0;
+int lastport = 0;
 
-static int read_rx_event(void)
+uint8_t ports[][2] = {{ 0 , 0 },
+                     { 0 , 0 },
+                     { 0 , 0 },
+                     { 0 , 0 }};
+
+
+
+void parse_line(char *serbuf)
 {
-    uint64_t value;
+    int parsed = 0;
+    int port = -1;
+    int ret = 0;
 
-    /* We only care about reading to kill the poll flag */
-    if (read(rx_event_fd, (uint8_t *)&value, 8) < 0)
-        return -1;
-    return 0;
-}
+    if (serbuf[0] == 'P') {
 
+        switch (serbuf[1]) {
+        case '0':
+            port = 0;
+            break;
+        case '1':
+            port = 1;
+            break;
+        case '2':
+            port = 2;
+            break;
+        case '3':
+            port = 3;
+            break;
+        }
 
-static int poll_for_rx(void)
-{
-    struct pollfd pfds[2];
-    int rv;
+        if (serbuf[2] == ':') {
+            lastport = port;
 
-    /* First check if the gpio has changed */
-    DEBUG0(I2C, CHECK_GPIO);
-    pfds[0].fd = gpio_fd;
-    pfds[0].events = POLLPRI;
-    pfds[0].revents = 0;
-    if ((rv = poll(pfds, 1, 0)) < 0)
-    {
-        report_comms_error();
-        return 0;
-    }
-    else if (rv != 0)
-    {
-        /* Yes it has.  Read the new value */
-        if (read_wake_gpio() < 0)
-            report_comms_error();
-        /* Always return, in case there is more */
-        return 0;
-    }
-
-    /* If the GPIO is raised, keep reading */
-    if (gpio_state)
-        return 1;
-
-    /* Otherwise wait for a GPIO state change or an event */
-    DEBUG0(I2C, WAIT_FOR_RX);
-    pfds[0].fd = gpio_fd;
-    pfds[0].events = POLLPRI;
-    pfds[0].revents = 0;
-    pfds[1].fd = rx_event_fd;
-    pfds[1].events = POLLIN;
-    pfds[1].revents = 0;
-
-    if ((rv = poll(pfds, 2, -1)) < 0)
-    {
-        report_comms_error();
-        return 0;
-    }
-    DEBUG1(I2C, WAIT_DONE, rv);
-    if ((pfds[1].revents & POLLIN) != 0)
-        read_rx_event();
-    if ((pfds[0].revents & POLLPRI) != 0)
-        if (read_wake_gpio() < 0)
-            report_comms_error();
-    /* Loop for another check just in case */
-    return 0;
-}
-
-
-static int read_message(uint8_t **pbuffer)
-{
-    size_t nbytes;
-    uint8_t byte;
-    uint8_t *buffer;
-    int offset = 1;
-
-    *pbuffer = NULL;
-
-    DEBUG0(I2C, START_IOCTL);
-    if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
-        return -1;
-
-    /* Read in the length */
-    DEBUG0(I2C, READ_LEN);
-    if (read(i2c_fd, &byte, 1) < 0)
-        return -1;
-    if (byte == 0)
-        return 0; /* Use a completely empty message as a NOP */
-    if ((nbytes = byte) >= 0x80)
-    {
-        DEBUG0(I2C, READ_LEN_2);
-        if (read(i2c_fd, &byte, 1) < 0)
-            return -1;
-        nbytes = (nbytes & 0x7f) | (byte << 7);
-    }
-
-    if ((buffer = malloc(nbytes)) == NULL)
-    {
-        errno = ENOMEM;
-        return -1;
-    }
-    buffer[0] = nbytes & 0x7f;
-    if (nbytes >= 0x80)
-    {
-        buffer[0] |= 0x80;
-        buffer[1] = (nbytes >> 7) & 0xff;
-        offset = 2;
-    }
-
-    DEBUG0(I2C, READ_BODY);
-    if (read(i2c_fd, buffer+offset, nbytes-offset) < 0)
-    {
-        free(buffer);
-        return -1;
-    }
-    DEBUG0(I2C, READ_DONE);
-
-    *pbuffer = buffer;
-    return 0;
-}
-
-
-/* The handle_ functions return -1 on error (with errno set), 1 if the
- * message has been handled, and 0 if another handler should look at
- * it.
- */
-
-static int handle_attached_io_message(uint8_t *buffer, uint16_t nbytes)
-{
-    /* Hub Attacked I/O messages are at least 5 bytes long */
-    if (nbytes < 5 || buffer[2] != TYPE_HUB_ATTACHED_IO)
-        return 0; /* Not for us */
-    if (buffer[1] != 0)
-    {
-        errno = EPROTO; /* Protocol error */
-        return -1;
-    }
-    switch (buffer[4])
-    {
-        case 0: /* Detached I/O message */
-            if (buffer[3] < NUM_HUB_PORTS)
-            {
-                if (port_detach_port(buffer[3]) < 0)
-                {
+            if (strncmp(DISCONNECTED, serbuf + 4, strlen(DISCONNECTED)) == 0) {
+                parsed = 1;
+                ret = 1;
+                DEBUG_PRINT("DISCONNECTING\n");
+                if (port_detach_port(port) < 0) {
                     errno = EPROTO;
-                    return -1;
+                    ret = -1;
                 }
             }
-            /* Otherwise it must be a virtual port */
-            else if (pair_detach_port(buffer[3]) < 0)
-            {
-                errno = EPROTO;
-                return -1;
+            if (strncmp(CONNECTED, serbuf + 4, strlen(CONNECTED)) == 0) {
+
+                DEBUG_PRINT("CONNECTING %s\n", serbuf + 4 + strlen(CONNECTED));
+
+                uint8_t *hw = malloc(sizeof(uint8_t));
+                uint8_t *fw = malloc(sizeof(uint8_t));
+
+                uint16_t type_id =
+                    strtol(serbuf + 4 + strlen(CONNECTED) - 1, NULL, 16);
+                *hw = 0;
+                *fw = 0;
+                parsed = 1;
+                ret = 1;
+
+                if (port_attach_port(port, type_id, hw, fw) < 0) {
+                    errno = EPROTO;
+                    ret = -1;
+                } else {
+                   port_set_device_format(port,  ports[port][0] ,  ports[port][1] );
+                }
             }
-            break;
 
-        case 1: /* Attached I/O message */
-            /* Attachment messages have another 10 bytes of data */
-            if (nbytes < 15 || buffer[3] >= NUM_HUB_PORTS)
-            {
-                errno = EPROTO;
-                return -1;
+        } else if (serbuf[2] == '$') {
+            parsed = 1;
+        } else if (serbuf[2] == 'C') {
+            //int combiindex = serbuf[3] - 48;
+
+            char *tmp = malloc((strlen(serbuf) - 5) + 1);
+            memcpy(tmp, serbuf + 5, strlen(serbuf) - 5);
+            tmp[strlen(serbuf) - 5] = 0;
+            char * token = strtok(tmp, " ");
+            int mcount = 0;
+
+            while( token != NULL ) {
+                int8_t *tmpval = malloc(1);
+                tmpval[0] = strtol(token, NULL, 10);
+                port_new_combi_value(port, mcount, tmpval, 1);
+                token = strtok(NULL, " ");
+                mcount++;
             }
-            if (port_attach_port(buffer[3],
-                                 extract_uint16(buffer+5), /* ID */
-                                 buffer+7, /* hw_revision */
-                                 buffer+11 /* fw_revision */) < 0)
-            {
-                errno = EPROTO;
-                return -1;
-            }
-            break;
 
-        case 2: /* Attached Virtual I/O */
-            if (nbytes < 9 ||
-                pair_attach_port(buffer[3],
-                                 buffer[7],
-                                 buffer[8],
-                                 extract_uint16(buffer+5)) < 0)
-            {
-                errno = EPROTO;
-                return -1;
-            }
-            break;
-
-        default:
-            errno = EPROTO;
-            return -1;
-    }
-
-    /* Packet was handled here */
-    return 1;
-}
-
-
-static int handle_port_format_single(uint8_t *buffer, uint16_t nbytes)
-{
-    int rv;
-
-    /* PF(S) messages are 10 bytes long */
-    if (nbytes < 10 || buffer[2] != TYPE_PORT_FORMAT_SINGLE)
-        return 0; /* Not for us */
-
-    if (buffer[1] != 0)
-    {
-        errno = EPROTO; /* Protocol error */
-        return -1;
-    }
-
-    if ((rv = port_new_format(buffer[3])) < 0)
-    {
-        errno = EPROTO;
-        return -1;
-    }
-
-    /* We still want to pass this on, but deal with that in the caller */
-    return 1;
-}
-
-
-static int handle_port_value_single(uint8_t *buffer,
-                                    uint16_t nbytes,
-                                    int *ppassback)
-{
-    /* Assume nothing was waiting for these values */
-    *ppassback = 0;
-
-    /* PV(S) messages are at least 5 bytes long */
-    if (nbytes < 5 || buffer[2] != TYPE_PORT_VALUE_SINGLE)
-        return 0; /* Not for us */
-    if (buffer[1] != 0)
-    {
-        errno = EPROTO; /* Protocol error */
-        return -1;
-    }
-
-    /* Because life is never easy, the message can contain a sequence
-     * of ports and values.  Further, decoding the values out of the
-     * buffer requires knowing what the data format is, which is a
-     * feature of the device mode.  We have to loop through until we
-     * run out of buffer.
-     */
-    buffer += 3;
-    nbytes -= 3;
-    while (nbytes > 0)
-    {
-        int rv;
-
-        if (nbytes < 2)
-        {
-            /* Less than the minimum possible, bomb out */
-            errno = EPROTO;
-            return -1;
-        }
-
-        /* Check if the foreground will be waiting for this */
-        if (BITMAP_IS_SET(expecting_value_on_port, buffer[0]))
-        {
-            BITMAP_CLEAR(expecting_value_on_port, buffer[0]);
-            *ppassback = 1;
-        }
-        if ((rv = port_new_value(buffer[0], buffer+1, nbytes-1)) < 0)
-        {
-            errno = EPROTO;
-            return -1;
-        }
-        nbytes -= rv;
-        buffer += rv;
-    }
-
-    /* Packet has been handled */
-    return 1;
-}
-
-
-static int handle_port_value_combi(uint8_t *buffer,
-                                   uint16_t nbytes,
-                                   int *ppassback)
-{
-    int i, rv;
-    uint8_t port_id;
-    uint16_t entry_mask;
-
-    /* Assume nothing was waiting for these values */
-    *ppassback = 0;
-
-    /* PV(C) messages are at least 6 bytes long */
-    if (nbytes < 6 || buffer[2] != TYPE_PORT_VALUE_COMBINED)
-        return 0; /* Not for us */
-    if (buffer[1] != 0)
-    {
-        errno = EPROTO; /* Protocol error */
-        return -1;
-    }
-
-    port_id = buffer[3];
-    if (BITMAP_IS_SET(expecting_value_on_port, port_id))
-    {
-        BITMAP_CLEAR(expecting_value_on_port, port_id);
-        *ppassback = 1;
-    }
-    entry_mask = buffer[5] | (buffer[4] << 8);
-    buffer += 6;
-    nbytes -= 6;
-
-    for (i = 0; i < 16; i++)
-    {
-        if (nbytes == 0)
-        {
-            /* No more data, should there be? */
-            if (entry_mask != 0)
-            {
-                /* There should have been.  Complain */
-                errno = EPROTO;
-                return -1;
-            }
-            callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
-            return 1; /* Packet has been handled */
-        }
-        if ((entry_mask & (1 << i)) != 0)
-        {
-            /* Expecting a value here */
-            if ((rv = port_new_combi_value(port_id, i, buffer, nbytes)) < 0)
-            {
-                errno = EPROTO;
-                return -1;
-            }
-            nbytes -= rv;
-            buffer += rv;
-            entry_mask &= ~(1 << i);
+            callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA, NULL);
         }
     }
-
-    if (nbytes != 0)
-    {
-        errno = EPROTO;
-        return -1;
+    if (strncmp(MODE, serbuf, strlen(MODE)) == 0) {
+        int current = strtol(serbuf+strlen(MODE), NULL, 10);
+        DEBUG_PRINT("cur mode: %d\n", current);
+        lastmode = current;
     }
-
-    /* Packet has been handled */
-    callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
-    return 1;
-}
-
-
-static int handle_output_feedback(uint8_t *buffer, uint16_t nbytes)
-{
-    /* The Port Output Command Feedback message must be at least 5 bytes */
-    if (nbytes < 5 || buffer[2] != TYPE_PORT_OUTPUT_FEEDBACK)
-        return 0; /* Not for us */
-    if (buffer[1] != 0)
-    {
-        errno = EPROTO; /* Protocol error */
-        return -1;
-    }
-
-    /* Life still isn't easy: this time the feedback message can be
-     * for many ports.  We process the message two bytes at a time
-     * (port number and status, in that order), starting at byte 3.
-     */
-    buffer += 3;
-    nbytes -= 3;
-    while (nbytes > 0)
-    {
-        int rv;
-
-        if (nbytes < 2)
-        {
-            /* Less than the minimum possible, bomb out */
-            errno = EPROTO;
-            return -1;
+    if (strncmp(FORMAT, serbuf, strlen(FORMAT)) == 0) {
+        char *type = strstr(serbuf+strlen(FORMAT),"type=");
+        if(type != NULL){
+            uint8_t current = (uint8_t)strtol(type+strlen("type="),NULL,10);
+            DEBUG_PRINT("cur %d, %d %d\n", lastport, lastmode, current);
+            ports[lastport][0] = lastmode;
+            ports[lastport][1] = current;
         }
-
-        if (buffer[0] < NUM_HUB_PORTS)
-            rv = port_feedback_status(buffer[0], buffer[1]);
-        else
-            rv = pair_feedback_status(buffer[0], buffer[1]);
-        if (rv < 0)
-        {
-            errno = EPROTO;
-            return -1;
+    }
+    if (parsed) {
+        uint8_t *buffer = malloc(10);
+        memset(buffer, 0, 10);
+        buffer[0] = 10;
+        buffer[1] = 0;
+        buffer[3] = (uint8_t) port;
+        if (ret < 0) {
+            free(buffer);
+            report_comms_error();
+        } else if (ret > 0) {
+            // Buffer should not be passed to foreground
+            free(buffer);
+        } else if (queue_return_buffer(buffer) < 0) {
+            // Move buffer from I2C Rx, to foreground queue, for python
+            free(buffer);
+            report_comms_error();
         }
-        nbytes -= 2;
-        buffer += 2;
     }
-
-    return 0;
-}
-
-
-static int handle_firmware_response(uint8_t *buffer, uint16_t nbytes)
-{
-    if (nbytes < 5 || buffer[2] != TYPE_FIRMWARE_RESPONSE)
-        return 0;
-    if (buffer[1] != 0)
-    {
-        errno = EPROTO; /* Protocol error */
-        return -1;
-    }
-
-    if (buffer[3] == FIRMWARE_INITIALIZE)
-    {
-        /* This is passed on via callback -- erase can take a while */
-        if (nbytes != 5)
-        {
-            errno = EPROTO;
-            return -1;
-        }
-        if (firmware_object != NULL)
-        {
-            if (firmware_action_done(firmware_object,
-                                     FIRMWARE_INITIALIZE,
-                                     buffer[4]) < 0)
-            {
-                errno = EPROTO;
-                return -1;
-            }
-        }
-        return 1;
-    }
-
-    return 0;
-}
-
-
-static int handle_alert(uint8_t *buffer, uint16_t nbytes, int *ppassback)
-{
-    /* Assume nothing was waiting for this alert */
-    *ppassback = 0;
-
-    if (nbytes < 6 ||
-        buffer[2] != TYPE_HUB_ALERT ||
-        buffer[4] != ALERT_OP_UPDATE)
-        return 0;
-    if (buffer[1] != 0 || nbytes != 6)
-    {
-        errno = EPROTO;
-        return -1;
-    }
-
-    /* Don't drop this packet if it's expected */
-    if (BITMAP_IS_SET(expecting_alert, buffer[3]))
-    {
-        BITMAP_CLEAR(expecting_alert, buffer[3]);
-        *ppassback = 1;
-    }
-
-    callback_queue(CALLBACK_ALERT, buffer[3], buffer[5], NULL);
-    return 1;
-}
-
-
-static int handle_immediate(uint8_t *buffer, uint16_t nbytes)
-{
-    int rv;
-    int passback = 0;
-
-    /* Is this something to deal with immediately? */
-    if ((rv = handle_attached_io_message(buffer, nbytes)) != 0)
-        return rv;
-
-    if ((rv = handle_port_format_single(buffer, nbytes)) != 0)
-    {
-        /* We still want to pass this to the foreground if valid */
-        return (rv < 0) ? rv : 0;
-    }
-
-    if ((rv = handle_port_value_single(buffer, nbytes, &passback)) < 0 ||
-        (rv > 0 && !passback))
-    {
-        return rv;
-    }
-    else if (rv > 0)
-    {
-        /* Handled, but pass to foreground */
-        return 0;
-    }
-
-    if ((rv = handle_port_value_combi(buffer, nbytes, &passback)) < 0 ||
-        (rv > 0 && !passback))
-    {
-        return rv;
-    }
-    else if (rv > 0)
-    {
-        /* Handled, but pass to foreground */
-        return 0;
-    }
-
-    if ((rv = handle_output_feedback(buffer, nbytes)) != 0)
-        return rv;
-
-    if ((rv = handle_firmware_response(buffer, nbytes)) != 0)
-        return rv;
-
-    if ((rv = handle_alert(buffer, nbytes, &passback)) < 0 ||
-        (rv > 0 && !passback))
-    {
-        return rv;
-    }
-    else if (rv > 0)
-    {
-        /* Handled, but pass to foreground */
-        return 0;
-    }
-
-    return 0; /* Nothing interesting here, guv */
 }
 
 
@@ -917,47 +461,75 @@ static int handle_immediate(uint8_t *buffer, uint16_t nbytes)
 static void *run_comms_rx(void *args __attribute__((unused)))
 {
     uint8_t *buffer;
-    int rv;
-    uint16_t nbytes;
+    char buf[10];
+    char serbuf[100];
+    int sercounter = 0;
+    int nfds;
+    int debugfd = -1;
 
-    while (!shutdown)
-    {
-        if (poll_for_rx() != 0)
-        {
-            if (read_message(&buffer) < 0)
-            {
-                report_comms_error();
-                continue;
-            }
-            heard_from_hat = 1;
-            if (buffer == NULL)
-                continue; /* Nothing to do */
+    int lfound = 0;
+    int gotdata = 0;
+
+    struct epoll_event ev1, events[MAX_EVENTS];
+    int epollfd;
+
+    epollfd = epoll_create1(0);
+    if (epollfd == -1) {
+        perror("epoll_create1");
+        exit(EXIT_FAILURE);
+    }
+
+    ev1.events = EPOLLIN;
+    ev1.data.fd = i2c_fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, i2c_fd, &ev1) == -1) {
+        perror("epoll_ctl: listen_sock");
+        exit(EXIT_FAILURE);
+    }
 
 #ifdef DEBUG_I2C
-            log_i2c(buffer, 0);
+    debugfd = open("/tmp/serial.txt", O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IRGRP | S_IROTH);
+    if (debugfd < 0){
+        perror("serial debug file open failed!");
+        exit(EXIT_FAILURE);
+    }
 #endif
+    while (!shutdown)
+    {
+        nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+        if (nfds == -1) {
+            perror("epoll_wait");
+            exit(EXIT_FAILURE);
+        }
 
-            nbytes = buffer[0];
-            if (nbytes >= 0x80)
-            {
-                buffer++;
-                nbytes = (nbytes & 0x7f) | (buffer[0] << 7);
-            }
+        int n;
+        for (n = 0; n < nfds; ++n) {
+            if ( events[n].data.fd == i2c_fd){
+                int rcount = read(events[n].data.fd, buf, sizeof buf);
+#ifdef DEBUG_I2C
+                write(debugfd, buf, rcount);
+#endif
+                memcpy(serbuf+sercounter, buf, rcount);
+                sercounter += rcount;
 
-            if ((rv = handle_immediate(buffer, nbytes)) < 0)
-            {
-                free(buffer);
-                report_comms_error();
-            }
-            else if (rv > 0)
-            {
-                /* Buffer should not be passed to foreground */
-                free(buffer);
-            }
-            else if (queue_return_buffer(buffer) < 0)
-            {
-                free(buffer);
-                report_comms_error();
+                for(int i=0; i<sercounter;i++){
+                    if(serbuf[i] == '\n' || serbuf[i] == '$'){
+                        if(serbuf[i] == '$'){
+                            serbuf[i+1] = 0;
+                            i++;
+                        } else {
+                            serbuf[i] = 0;
+                            serbuf[i-1] = 0;
+                        }
+                        parse_line(serbuf);
+                        lfound = i + 1;
+                        int tmp = 0;
+                        for(tmp=0;tmp<sercounter;tmp++){
+                            serbuf[tmp] = serbuf[lfound+tmp];
+                        }
+                        sercounter -= lfound;
+                        i = 0;
+                    }
+                }
             }
         }
     }
@@ -981,10 +553,26 @@ static void *run_comms_tx(void *args __attribute__((unused)))
         }
         else if (buffer != NULL)
         {
+            if (write(i2c_fd, buffer, strlen((char*)buffer)) < 0){
+                report_comms_error();
+                free(buffer);
+            }
+        }
+    }
+
+    return NULL;
+
+    while (!shutdown)
+    {
+        if ((rv = queue_check(&buffer)) < 0)
+        {
+            report_comms_error();
+        }
+        else if (buffer != NULL)
+        {
 #ifdef DEBUG_I2C
             log_i2c(buffer, 1);
 #endif
-
             if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
             {
                 report_comms_error();
@@ -1023,6 +611,149 @@ static void *run_comms_tx(void *args __attribute__((unused)))
 }
 
 
+int i1ch()
+{
+    char c;
+    if (read(i2c_fd, &c, 1) == 1)
+        return c;
+    return -1;
+}
+
+// wait, with a timeout in milliseconds
+// timeout==-1: never
+int w1ch(int timeout)
+{
+    int c;
+    for (;;) {
+        c = i1ch();
+        if (c != -1)
+            return c;
+        if (timeout > 0)
+            timeout--;
+        if (timeout == 0)
+            return -1;
+        usleep(1000);
+    }
+}
+
+void och(int c)
+{
+    for (;;) {
+        if (write(i2c_fd, &c, 1) == 1)
+            return;
+        usleep(50);
+    }
+}
+
+void wstr(char *s, int n, int timeout)
+{
+    int i, j;
+    for (i = 0; i < n - 1;) {
+        j = w1ch(timeout);
+        if (j == -1)
+            break;
+        s[i] = j;
+        if (s[i] == 0x0a)
+            break;
+        if (s[i] < 0x20)
+            continue;
+        i++;
+    }
+    s[i] = 0;
+}
+
+void ostr(char *s)
+{
+    int i;
+    for (i = 0; s[i]; i++)
+        och(s[i]);
+}
+
+unsigned int checksum(unsigned char *p, int l)
+{
+    unsigned int u = 1;
+    int i;
+    for (i = 0; i < l; i++) {
+        if ((u & 0x80000000) != 0)
+            u = (u << 1) ^ 0x1d872b41;
+        else
+            u = u << 1;
+        u ^= p[i];
+    }
+    return u;
+}
+
+int getprompt()
+{
+    char s[100];
+    int p = 0, t = 0, u = 0;
+    for (;;) {
+        wstr(s, 100, 10);
+        if (strlen(s) == 0) {
+            if (p == 1 && t == 10)
+                return 1;       // wait for 10*timeout with no data
+            if (p == 0 && t == 10) {    // no prompt, so send <RETURN>
+                och(0x0d);
+                t = 0;
+                u++;
+                if (u == 10)
+                    return 0;
+            }
+            t++;
+            continue;
+        }
+        if (!strcmp(s, "BHBL> "))
+            p = 1;
+        else {
+            p = 0;
+        }
+        t = 0;
+    }
+}
+
+int load_firmware()
+{
+    char s[1000];
+    int image_size;
+    FILE *fp;
+    int i;
+
+    fp = fopen("/tmp/firmware.bin", "rb");
+    if (!fp) {
+        fprintf(stderr, "Failed to open image file");
+        return -1;
+    }
+    image_size = fread(imagebuf, 1, IMAGEBUFSIZE + 1, fp);
+    if (image_size < 1) {
+        fprintf(stderr, "Error reading image file");
+        return -1;
+    }
+    if (image_size > IMAGEBUFSIZE) {
+        fprintf(stderr,
+                "Image file is too large (maximum %d bytes)\n",
+                IMAGEBUFSIZE);
+        return -1;
+    }
+    if (!getprompt())
+        goto ew0;
+    ostr("clear\r");
+    if (!getprompt())
+        goto ew0;
+    sprintf(s, "load %d %u\r", image_size, checksum(imagebuf, image_size));
+    ostr(s);
+    usleep(100000);
+    ostr("\x02");
+    for (i = 0; i < image_size; i++)
+        och(imagebuf[i]);
+    ostr("\x03\r");
+    if (!getprompt())
+        goto ew0;
+
+    return 0;
+ ew0:
+    fprintf(stderr, "Failed to communicate with Build HAT\n");
+    return -1;
+}
 
 /* Open the I2C bus, select the Hat as the device to communicate with,
  * and return the file descriptor.  You must close the file descriptor
@@ -1031,8 +762,9 @@ static void *run_comms_tx(void *args __attribute__((unused)))
 int i2c_open_hat(void)
 {
     int rv;
+    struct termios ttyopt;
 
-    if ((i2c_fd = open(I2C_DEVICE_NAME, O_RDWR)) < 0)
+    if ((i2c_fd = open(I2C_DEVICE_NAME, O_RDWR | O_NOCTTY | O_NONBLOCK)) < 0)
     {
         if (errno == ENOENT)
         {
@@ -1046,8 +778,16 @@ int i2c_open_hat(void)
         }
         return -1;
     }
-    if (open_wake_gpio() < 0)
-        return -1; /* Exception already raised */
+
+    tcgetattr(i2c_fd, &ttyopt);
+    cfsetispeed(&ttyopt, BAUD);
+    cfsetospeed(&ttyopt, BAUD);
+    cfmakeraw(&ttyopt);
+    tcsetattr(i2c_fd, TCSANOW, &ttyopt);
+    tcflush(i2c_fd, TCIOFLUSH);
+
+    //if (open_wake_gpio() < 0)
+    //    return -1; /* Exception already raised */
 
 #ifdef DEBUG_I2C
     if (log_i2c_init() < 0)
@@ -1061,8 +801,13 @@ int i2c_open_hat(void)
     if (i2c_reset_hat() < 0)
     {
         /* Exception already raised */
-        close_wake_gpio();
+        //close_wake_gpio();
         close(i2c_fd);
+        return -1;
+    }
+
+    if (load_firmware() < 0){
+        PyErr_SetString(PyExc_IOError, "Failed to load firmware");
         return -1;
     }
 
@@ -1070,7 +815,7 @@ int i2c_open_hat(void)
     if ((rv = queue_init()) != 0)
     {
         errno = rv;
-        close_wake_gpio();
+        //close_wake_gpio();
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
         return -1;
@@ -1080,7 +825,7 @@ int i2c_open_hat(void)
     if ((rx_event_fd = eventfd(0, 0)) == -1)
     {
         errno = rv;
-        close_wake_gpio();
+        //close_wake_gpio();
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
         return -1;
@@ -1092,7 +837,7 @@ int i2c_open_hat(void)
     if ((rv = pthread_create(&comms_rx_thread, NULL, run_comms_rx, NULL)) != 0)
     {
         errno = rv;
-        close_wake_gpio();
+        //close_wake_gpio();
         close(rx_event_fd);
         PyErr_SetFromErrno(PyExc_IOError);
         close(i2c_fd);
@@ -1107,13 +852,14 @@ int i2c_open_hat(void)
         errno = rv;
         PyErr_SetFromErrno(PyExc_IOError);
 
-        close_wake_gpio();
+        //close_wake_gpio();
         close(rx_event_fd);
         close(i2c_fd);
         i2c_fd = -1;
         return -1;
     }
 
+    ostr("reboot\r");
     return i2c_fd;
 }
 
@@ -1144,7 +890,7 @@ int i2c_close_hat(void)
         rx_event_fd = -1;
     }
 
-    close_wake_gpio();
+    //close_wake_gpio();
 
     tmp = firmware_object;
     firmware_object = NULL;
