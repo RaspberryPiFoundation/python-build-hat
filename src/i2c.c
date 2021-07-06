@@ -50,6 +50,8 @@
 #include "protocol.h"
 #include "debug-i2c.h"
 
+#define SIGSIZE 64
+unsigned char signature[SIGSIZE];
 #define IMAGEBUFSIZE (240*1024)
 unsigned char imagebuf[IMAGEBUFSIZE + 1];
 
@@ -718,18 +720,28 @@ int load_firmware()
 
     fp = fopen("/tmp/firmware.bin", "rb");
     if (!fp) {
-        fprintf(stderr, "Failed to open image file");
+        fprintf(stderr, "Failed to open image file\n");
         return -1;
     }
     image_size = fread(imagebuf, 1, IMAGEBUFSIZE + 1, fp);
     if (image_size < 1) {
-        fprintf(stderr, "Error reading image file");
+        fprintf(stderr, "Error reading image file\n");
         return -1;
     }
     if (image_size > IMAGEBUFSIZE) {
         fprintf(stderr,
                 "Image file is too large (maximum %d bytes)\n",
                 IMAGEBUFSIZE);
+        return -1;
+    }
+    fp=fopen("/tmp/signature.bin","rb");
+    if(!fp) {
+        fprintf(stderr,"Failed to open signature file\n");
+        return -1;
+    }
+    i=fread(signature,1,SIGSIZE,fp);
+    if(i!=SIGSIZE) {
+        fprintf(stderr,"Error reading signature file\n");
         return -1;
     }
     if (!getprompt())
@@ -746,7 +758,15 @@ int load_firmware()
     ostr("\x03\r");
     if (!getprompt())
         goto ew0;
-
+    sprintf(s,"signature %d\r",SIGSIZE);
+    ostr(s);
+    usleep(100000);
+    ostr("\x02");
+    for(i=0;i<SIGSIZE;i++)
+        och(signature[i]);
+    ostr("\x03\r");
+    if(!getprompt())
+        goto ew0;
     return 0;
  ew0:
     fprintf(stderr, "Failed to communicate with Build HAT\n");
