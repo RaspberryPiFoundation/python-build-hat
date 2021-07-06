@@ -337,12 +337,10 @@ static int signal_rx_shutdown(void)
 
 int lastmode = 0;
 int lastport = 0;
-
 uint8_t ports[][2] = {{ 0 , 0 },
                      { 0 , 0 },
                      { 0 , 0 },
                      { 0 , 0 }};
-
 
 
 void parse_line(char *serbuf)
