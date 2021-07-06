@@ -62,6 +62,7 @@ unsigned char imagebuf[IMAGEBUFSIZE + 1];
 
 #define DISCONNECTED "disconnected"
 #define CONNECTED "connected to active ID "
+#define ERROR "Error"
 #define MODE "  M"
 #define FORMAT "    format "
 
@@ -348,9 +349,9 @@ void parse_line(char *serbuf)
     int parsed = 0;
     int port = -1;
     int ret = 0;
+    uint8_t error = 0;
 
     if (serbuf[0] == 'P') {
-
         switch (serbuf[1]) {
         case '0':
             port = 0;
@@ -368,7 +369,6 @@ void parse_line(char *serbuf)
 
         if (serbuf[2] == ':') {
             lastport = port;
-
             if (strncmp(DISCONNECTED, serbuf + 4, strlen(DISCONNECTED)) == 0) {
                 parsed = 1;
                 ret = 1;
@@ -379,12 +379,10 @@ void parse_line(char *serbuf)
                 }
             }
             if (strncmp(CONNECTED, serbuf + 4, strlen(CONNECTED)) == 0) {
-
                 DEBUG_PRINT("CONNECTING %s\n", serbuf + 4 + strlen(CONNECTED));
 
                 uint8_t *hw = malloc(sizeof(uint8_t));
                 uint8_t *fw = malloc(sizeof(uint8_t));
-
                 uint16_t type_id =
                     strtol(serbuf + 4 + strlen(CONNECTED) - 1, NULL, 16);
                 *hw = 0;
@@ -399,12 +397,10 @@ void parse_line(char *serbuf)
                    port_set_device_format(port,  ports[port][0] ,  ports[port][1] );
                 }
             }
-
         } else if (serbuf[2] == '$') {
             parsed = 1;
         } else if (serbuf[2] == 'C') {
             //int combiindex = serbuf[3] - 48;
-
             char *tmp = malloc((strlen(serbuf) - 5) + 1);
             memcpy(tmp, serbuf + 5, strlen(serbuf) - 5);
             tmp[strlen(serbuf) - 5] = 0;
@@ -418,7 +414,6 @@ void parse_line(char *serbuf)
                 token = strtok(NULL, " ");
                 mcount++;
             }
-
             callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA, NULL);
         }
     }
@@ -436,11 +431,17 @@ void parse_line(char *serbuf)
             ports[lastport][1] = current;
         }
     }
+    if (strncmp(ERROR, serbuf, strlen(ERROR)) == 0) {
+        DEBUG_PRINT("Error occured\n");
+        parsed = 1;
+        error = TYPE_GENERIC_ERROR;
+    }
     if (parsed) {
         uint8_t *buffer = malloc(10);
         memset(buffer, 0, 10);
         buffer[0] = 10;
         buffer[1] = 0;
+        buffer[2] = error;
         buffer[3] = (uint8_t) port;
         if (ret < 0) {
             free(buffer);
