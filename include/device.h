@@ -103,4 +103,6 @@ extern int device_ensure_mode_info(PyObject *self);
 /* Handles device callbacks */
 extern int device_callback(PyObject *self, int event);
 
+int device_set_device_format(PyObject *device, uint8_t modei, uint8_t type);
+
 #endif /* RPI_STRAWBERRY_DEVICE_H_INCLUDED */

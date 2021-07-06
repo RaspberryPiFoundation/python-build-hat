@@ -412,7 +412,7 @@ void parse_line(char *serbuf)
             int mcount = 0;
 
             while( token != NULL ) {
-                int8_t *tmpval = malloc(1);
+                uint8_t *tmpval = malloc(1);
                 tmpval[0] = strtol(token, NULL, 10);
                 port_new_combi_value(port, mcount, tmpval, 1);
                 token = strtok(NULL, " ");
@@ -460,15 +460,12 @@ void parse_line(char *serbuf)
 /* Thread function for background I2C reception */
 static void *run_comms_rx(void *args __attribute__((unused)))
 {
-    uint8_t *buffer;
     char buf[10];
     char serbuf[100];
     int sercounter = 0;
     int nfds;
     int debugfd = -1;
-
     int lfound = 0;
-    int gotdata = 0;
 
     struct epoll_event ev1, events[MAX_EVENTS];
     int epollfd;
@@ -506,7 +503,8 @@ static void *run_comms_rx(void *args __attribute__((unused)))
             if ( events[n].data.fd == i2c_fd){
                 int rcount = read(events[n].data.fd, buf, sizeof buf);
 #ifdef DEBUG_I2C
-                write(debugfd, buf, rcount);
+                if (write(debugfd, buf, rcount) < 0){
+                }
 #endif
                 memcpy(serbuf+sercounter, buf, rcount);
                 sercounter += rcount;

@@ -81,4 +81,5 @@ extern int port_handle_motor_callback(uint8_t port_id, uint8_t event);
 extern int ports_handle_callback(uint8_t overpower_state);
 extern int port_handle_device_callback(uint8_t port_id, uint8_t event);
 
+extern int port_set_device_format(uint8_t port_id, uint8_t mode, uint8_t type);
 #endif /* RPI_STRAWBERRY_PORT_H_INCLUDED */

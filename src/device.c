@@ -1103,9 +1103,9 @@ int device_callback(PyObject *self, int event)
     PyGILState_STATE gstate = PyGILState_Ensure();
 
     int rv = 0;
-    int format = DEVICE_FORMAT_SI;
+    //int format = DEVICE_FORMAT_SI;
     PyObject *results = NULL;
-    mode_info_t *mode;
+    //mode_info_t *mode;
     int i;
 
     if (device->callback != Py_None)
@@ -1151,8 +1151,8 @@ int device_callback(PyObject *self, int event)
             for (i = 0; i < device->num_combi_modes; i++)
             {
                 PyObject *value;
-                uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
-                mode = &device->modes[mode_number];
+                //uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
+                //mode = &device->modes[mode_number];
                 value = PyList_GetItem(device->values, i);
                 //value = convert_raw(value, format, mode);
                 if (value == NULL)
