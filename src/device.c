@@ -1288,8 +1288,8 @@ PyObject *device_get_info(PyObject *self, uint8_t port_id)
 
     if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
     {
-        if (get_mode_info(device, port_id) < 0)
-            return NULL;
+        //if (get_mode_info(device, port_id) < 0)
+        //    return NULL;
     }
 
     /* XXX: missing the "speed" key */
@@ -1299,6 +1299,8 @@ PyObject *device_get_info(PyObject *self, uint8_t port_id)
                             "hw_version", device->hw_revision);
     if (results == NULL)
         return NULL;
+
+    return results;
 
     if ((mode_list = PyList_New(0)) == NULL)
     {
