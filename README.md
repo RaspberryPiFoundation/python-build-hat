@@ -98,3 +98,16 @@ while True:
 		time.sleep(0.5) # Wait half a second for motor to finish turning
 
 ```
+
+Programming Bootloader
+----------------------
+
+* Copy pico\_setup.sh to ~/Repositories and run (this will install openocd along with tools for building the firmware)
+
+* Use the following command to program the bootloader:
+
+```
+openocd -f ~/Repositories/pico/openocd/tcl/interface/raspberrypi-swd.cfg -f ~/Repositories/pico/openocd/tcl/target/rp2040.cfg -c "program bootloader.elf verify reset exit"
+```
+
+* Currently need to place firmware.bin and signature.bin in /tmp for the Python library to load
