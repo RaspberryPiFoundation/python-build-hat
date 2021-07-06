@@ -484,7 +484,7 @@ static void *run_comms_rx(void *args __attribute__((unused)))
     }
 
 #ifdef DEBUG_I2C
-    debugfd = open("/tmp/serial.txt", O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IRGRP | S_IROTH);
+    debugfd = open("/tmp/serial.txt", O_RDWR | O_APPEND | O_CREAT, 0600);
     if (debugfd < 0){
         perror("serial debug file open failed!");
         exit(EXIT_FAILURE);
