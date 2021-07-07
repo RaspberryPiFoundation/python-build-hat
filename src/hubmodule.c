@@ -10,7 +10,7 @@
  *     Copyright (c) 2020 Kynesim Ltd
  *     Copyright (c) 2017-2020 LEGO System A/S
  *
- * Module to provide Python access to the Build HAT via I2C
+ * Module to provide Python access to the Build HAT via UART
  */
 
 #define PY_SSIZE_T_CLEAN
@@ -20,7 +20,7 @@
 #include <stddef.h>
 #include <unistd.h>
 
-#include "i2c.h"
+#include "uart.h"
 #include "cmd.h"
 #include "port.h"
 #include "device.h"
@@ -28,11 +28,6 @@
 #include "pair.h"
 #include "callback.h"
 #include "firmware.h"
-
-#ifdef DEBUG_I2C
-#include "debug-i2c.h"
-#endif
-
 
 /* Hijinks is required to pass a string through compiler defines */
 #define XSTR(s) #s
@@ -166,7 +161,7 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_DECREF(self);
         return NULL;
     }
-    if (i2c_open_hat() < 0)
+    if (uart_open_hat() < 0)
     {
         Py_DECREF(self);
         return NULL;
@@ -212,7 +207,7 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     Py_END_ALLOW_THREADS
 
     /* By this time we should at least have heard from the HAT */
-    /*if (i2c_check_comms_error() < 0)
+    /*if (uart_check_comms_error() < 0)
     {
         build_hat_created = 0;
         return -1;
@@ -228,7 +223,7 @@ Hub_finalize(PyObject *self)
     PyObject *etype, *evalue, *etraceback;
 
     PyErr_Fetch(&etype, &evalue, &etraceback);
-    i2c_close_hat();
+    uart_close_hat();
     callback_finalize();
     PyErr_Restore(etype, evalue, etraceback);
     build_hat_created = 0;
@@ -329,26 +324,9 @@ Hub_status(PyObject *self, PyObject *args)
 }
 
 
-#ifdef DEBUG_I2C
-static PyObject *
-Hub_debug_i2c(PyObject *self, PyObject *args)
-{
-    if (!PyArg_ParseTuple(args, "")) /* No args here either */
-        return NULL;
-
-    log_i2c_dump();
-
-    Py_RETURN_NONE;
-}
-#endif /* DEBUG_I2C */
-
-
 static PyMethodDef Hub_methods[] = {
     { "info", Hub_info, METH_VARARGS, "Information about the Hub" },
     { "status", Hub_status, METH_VARARGS, "Status of the Hub" },
-#ifdef DEBUG_I2C
-    { "debug_i2c", Hub_debug_i2c, METH_VARARGS, "Dump recorded I2C traffic" },
-#endif
     { NULL, NULL, 0, NULL }
 };
 

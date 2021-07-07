@@ -10,7 +10,7 @@
  *     Copyright (c) 2020 Kynesim Ltd
  *     Copyright (c) 2017-2020 LEGO System A/S
  *
- * Functions to manage the foreground-to-I2C thread queue
+ * Functions to manage the foreground-to-UART thread queue
  */
 
 #define PY_SSIZE_T_CLEAN
@@ -24,9 +24,6 @@
 #include <errno.h>
 
 #include "queue.h"
-
-#include "debug-i2c.h"
-
 
 typedef struct queue_item_s
 {
@@ -45,8 +42,8 @@ typedef struct queue_s
 } queue_t;
 
 
-static queue_t to_i2c_q;
-static queue_t from_i2c_q;
+static queue_t to_uart_q;
+static queue_t from_uart_q;
 
 static int shutdown;
 
@@ -70,9 +67,9 @@ int queue_init(void)
 {
     int rv;
 
-    if ((rv = init_queue(&to_i2c_q)) != 0)
+    if ((rv = init_queue(&to_uart_q)) != 0)
         return rv;
-    return init_queue(&from_i2c_q);
+    return init_queue(&from_uart_q);
 }
 
 
@@ -135,7 +132,7 @@ int queue_add_buffer(uint8_t *buffer)
     }
     item->buffer = buffer;
 
-    if ((rv = push(&to_i2c_q, item)) != 0)
+    if ((rv = push(&to_uart_q, item)) != 0)
     {
         free(item);
         errno = rv;
@@ -151,26 +148,26 @@ int queue_clear_responses(void)
     queue_item_t *item;
     int rv;
 
-    if ((rv = pthread_mutex_lock(&from_i2c_q.mutex)) != 0)
+    if ((rv = pthread_mutex_lock(&from_uart_q.mutex)) != 0)
     {
         errno = rv;
         PyErr_SetFromErrno(PyExc_OSError);
         return rv;
     }
 
-    while (from_i2c_q.qtail != NULL)
+    while (from_uart_q.qtail != NULL)
     {
-        item = from_i2c_q.qtail;
-        from_i2c_q.qtail = item->prev;
-        if (from_i2c_q.qtail == NULL)
-            from_i2c_q.qhead = NULL;
+        item = from_uart_q.qtail;
+        from_uart_q.qtail = item->prev;
+        if (from_uart_q.qtail == NULL)
+            from_uart_q.qhead = NULL;
         else
-            from_i2c_q.qtail->next = NULL;
+            from_uart_q.qtail->next = NULL;
         free(item->buffer);
         free(item);
     }
 
-    if ((rv = pthread_mutex_unlock(&from_i2c_q.mutex)) != 0)
+    if ((rv = pthread_mutex_unlock(&from_uart_q.mutex)) != 0)
     {
         errno = rv;
         PyErr_SetFromErrno(PyExc_OSError);
@@ -191,10 +188,8 @@ int queue_return_buffer(uint8_t *buffer)
         return ENOMEM;
     item->buffer = buffer;
 
-    DEBUG0(QUEUE, RETURNING_BUFFER);
-    if ((rv = push(&from_i2c_q, item)) != 0)
+    if ((rv = push(&from_uart_q, item)) != 0)
         free(item);
-    DEBUG0(QUEUE, RETURNED_BUFFER);
     return rv;
 }
 
@@ -203,15 +198,10 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
 {
     int rv;
     queue_item_t *item;
-#ifdef DEBUG_I2C
-    int is_tx_thread = (timeout == -1);
-#endif
 
     /* First check if there's already something on the queue */
-    DEBUG1(QUEUE, GET_LOCKING, is_tx_thread);
     if ((rv = pthread_mutex_lock(&q->mutex)) != 0)
     {
-        DEBUG0(QUEUE, GET_LOCK_FAILED);
         return rv;
     }
 
@@ -222,11 +212,9 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
         /* Nothing on the queue.  Release the lock and wait */
         if ((rv = pthread_mutex_unlock(&q->mutex)) != 0)
         {
-            DEBUG0(QUEUE, GET_LOOP_UNLOCK_FAILED);
             return rv;
         }
 
-        DEBUG1(QUEUE, GET_POLLING, is_tx_thread);
         pfds[0].fd = q->eventfd;
         pfds[0].events = POLLIN;
         pfds[0].revents = 0;
@@ -243,7 +231,6 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
         }
         if (rv < 0)
         {
-            DEBUG0(QUEUE, GET_POLL_FAILED);
             return rv;
         }
         else if (rv == 0 || shutdown)
@@ -264,10 +251,8 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
         /* Relock the mutex and see if that event was for something
          * we've already taken (or EINTR, which isn't really an error)
          */
-        DEBUG1(QUEUE, GET_RELOCKING, is_tx_thread);
         if ((rv = pthread_mutex_lock(&q->mutex)) != 0)
         {
-            DEBUG0(QUEUE, GET_LOOP_LOCK_FAILED);
             return rv;
         }
     }
@@ -289,10 +274,8 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
         q->qtail->next = NULL;
 
     /* Release the lock */
-    DEBUG1(QUEUE, GET_UNLOCKING, is_tx_thread);
     if ((rv = pthread_mutex_unlock(&q->mutex)) != 0)
     {
-        DEBUG0(QUEUE, GET_UNLOCK_FAILED);
         free(item->buffer);
         free(item);
         return rv;
@@ -308,21 +291,21 @@ static int get_item(queue_t *q, uint8_t **pbuffer, int timeout)
 /* Tx thread from foreground or Rx thread */
 int queue_check(uint8_t **pbuffer)
 {
-    return get_item(&to_i2c_q, pbuffer, -1);
+    return get_item(&to_uart_q, pbuffer, -1);
 }
 
 
 /* Foreground from Rx thread */
 int queue_get(uint8_t **pbuffer)
 {
-    return get_item(&from_i2c_q, pbuffer, 1000);
+    return get_item(&from_uart_q, pbuffer, 1000);
 }
 
 
 /* Foreground from Rx thread (long delay possible) */
 int queue_get_delayed(uint8_t **pbuffer)
 {
-    return get_item(&from_i2c_q, pbuffer, 10000); /* 10 seconds */
+    return get_item(&from_uart_q, pbuffer, 10000); /* 10 seconds */
 }
 
 
@@ -332,6 +315,6 @@ void queue_shutdown(void)
     uint64_t value = 1;
 
     shutdown = 1;
-    if (write(to_i2c_q.eventfd, (uint8_t *)&value, 8) != 8)
+    if (write(to_uart_q.eventfd, (uint8_t *)&value, 8) != 8)
         fprintf(stderr, "Unable to kill transmitter thread\n");
 }

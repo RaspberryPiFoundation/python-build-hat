@@ -21,7 +21,7 @@
 
 #include "firmware.h"
 #include "cmd.h"
-#include "i2c.h"
+#include "uart.h"
 #include "callback.h"
 
 /**
@@ -244,7 +244,7 @@ Firmware_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     {
         self->status = FW_STATUS_IDLE;
         self->image_bytes = 0;
-        i2c_register_firmware_object((PyObject *)self);
+        uart_register_firmware_object((PyObject *)self);
         self->callback = Py_None;
         Py_INCREF(Py_None);
     }
@@ -522,7 +522,7 @@ Firmware_reboot(PyObject *self, PyObject *args)
         return NULL;
 
     /* NB: never do this lightly */
-    if (i2c_reset_hat() < 0)
+    if (uart_reset_hat() < 0)
         return NULL;
     Py_RETURN_NONE;
 }

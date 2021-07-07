@@ -1,4 +1,4 @@
-/* i2c.c
+/* uart.c
  *
  * SPDX-License-Identifier: MIT
  *
@@ -10,7 +10,7 @@
  *     Copyright (c) 2020 Kynesim Ltd
  *     Copyright (c) 2017-2020 LEGO System A/S
  *
- * I2C communications handling
+ * UART communications handling
  *
  * This takes place in separate OS threads (not Python threads!) so
  * error reporting is not as easy as you might hope.
@@ -38,17 +38,13 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <linux/i2c-dev.h>
-#include <i2c/smbus.h>
-
-#include "i2c.h"
+#include "uart.h"
 #include "queue.h"
 #include "port.h"
 #include "pair.h"
 #include "firmware.h"
 #include "callback.h"
 #include "protocol.h"
-#include "debug-i2c.h"
 
 #define SIGSIZE 64
 unsigned char signature[SIGSIZE];
@@ -57,7 +53,7 @@ unsigned char imagebuf[IMAGEBUFSIZE + 1];
 
 #define BAUD B115200
 #define MAX_EVENTS 10
-#define I2C_DEVICE_NAME "/dev/serial0"
+#define UART_DEVICE_NAME "/dev/serial0"
 #define HAT_ADDRESS 0x12
 
 #define DISCONNECTED "disconnected"
@@ -66,11 +62,9 @@ unsigned char imagebuf[IMAGEBUFSIZE + 1];
 #define MODE "  M"
 #define FORMAT "    format "
 
-#define I2C_GPIO_NUMBER "5"
 #define BASE_DIRECTORY "/sys/class/gpio"
 #define EXPORT_PSEUDOFILE BASE_DIRECTORY "/export"
 #define UNEXPORT_PSEUDOFILE BASE_DIRECTORY "/unexport"
-#define GPIO_DIRECTORY BASE_DIRECTORY "/gpio" I2C_GPIO_NUMBER
 #define DIRECTION_PSEUDOFILE GPIO_DIRECTORY "/direction"
 #define INTERRUPT_PSEUDOFILE GPIO_DIRECTORY "/edge"
 #define VALUE_PSEUDOFILE GPIO_DIRECTORY "/value"
@@ -80,7 +74,7 @@ unsigned char imagebuf[IMAGEBUFSIZE + 1];
 
 #define INTERVAL 100000000
 
-static int i2c_fd = -1;
+static int uart_fd = -1;
 static int rx_event_fd = -1;
 static pthread_t comms_rx_thread;
 static pthread_t comms_tx_thread;
@@ -246,7 +240,7 @@ static int write_gpio(int fd, int value)
 }
 
 
-int i2c_reset_hat(void)
+int uart_reset_hat(void)
 {
     int boot0_fd, reset_fd;
     struct timespec timeout = { 0, 10000000 }; /* 10ms */
@@ -314,7 +308,7 @@ static void report_comms_error(void)
 
 
 /* Called from foreground */
-int i2c_check_comms_error(void)
+int uart_check_comms_error(void)
 {
     if (!heard_from_hat)
     {
@@ -450,7 +444,7 @@ void parse_line(char *serbuf)
             // Buffer should not be passed to foreground
             free(buffer);
         } else if (queue_return_buffer(buffer) < 0) {
-            // Move buffer from I2C Rx, to foreground queue, for python
+            // Move buffer from UART Rx, to foreground queue, for python
             free(buffer);
             report_comms_error();
         }
@@ -458,14 +452,13 @@ void parse_line(char *serbuf)
 }
 
 
-/* Thread function for background I2C reception */
+/* Thread function for background UART reception */
 static void *run_comms_rx(void *args __attribute__((unused)))
 {
     char buf[10];
     char serbuf[100];
     int sercounter = 0;
     int nfds;
-    int debugfd = -1;
     int lfound = 0;
 
     struct epoll_event ev1, events[MAX_EVENTS];
@@ -478,14 +471,14 @@ static void *run_comms_rx(void *args __attribute__((unused)))
     }
 
     ev1.events = EPOLLIN;
-    ev1.data.fd = i2c_fd;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, i2c_fd, &ev1) == -1) {
+    ev1.data.fd = uart_fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, uart_fd, &ev1) == -1) {
         perror("epoll_ctl: listen_sock");
         exit(EXIT_FAILURE);
     }
 
-#ifdef DEBUG_I2C
-    debugfd = open("/tmp/serial.txt", O_RDWR | O_APPEND | O_CREAT, 0600);
+#ifdef DEBUG_UART
+    int debugfd = open("/tmp/serial.txt", O_RDWR | O_APPEND | O_CREAT, 0600);
     if (debugfd < 0){
         perror("serial debug file open failed!");
         exit(EXIT_FAILURE);
@@ -501,9 +494,9 @@ static void *run_comms_rx(void *args __attribute__((unused)))
 
         int n;
         for (n = 0; n < nfds; ++n) {
-            if ( events[n].data.fd == i2c_fd){
+            if ( events[n].data.fd == uart_fd){
                 int rcount = read(events[n].data.fd, buf, sizeof buf);
-#ifdef DEBUG_I2C
+#ifdef DEBUG_UART
                 if (write(debugfd, buf, rcount) < 0){
                 }
 #endif
@@ -537,10 +530,9 @@ static void *run_comms_rx(void *args __attribute__((unused)))
 }
 
 
-/* Thread function for background I2C reception */
+/* Thread function for background UART reception */
 static void *run_comms_tx(void *args __attribute__((unused)))
 {
-    size_t nbytes;
     uint8_t *buffer;
     int rv;
 
@@ -552,57 +544,10 @@ static void *run_comms_tx(void *args __attribute__((unused)))
         }
         else if (buffer != NULL)
         {
-            if (write(i2c_fd, buffer, strlen((char*)buffer)) < 0){
+            if (write(uart_fd, buffer, strlen((char*)buffer)) < 0){
                 report_comms_error();
                 free(buffer);
             }
-        }
-    }
-
-    return NULL;
-
-    while (!shutdown)
-    {
-        if ((rv = queue_check(&buffer)) < 0)
-        {
-            report_comms_error();
-        }
-        else if (buffer != NULL)
-        {
-#ifdef DEBUG_I2C
-            log_i2c(buffer, 1);
-#endif
-            if (ioctl(i2c_fd, I2C_SLAVE, HAT_ADDRESS) < 0)
-            {
-                report_comms_error();
-                free(buffer);
-                continue;
-            }
-            DEBUG0(I2C, TX_IOCTL_DONE);
-
-            /* This is the Port Info request asking for the value? */
-            if (buffer[0] < 0x80)
-            {
-                if (buffer[2] == TYPE_PORT_INFO_REQ &&
-                    buffer[4] == PORT_INFO_VALUE)
-                {
-                    BITMAP_SET(expecting_value_on_port, buffer[3]);
-                }
-                else if (buffer[2] == TYPE_HUB_ALERT &&
-                         buffer[4] == ALERT_OP_REQUEST)
-                {
-                    BITMAP_SET(expecting_alert, buffer[3]);
-                }
-            }
-
-            /* Construct the buffer length */
-            nbytes = buffer[0];
-            if (nbytes >= 0x80)
-                nbytes = (nbytes & 0x7f) | (buffer[1] << 7);
-            if (write(i2c_fd, buffer, nbytes) < 0)
-                report_comms_error();
-            DEBUG0(I2C, TX_DONE);
-            free(buffer);
         }
     }
 
@@ -613,7 +558,7 @@ static void *run_comms_tx(void *args __attribute__((unused)))
 int i1ch()
 {
     char c;
-    if (read(i2c_fd, &c, 1) == 1)
+    if (read(uart_fd, &c, 1) == 1)
         return c;
     return -1;
 }
@@ -638,7 +583,7 @@ int w1ch(int timeout)
 void och(int c)
 {
     for (;;) {
-        if (write(i2c_fd, &c, 1) == 1)
+        if (write(uart_fd, &c, 1) == 1)
             return;
         usleep(50);
     }
@@ -772,22 +717,22 @@ int load_firmware()
     return -1;
 }
 
-/* Open the I2C bus, select the Hat as the device to communicate with,
+/* Open the UART bus, select the Hat as the device to communicate with,
  * and return the file descriptor.  You must close the file descriptor
  * when you are done with it.
  */
-int i2c_open_hat(void)
+int uart_open_hat(void)
 {
     int rv;
     struct termios ttyopt;
 
-    if ((i2c_fd = open(I2C_DEVICE_NAME, O_RDWR | O_NOCTTY | O_NONBLOCK)) < 0)
+    if ((uart_fd = open(UART_DEVICE_NAME, O_RDWR | O_NOCTTY | O_NONBLOCK)) < 0)
     {
         if (errno == ENOENT)
         {
-            /* "File not found" probably means I2C is not enabled */
+            /* "File not found" probably means UART is not enabled */
             PyErr_SetString(PyExc_IOError,
-                            "Unable to access I2C: has it been enabled?");
+                            "Unable to access UART: has it been enabled?");
         }
         else
         {
@@ -796,30 +741,22 @@ int i2c_open_hat(void)
         return -1;
     }
 
-    tcgetattr(i2c_fd, &ttyopt);
+    tcgetattr(uart_fd, &ttyopt);
     cfsetispeed(&ttyopt, BAUD);
     cfsetospeed(&ttyopt, BAUD);
     cfmakeraw(&ttyopt);
-    tcsetattr(i2c_fd, TCSANOW, &ttyopt);
-    tcflush(i2c_fd, TCIOFLUSH);
+    tcsetattr(uart_fd, TCSANOW, &ttyopt);
+    tcflush(uart_fd, TCIOFLUSH);
 
     //if (open_wake_gpio() < 0)
     //    return -1; /* Exception already raised */
 
-#ifdef DEBUG_I2C
-    if (log_i2c_init() < 0)
-    {
-        PyErr_SetString(PyExc_IOError, "I2C log init failed");
-        return -1;
-    }
-#endif /* DEBUG_I2C */
-
     /* Reset the hat */
-    if (i2c_reset_hat() < 0)
+    if (uart_reset_hat() < 0)
     {
         /* Exception already raised */
         //close_wake_gpio();
-        close(i2c_fd);
+        close(uart_fd);
         return -1;
     }
 
@@ -834,7 +771,7 @@ int i2c_open_hat(void)
         errno = rv;
         //close_wake_gpio();
         PyErr_SetFromErrno(PyExc_IOError);
-        close(i2c_fd);
+        close(uart_fd);
         return -1;
     }
 
@@ -844,7 +781,7 @@ int i2c_open_hat(void)
         errno = rv;
         //close_wake_gpio();
         PyErr_SetFromErrno(PyExc_IOError);
-        close(i2c_fd);
+        close(uart_fd);
         return -1;
     }
 
@@ -857,7 +794,7 @@ int i2c_open_hat(void)
         //close_wake_gpio();
         close(rx_event_fd);
         PyErr_SetFromErrno(PyExc_IOError);
-        close(i2c_fd);
+        close(uart_fd);
         return -1;
     }
     if ((rv = pthread_create(&comms_tx_thread, NULL, run_comms_tx, NULL)) != 0)
@@ -871,19 +808,19 @@ int i2c_open_hat(void)
 
         //close_wake_gpio();
         close(rx_event_fd);
-        close(i2c_fd);
-        i2c_fd = -1;
+        close(uart_fd);
+        uart_fd = -1;
         return -1;
     }
 
     ostr("reboot\r");
-    return i2c_fd;
+    return uart_fd;
 }
 
-/* Close the connection to the Hat (so that others can access the I2C
+/* Close the connection to the Hat (so that others can access the UART
  * connector)
  */
-int i2c_close_hat(void)
+int uart_close_hat(void)
 {
     PyObject *tmp;
 
@@ -896,10 +833,10 @@ int i2c_close_hat(void)
     pthread_join(comms_tx_thread, NULL);
     Py_END_ALLOW_THREADS
     
-    if (i2c_fd != -1)
+    if (uart_fd != -1)
     {
-        close(i2c_fd);
-        i2c_fd = -1;
+        close(uart_fd);
+        uart_fd = -1;
     }
     if (rx_event_fd != -1)
     {
@@ -917,10 +854,10 @@ int i2c_close_hat(void)
 }
 
 
-/* Register the firmware object with the I2C subsystem so it knows
+/* Register the firmware object with the UART subsystem so it knows
  * where to direct firmware callbacks
  */
-void i2c_register_firmware_object(PyObject *firmware)
+void uart_register_firmware_object(PyObject *firmware)
 {
     PyObject *tmp = firmware_object;
 
