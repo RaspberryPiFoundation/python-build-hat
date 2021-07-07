@@ -740,8 +740,8 @@ Motor_pwm(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    //if (device_ensure_mode_info(motor->device) < 0)
+    //   return NULL;
 
     if ((pwm_fn = PyObject_GetAttrString(motor->port, "pwm")) == NULL)
         return NULL;
