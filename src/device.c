@@ -1081,9 +1081,9 @@ Device_callback(PyObject *self, PyObject *args)
 
     if(device->num_combi_modes == 0)
     {
-        if (set_simple_mode(device, device->current_mode) < 0){
+        /*if (set_simple_mode(device, device->current_mode) < 0){
             return NULL;
-        }
+        }*/
     }
     else
     {

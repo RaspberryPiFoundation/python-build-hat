@@ -16,6 +16,7 @@ class Motor(PortDevice):
             raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (port, self.whatami(port)))
         self._motor = self._port.motor
         self.default_speed = 10
+        self._device.mode([(1,0),(2,0),(3,0)])
         self._when_rotated = None
 
     def set_default_speed(self, default_speed):
