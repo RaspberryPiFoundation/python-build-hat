@@ -90,7 +90,7 @@ class Motor(PortDevice):
         :return: Position of motor
         :rtype: int
         """
-        return self._motor.get()[2]
+        return self._motor.get()[1]
 
     def get_aposition(self):
         """Gets absolute position of motor
@@ -98,7 +98,7 @@ class Motor(PortDevice):
         :return: Absolute position of motor
         :rtype: int
         """
-        return self._motor.get()[1]
+        return self._motor.get()[2]
 
     def get_speed(self):
         """Gets speed of motor
@@ -121,7 +121,7 @@ class Motor(PortDevice):
     @when_rotated.setter
     def when_rotated(self, value):
         """Calls back, when motor has been rotated"""
-        self._when_rotated = lambda lst: value(lst[0], lst[2])
+        self._when_rotated = lambda lst: value(lst[0], lst[1], lst[2])
         self._device.callback(self._when_rotated)
 
 
