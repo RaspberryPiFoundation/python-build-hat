@@ -881,7 +881,15 @@ int cmd_start_speed_for_time(uint8_t port_id,
                              uint8_t use_profile,
                              bool blocking)
 {
-    uint8_t *response = make_request(true, 12, TYPE_PORT_OUTPUT,
+    char buf[100];
+    sprintf(buf, "port %u ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
+    uint8_t * response = make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
+
+    if (response == NULL)
+        return -1;
+
+    return wait_for_complete_feedback(port_id, response);
+    /*uint8_t *response = make_request(true, 12, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -907,12 +915,12 @@ int cmd_start_speed_for_time(uint8_t port_id,
     }
     if ((response[4] & 0x04) != 0)
     {
-        /* "Current Command(s) Discarded" bit set */
+        // "Current Command(s) Discarded" bit set 
         PyErr_SetString(hub_protocol_error, "Port busy");
         return -1;
     }
 
-    return 0;
+    return 0;*/
 }
 
 

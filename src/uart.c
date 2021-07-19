@@ -391,7 +391,7 @@ void parse_line(char *serbuf)
                    port_set_device_format(port,  ports[port][0] ,  ports[port][1] );
                 }
             }
-        } else if (serbuf[2] == '$') {
+        } else if (serbuf[2] == '>') {
             parsed = 1;
         } else if (serbuf[2] == 'C') {
             //int combiindex = serbuf[3] - 48;
@@ -504,8 +504,8 @@ static void *run_comms_rx(void *args __attribute__((unused)))
                 sercounter += rcount;
 
                 for(int i=0; i<sercounter;i++){
-                    if(serbuf[i] == '\n' || serbuf[i] == '$'){
-                        if(serbuf[i] == '$'){
+                    if(serbuf[i] == '\n' || serbuf[i] == '>'){
+                        if(serbuf[i] == '>'){
                             serbuf[i+1] = 0;
                             i++;
                         } else {

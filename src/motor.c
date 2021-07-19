@@ -1307,8 +1307,8 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall, &blocking) == 0)
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    /*if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;*/
 
     time = CLIP(time, RUN_TIME_MIN, RUN_TIME_MAX);
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
@@ -1321,10 +1321,10 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
         set_stall(motor, stall) < 0)
-        return NULL;
+        return NULL;*/
 
     if (cmd_start_speed_for_time(port_get_id(motor->port),
                                  time, speed, power,
