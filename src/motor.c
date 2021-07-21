@@ -700,6 +700,7 @@ Motor_get(PyObject *self, PyObject *args)
 
     if ((get_fn = PyObject_GetAttrString(motor->device, "get")) == NULL)
         return NULL;
+
     result = PyObject_CallObject(get_fn, args);
     Py_DECREF(get_fn);
     return result;
@@ -1245,8 +1246,8 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
                                     &blocking) == 0)
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    /*if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;*/
 
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
@@ -1260,10 +1261,10 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
 
     position -= motor->preset_position;
 
-    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
         set_stall(motor, stall) < 0)
-        return NULL;
+        return NULL;*/
 
     if (cmd_goto_abs_position(port_get_id(motor->port),
                               position, speed, power,

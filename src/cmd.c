@@ -234,7 +234,8 @@ static uint8_t *make_request_uart(bool return_feedback, uint8_t type, uint8_t po
     /* `buffer` now belongs to the comms thread, which will free it when
      * it is done with it.
      */
-    return get_response(type, return_feedback, port_id);
+    //return get_response(type, return_feedback, port_id);
+    return NULL;
 }
 
 static uint8_t *make_request(bool return_feedback,
@@ -338,7 +339,14 @@ PyObject *cmd_get_firmware_version(void)
 
 int cmd_get_port_value(uint8_t port_id)
 {
-    uint8_t *response = make_request(false, 5, TYPE_PORT_INFO_REQ,
+    char buf[100];
+    sprintf(buf, "selonce 0\r");
+    uint8_t * response = make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
+
+    //if (response == NULL)
+    //    return -1;
+
+    /*uint8_t *response = make_request(false, 5, TYPE_PORT_INFO_REQ,
                                      port_id,
                                      PORT_INFO_VALUE);
 
@@ -356,8 +364,8 @@ int cmd_get_port_value(uint8_t port_id)
         return -1;
     }
 
-    /* The values will already have been put in place */
-    free(response);
+    // The values will already have been put in place
+    free(response);*/
     return 0;
 }
 
@@ -881,14 +889,20 @@ int cmd_start_speed_for_time(uint8_t port_id,
                              uint8_t use_profile,
                              bool blocking)
 {
-    char buf[100];
-    sprintf(buf, "port %u ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
+    char buf[1000];
+    sprintf(buf, "port %u ; pwm ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
     uint8_t * response = make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
 
-    if (response == NULL)
+    /*if (response == NULL)
         return -1;
+    return wait_for_complete_feedback(port_id, response);*/
 
-    return wait_for_complete_feedback(port_id, response);
+    if (blocking){
+        //response = get_response(TYPE_PORT_OUTPUT, true, port_id);
+        return wait_for_complete_feedback(port_id, NULL);
+    }
+
+    return 0;
     /*uint8_t *response = make_request(true, 12, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
@@ -1065,7 +1079,13 @@ int cmd_goto_abs_position(uint8_t port_id,
                           uint8_t use_profile,
                           bool blocking)
 {
-    uint8_t *response = make_request(true, 14, TYPE_PORT_OUTPUT,
+
+    char buf[1000];
+    sprintf(buf, "port %d ; pid 0 3 0 s2 0.0027777778 1 15 0 .1 3 ; plimit %f ; set %f ;\r", port_id, (float)speed/100.0, (float)position/360.0);
+
+    uint8_t * response = make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
+
+    /*uint8_t *response = make_request(true, 14, TYPE_PORT_OUTPUT,
                                      port_id,
                                      OUTPUT_STARTUP_IMMEDIATE |
                                      OUTPUT_COMPLETE_STATUS,
@@ -1091,11 +1111,11 @@ int cmd_goto_abs_position(uint8_t port_id,
     }
     if ((response[4] & 0x04) != 0)
     {
-        /* "Current Command(s) Discarded" bit set */
+        // "Current Command(s) Discarded" bit set
         PyErr_SetString(hub_protocol_error, "Port busy");
         return -1;
     }
-
+    */
     return 0;
 }
 
@@ -1350,15 +1370,14 @@ int cmd_set_combi_mode(uint8_t port_id,
         strcat(modestr, mod);
     }
 
-    notifications = 1;
     if(notifications)
         sprintf(buf, "port %u ; combi %d %s ; select %d\r", port_id, combi_index, modestr, combi_index);
     else
         sprintf(buf, "port %u ; combi %d %s\r", port_id, combi_index, modestr);
 
-    response = make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
-    if (response == NULL)
-        return -1;
+    response = make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
+    /*if (response == NULL)
+        return -1;*/
 
     return 0;
 }

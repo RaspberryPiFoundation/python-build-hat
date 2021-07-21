@@ -980,8 +980,7 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
 /* Called from the background context */
 int port_new_combi_value(uint8_t port_id,
                          int entry,
-                         uint8_t *buffer,
-                         uint16_t nbytes)
+                         data_t *buffer)
 {
     /* Some or all of the buffer will be the values we want */
     PyGILState_STATE gstate;
@@ -991,7 +990,8 @@ int port_new_combi_value(uint8_t port_id,
     if (port_id >= NUM_HUB_PORTS)
     {
         /* See above */
-        return nbytes;
+        //return nbytes;
+        return 0;
     }
 
     gstate = PyGILState_Ensure();
@@ -1003,7 +1003,7 @@ int port_new_combi_value(uint8_t port_id,
     }
     else
     {
-        rv = device_new_combi_value(port->device, entry, buffer, nbytes);
+        rv = device_new_combi_value(port->device, entry, buffer);
     }
     PyGILState_Release(gstate);
     return rv;

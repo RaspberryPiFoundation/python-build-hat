@@ -18,6 +18,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "port.h"
 
 /* Device ID manifest constants */
 #define ID_MOTOR_MEDIUM            0x30
@@ -54,8 +55,7 @@ extern int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes);
  */
 extern int device_new_combi_value(PyObject *self,
                                   int entry,
-                                  uint8_t *buffer,
-                                  uint16_t nbytes);
+                                  data_t *buffer);
 
 /* Update internal state from the format information */
 extern int device_new_format(PyObject *self);

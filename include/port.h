@@ -21,6 +21,15 @@
 
 #include "cmd.h"
 
+enum d_type { FLOAT, INTEGER } ;
+
+typedef struct data_s
+{
+    float f_data;
+    int   i_data;
+    enum d_type t;
+} data_t;
+
 /* Support types for ports */
 typedef struct min_max_s
 {
@@ -63,8 +72,7 @@ extern int port_detach_port(uint8_t port_id);
 extern int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes);
 extern int port_new_combi_value(uint8_t port_id,
                                 int entry,
-                                uint8_t *buffer,
-                                uint16_t nbytes);
+                                data_t *buffer);
 extern int port_new_format(uint8_t port_id);
 extern int port_feedback_status(uint8_t port_id, uint8_t status);
 

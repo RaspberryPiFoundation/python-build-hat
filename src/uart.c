@@ -58,6 +58,7 @@ unsigned char imagebuf[IMAGEBUFSIZE + 1];
 
 #define DISCONNECTED "disconnected"
 #define CONNECTED "connected to active ID "
+#define PULSEDONE "pulse done"
 #define ERROR "Error"
 #define MODE "  M"
 #define FORMAT "    format "
@@ -364,8 +365,8 @@ void parse_line(char *serbuf)
         if (serbuf[2] == ':') {
             lastport = port;
             if (strncmp(DISCONNECTED, serbuf + 4, strlen(DISCONNECTED)) == 0) {
-                parsed = 1;
-                ret = 1;
+                //parsed = 1;
+                //ret = 1;
                 DEBUG_PRINT("DISCONNECTING\n");
                 if (port_detach_port(port) < 0) {
                     errno = EPROTO;
@@ -381,8 +382,8 @@ void parse_line(char *serbuf)
                     strtol(serbuf + 4 + strlen(CONNECTED) - 1, NULL, 16);
                 *hw = 0;
                 *fw = 0;
-                parsed = 1;
-                ret = 1;
+                //parsed = 1;
+                //ret = 1;
 
                 if (port_attach_port(port, type_id, hw, fw) < 0) {
                     errno = EPROTO;
@@ -390,6 +391,11 @@ void parse_line(char *serbuf)
                 } else {
                    port_set_device_format(port,  ports[port][0] ,  ports[port][1] );
                 }
+            }
+            if (strncmp(PULSEDONE, serbuf + 4, strlen(PULSEDONE)) == 0) {
+                DEBUG_PRINT("Pulse done\n");
+                parsed = 1;
+                ret = 0;
             }
         } else if (serbuf[2] == '>') {
             parsed = 1;
@@ -400,14 +406,20 @@ void parse_line(char *serbuf)
             tmp[strlen(serbuf) - 5] = 0;
             char * token = strtok(tmp, " ");
             int mcount = 0;
-
             while( token != NULL ) {
-                uint8_t *tmpval = malloc(1);
-                tmpval[0] = strtol(token, NULL, 10);
-                port_new_combi_value(port, mcount, tmpval, 1);
+                data_t *tmpval = malloc(sizeof(data_t));
+                if(strchr(token, '.') != NULL){
+                    tmpval->i_data = strtof(token, NULL);
+                    tmpval->t = FLOAT;
+                } else {
+                    tmpval->i_data = strtol(token, NULL, 10);
+                    tmpval->t = INTEGER;
+                }
+                port_new_combi_value(port, mcount, tmpval);
                 token = strtok(NULL, " ");
                 mcount++;
             }
+
             callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA, NULL);
         }
     }
@@ -431,6 +443,7 @@ void parse_line(char *serbuf)
         error = TYPE_GENERIC_ERROR;
     }
     if (parsed) {
+        DEBUG_PRINT("Sending message\n");
         uint8_t *buffer = malloc(10);
         memset(buffer, 0, 10);
         buffer[0] = 10;
@@ -504,14 +517,9 @@ static void *run_comms_rx(void *args __attribute__((unused)))
                 sercounter += rcount;
 
                 for(int i=0; i<sercounter;i++){
-                    if(serbuf[i] == '\n' || serbuf[i] == '>'){
-                        if(serbuf[i] == '>'){
-                            serbuf[i+1] = 0;
-                            i++;
-                        } else {
-                            serbuf[i] = 0;
-                            serbuf[i-1] = 0;
-                        }
+                    if(serbuf[i] == '\n'){
+                        serbuf[i] = 0;
+                        serbuf[i-1] = 0;
                         parse_line(serbuf);
                         lfound = i + 1;
                         int tmp = 0;
