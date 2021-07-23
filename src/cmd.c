@@ -722,12 +722,8 @@ int cmd_set_pwm(uint8_t port_id, int8_t pwm)
 {
     char buf[100];
     sprintf(buf, "port %u ; set %f\r", port_id, ((float)pwm) / 100.0);
-    uint8_t * response = make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
-
-    if (response == NULL)
-        return -1;
-
-    return wait_for_complete_feedback(port_id, response);
+    make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
+    return 0;
 }
 
 

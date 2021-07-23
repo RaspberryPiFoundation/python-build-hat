@@ -768,8 +768,8 @@ Motor_float(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    //if (device_ensure_mode_info(motor->device) < 0)
+    //    return NULL;
 
     return PyObject_CallMethod(motor->port, "pwm", "i", 0);
 }

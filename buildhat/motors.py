@@ -76,13 +76,15 @@ class Motor(PortDevice):
         :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            self._motor.run_at_speed(self.default_speed)
+            #self._motor.run_at_speed(self.default_speed)
+            self._motor.pwm(self.default_speed)
         else:
-            self._motor.run_at_speed(speed)
+            #self._motor.run_at_speed(speed)
+            self._motor.pwm(speed)
 
     def stop(self):
         """Stops motor"""
-        self._motor.brake()
+        self._motor.float()
 
     def get_position(self):
         """Gets position of motor with relation to preset position (can be negative or positive).
