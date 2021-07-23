@@ -136,16 +136,9 @@ class MotorPair(Device):
     """
     def __init__(self, leftport, rightport):
         super().__init__()
-        self._leftport = getattr(self._instance.port, leftport)
-        self._rightport = getattr(self._instance.port, rightport)
-        if self._leftport.info()['type'] not in MOTOR_SET:
-            raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (leftport, self.whatami(leftport)))
-        if self._rightport.info()['type'] not in MOTOR_SET:
-            raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (rightport, self.whatami(rightport)))
-        self._leftmotor = self._leftport.motor
-        self._rightmotor = self._rightport.motor
-        self._pair = self._leftmotor.pair(self._rightmotor)
-        self.default_speed = 10
+        self._leftmotor = Motor(leftport)
+        self._rightmotor = Motor(rightport)
+        self.default_speed = 50
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
@@ -165,7 +158,8 @@ class MotorPair(Device):
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        self._pair.run_for_degrees(int(rotations * 360), speedl, speedr)
+        self._leftmotor.run_for_degrees(int(rotations * 360), speedl)
+        self._rightmotor.run_for_degrees(int(rotations * 360), speedr)
 
     def run_for_degrees(self, degrees, speedl=None, speedr=None):
         """Runs pair of motors for degrees
@@ -178,7 +172,8 @@ class MotorPair(Device):
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        self._pair.run_for_degrees(degrees, speedl, speedr)
+        self._leftmotor.run_for_degrees(degrees, speedl)
+        self._rightmotor.run_for_degrees(degrees, speedr)
 
     def run_for_seconds(self, seconds, speedl=None, speedr=None):
         """Runs pair for N seconds
@@ -191,7 +186,8 @@ class MotorPair(Device):
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        self._pair.run_for_time(int(seconds * 1000), speedl, speedr)
+        self._leftmotor.run_for_time(int(seconds * 1000), speedl)
+        self._rightmotor.run_for_time(int(seconds * 1000), speedr)
 
     def start(self, speedl=None, speedr=None):
         """Start motors
@@ -202,11 +198,13 @@ class MotorPair(Device):
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        self._pair.run_at_speed(speedl, speedr)
+        self._leftmotor.start(speedl)
+        self._rightmotor.start(speedr)
 
     def stop(self):
         """Stop motors"""
-        self._pair.brake()
+        self._leftmotor.stop()
+        self._rightmotor.stop()
 
     def run_to_position(self, degreesl, degreesr, speed=None):
         """Runs pair to position (in degrees)
@@ -215,8 +213,11 @@ class MotorPair(Device):
            :param degreesr: Position in degrees for right motor
            :param speed: Speed ranging from -100 to 100
         """
+        print("Running to pos", degreesl, degreesr)
         if speed is None:
-            self._pair.run_to_position(degreesl, degreesr, self.default_speed)
+            self._leftmotor.run_to_position(degreesl, self.default_speed)
+            self._rightmotor.run_to_position(degreesr, self.default_speed)
         else:
-            self._pair.run_to_position(degreesl, degreesr, speed)
+            self._leftmotor.run_to_position(degreesl, speed)
+            self._rightmotor.run_to_position(degreesr, speed)
 

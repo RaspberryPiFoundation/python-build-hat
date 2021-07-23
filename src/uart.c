@@ -383,7 +383,6 @@ void parse_line(char *serbuf)
                 *fw = 0;
                 //parsed = 1;
                 //ret = 1;
-
                 if (port_attach_port(port, type_id, hw, fw) < 0) {
                     errno = EPROTO;
                     ret = -1;
@@ -468,7 +467,8 @@ void parse_line(char *serbuf)
 static void *run_comms_rx(void *args __attribute__((unused)))
 {
     char buf[10];
-    char serbuf[100];
+    #define SERBUF_SIZE 300
+    char serbuf[SERBUF_SIZE];
     int sercounter = 0;
     int nfds;
     int lfound = 0;
@@ -485,6 +485,13 @@ static void *run_comms_rx(void *args __attribute__((unused)))
     ev1.events = EPOLLIN;
     ev1.data.fd = uart_fd;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, uart_fd, &ev1) == -1) {
+        perror("epoll_ctl: listen_sock");
+        exit(EXIT_FAILURE);
+    }
+
+    ev1.events = EPOLLIN;
+    ev1.data.fd = rx_event_fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rx_event_fd, &ev1) == -1) {
         perror("epoll_ctl: listen_sock");
         exit(EXIT_FAILURE);
     }
@@ -512,6 +519,10 @@ static void *run_comms_rx(void *args __attribute__((unused)))
                 if (write(debugfd, buf, rcount) < 0){
                 }
 #endif
+                if(sercounter+rcount > SERBUF_SIZE){
+                    // Shouldn't happen, now that I increased buffer size!
+                    sercounter = 0;
+                }
                 memcpy(serbuf+sercounter, buf, rcount);
                 sercounter += rcount;
 
@@ -829,12 +840,10 @@ int uart_open_hat(void)
  */
 int uart_close_hat(void)
 {
-    PyObject *tmp;
-
     /* Kill comms thread */
     shutdown = 1;
     signal_rx_shutdown();
-    queue_shutdown(); /* Kicks the tx thread */
+    queue_shutdown(); // Kicks the tx thread
     Py_BEGIN_ALLOW_THREADS
     pthread_join(comms_rx_thread, NULL);
     pthread_join(comms_tx_thread, NULL);
@@ -851,24 +860,6 @@ int uart_close_hat(void)
         rx_event_fd = -1;
     }
 
-    //close_wake_gpio();
-
-    tmp = firmware_object;
-    firmware_object = NULL;
-    Py_XDECREF(tmp);
-
     return 0;
 }
 
-
-/* Register the firmware object with the UART subsystem so it knows
- * where to direct firmware callbacks
- */
-void uart_register_firmware_object(PyObject *firmware)
-{
-    PyObject *tmp = firmware_object;
-
-    Py_INCREF(firmware);
-    firmware_object = firmware;
-    Py_XDECREF(tmp);
-}
