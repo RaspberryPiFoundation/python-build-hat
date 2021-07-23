@@ -42,7 +42,6 @@
 #include "queue.h"
 #include "port.h"
 #include "pair.h"
-#include "firmware.h"
 #include "callback.h"
 #include "protocol.h"
 
@@ -420,7 +419,7 @@ void parse_line(char *serbuf)
                 mcount++;
             }
 
-            callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA, NULL);
+            callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA);
         }
     }
     if (strncmp(MODE, serbuf, strlen(MODE)) == 0) {

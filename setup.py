@@ -22,8 +22,7 @@ hub_module = Extension('build_hat',
                                   'src/device.c',
                                   'src/motor.c',
                                   'src/pair.c',
-                                  'src/callback.c',
-                                  'src/firmware.c'])
+                                  'src/callback.c'])
 hub_module.define_macros.append(('LIB_VERSION', LIB_VERSION))
 
 # If DEBUG_UART is set, extra commands are added to the hub

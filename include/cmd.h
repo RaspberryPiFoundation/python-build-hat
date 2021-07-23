@@ -81,12 +81,6 @@ extern PyObject *cmd_version_as_unicode(uint8_t *buffer);
  */
 extern PyObject *cmd_get_hardware_version(void);
 
-/* Sends a Hub Property Request Update command for the FW Version
- * property and waits for the Hub Property Update in response.  The
- * version is converted into a Python string of the form "M.m.BB.bbbb"
- */
-extern PyObject *cmd_get_firmware_version(void);
-
 /* Sends a Port Information Request command for the value and waits
  * for the Port Value (Single or Combination) response.  The values
  * will be inserted into the device structure.  Returns 0 on success
@@ -360,49 +354,6 @@ extern int cmd_connect_virtual_port(uint8_t port_1_id,
  * Returns 0 on success, -1 on error.
  */
 extern int cmd_disconnect_virtual_port(uint8_t port_id);
-
-/* Sends a Firmware Request to initialize the external SPI Flash on
- * the HAT for a new firmware image.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_firmware_init(uint32_t nbytes);
-
-/* Sends a Firmware Request to write up to 64 bytes to the next area
- * in external SPI Flash.  Returns 0 on success, -1 on error.
- */
-extern int cmd_firmware_store(const uint8_t *data, uint32_t nbytes);
-
-/* Sends a Firmware Request for the number of bytes currently written
- * to external SPI Flash for the new image.  Returns -1 on error, and
- * the number of bytes written on success.
- */
-extern int cmd_firmware_length(void);
-
-/* Sends a Firmware Request for the running (internal) application's
- * stored or calculated checksum.
- * Returns 0 on success, -1 on error (with an exception already set).
- * The checksum is returned through the pchecksum parameter.
- */
-extern int cmd_firmware_checksum(uint8_t request_type, uint32_t *pchecksum);
-
-/* Sends a Firmware Request to validate the image in external flash.
- * Returns 0 on success, -1 on error (with an exception already raised).
- * The validity and checksums are returned through pointer arguments.
- */
-extern int cmd_firmware_validate_image(int *pvalid,
-                                       uint32_t *pstored_checksum,
-                                       uint32_t *pcalc_checksum);
-
-/* Sends a Firmware Request asking for the Device ID of the external
- * flash device.  Returns 0 on success, -1 on error.
- */
-extern int cmd_firmware_get_flash_devid(uint32_t *pdev_id);
-
-/* Sends a Firmware Request asking for 16 bytes from flash memory.
- * The "buffer" parameter must be a 16-byte array.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_firmware_read_flash(uint32_t addr, uint8_t *buffer);
 
 /* Sends an Action turning the Vcc Port line (the power to the ports)
  * on or off, as requested.  The "state" parameter is a boolean: if it is

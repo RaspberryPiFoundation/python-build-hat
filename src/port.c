@@ -891,7 +891,7 @@ int port_attach_port(uint8_t port_id,
     PyGILState_Release(gstate);
 
     /* Queue a callback */
-    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_ATTACHED, NULL);
+    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_ATTACHED);
 }
 
 
@@ -923,7 +923,7 @@ int port_detach_port(uint8_t port_id)
     /* Release the penguins^WGIL */
     PyGILState_Release(gstate);
 
-    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_DETACHED, NULL);
+    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_DETACHED);
 }
 
 
@@ -971,7 +971,7 @@ int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
 
     PyGILState_Release(gstate);
     if(rv > 0)
-        callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
+        callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA);
 
     return rv;
 }
@@ -1066,12 +1066,11 @@ int port_feedback_status(uint8_t port_id, uint8_t status)
     if (port->motor != Py_None)
     {
         if ((status & 0x02) != 0)
-            callback_queue(CALLBACK_MOTOR, port_id, CALLBACK_COMPLETE, NULL);
+            callback_queue(CALLBACK_MOTOR, port_id, CALLBACK_COMPLETE);
         if ((status & 0x04) != 0)
             callback_queue(CALLBACK_MOTOR, port_id,
                            ((status & 0x20) != 0) ? CALLBACK_STALLED :
-                           CALLBACK_INTERRUPTED,
-                           NULL);
+                           CALLBACK_INTERRUPTED);
     }
     return device_set_port_busy(port->device, status & 0x01);
 }

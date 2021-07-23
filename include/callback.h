@@ -53,7 +53,6 @@ extern int callback_finalize(void);
  */
 extern int callback_queue(uint8_t cb_type,
                           uint8_t port_id,
-                          uint8_t event,
-                          PyObject *firmware);
+                          uint8_t event);
 
 #endif /* RPI_STRAWBERRY_CALLBACK_H_INCLUDED */

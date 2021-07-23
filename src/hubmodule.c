@@ -27,7 +27,6 @@
 #include "motor.h"
 #include "pair.h"
 #include "callback.h"
-#include "firmware.h"
 
 /* Hijinks is required to pass a string through compiler defines */
 #define XSTR(s) #s
@@ -93,7 +92,6 @@ typedef struct
     PyObject_HEAD
     PyObject *ports;
     PyObject *exception;
-    PyObject *firmware;
     int initialised;
 } HubObject;
 
@@ -102,7 +100,6 @@ static int
 Hub_traverse(HubObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->ports);
-    Py_VISIT(self->firmware);
     Py_VISIT(self->exception);
     return 0;
 }
@@ -112,7 +109,6 @@ static int
 Hub_clear(HubObject *self)
 {
     Py_CLEAR(self->ports);
-    Py_CLEAR(self->firmware);
     Py_CLEAR(self->exception);
     return 0;
 }
@@ -154,8 +150,6 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     Py_INCREF(Py_None);
     self->exception = Py_None;
-    Py_INCREF(Py_None);
-    self->firmware = Py_None;
     if (callback_init() < 0)
     {
         Py_DECREF(self);
@@ -176,15 +170,13 @@ static int
 Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = { NULL };
-    PyObject *new;
-    PyObject *old;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "", kwlist))
         return -1;
     if (self->initialised)
         return 0;
 
-    new = cmd_get_exception();
+    /*new = cmd_get_exception();
     Py_INCREF(new);
     old = self->exception;
     Py_DECREF(old);
@@ -198,7 +190,7 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     }
     old = self->firmware;
     Py_DECREF(old);
-    self->firmware = new;
+    self->firmware = new;*/
     self->initialised = 1;
 
     /* Give the HAT a chance to recognise what is attached to it */
@@ -247,12 +239,12 @@ Hub_get_exception(HubObject *self, void *closure)
 }
 
 /* Ditto the firmware upgrader */
-static PyObject *
+/*static PyObject *
 Hub_get_firmware(HubObject *self, void *closure)
 {
     Py_INCREF(self->firmware);
     return self->firmware;
-}
+}*/
 
 
 static PyGetSetDef Hub_getsetters[] =
@@ -263,13 +255,6 @@ static PyGetSetDef Hub_getsetters[] =
         (getter)Hub_get_exception,
         NULL,
         "The internal protocol error",
-        NULL
-    },
-    {
-        "firmware",
-        (getter)Hub_get_firmware,
-        NULL,
-        "The firmware upgrader",
         NULL
     },
     { NULL }
@@ -292,12 +277,12 @@ Hub_info(PyObject *self, PyObject *args)
         return NULL;
 
     /* ...and the firmware revision while we're at it */
-    fw_revision = cmd_get_firmware_version();
+    /*fw_revision = cmd_get_firmware_version();
     if (fw_revision == NULL)
     {
         Py_DECREF(hw_revision);
         return NULL;
-    }
+    }*/
 
     dict = Py_BuildValue("{sOsO}",
                          "hardware_revision", hw_revision,
@@ -419,7 +404,7 @@ PyInit_build_hat(void)
         return NULL;
     }
 
-    if (firmware_modinit() < 0)
+    /*if (firmware_modinit() < 0)
     {
         cmd_demodinit();
         pair_demodinit();
@@ -429,11 +414,10 @@ PyInit_build_hat(void)
         Py_DECREF(&HubType);
         Py_DECREF(hub);
         return NULL;
-    }
+    }*/
 
     if (PyModule_AddObject(hub, "BuildHAT", (PyObject *)&HubType) < 0)
     {
-        firmware_demodinit();
         cmd_demodinit();
         pair_demodinit();
         port_demodinit();
