@@ -341,31 +341,7 @@ int cmd_get_port_value(uint8_t port_id)
 {
     char buf[100];
     sprintf(buf, "selonce 0\r");
-    uint8_t * response = make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
-
-    //if (response == NULL)
-    //    return -1;
-
-    /*uint8_t *response = make_request(false, 5, TYPE_PORT_INFO_REQ,
-                                     port_id,
-                                     PORT_INFO_VALUE);
-
-    if (response == NULL)
-        return -1;
-
-    if (response[0] < 4 ||
-        (response[2] != TYPE_PORT_VALUE_SINGLE &&
-         response[2] != TYPE_PORT_VALUE_COMBINED) ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port Info (Value) request");
-        return -1;
-    }
-
-    // The values will already have been put in place
-    free(response);*/
+    make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
     return 0;
 }
 
@@ -891,50 +867,11 @@ int cmd_start_speed_for_time(uint8_t port_id,
 {
     char buf[1000];
     sprintf(buf, "port %u ; pwm ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
-    uint8_t * response = make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
-
-    /*if (response == NULL)
-        return -1;
-    return wait_for_complete_feedback(port_id, response);*/
-
+    make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     if (blocking){
-        //response = get_response(TYPE_PORT_OUTPUT, true, port_id);
         return wait_for_complete_feedback(port_id, NULL);
     }
-
     return 0;
-    /*uint8_t *response = make_request(true, 12, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_START_SPEED_FOR_TIME,
-                                     U16_TO_BYTE_ARG(time),
-                                     (uint8_t)speed,
-                                     max_power,
-                                     stop,
-                                     use_profile);
-    if (response == NULL)
-        return -1;
-    if (blocking)
-        return wait_for_complete_feedback(port_id, response);
-
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Start Speed For Time");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        // "Current Command(s) Discarded" bit set 
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;*/
 }
 
 
@@ -1082,40 +1019,10 @@ int cmd_goto_abs_position(uint8_t port_id,
 
     char buf[1000];
     sprintf(buf, "port %d ; pid 0 3 0 s2 0.0027777778 1 15 0 .1 3 ; plimit %f ; set %f ;\r", port_id, (float)speed/100.0, (float)position/360.0);
-
-    uint8_t * response = make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
-
-    /*uint8_t *response = make_request(true, 14, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_GOTO_ABS_POSITION,
-                                     U32_TO_BYTE_ARG((uint32_t)position),
-                                     (uint8_t)speed,
-                                     max_power,
-                                     stop,
-                                     use_profile);
-    if (response == NULL)
-        return -1;
-    if (blocking)
-        return wait_for_complete_feedback(port_id, response);
-
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Goto Abs Position");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        // "Current Command(s) Discarded" bit set
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-    */
+    make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
+    /*if (blocking){
+        return wait_for_complete_feedback(port_id, NULL);
+    }*/
     return 0;
 }
 
@@ -1355,10 +1262,7 @@ int cmd_set_combi_mode(uint8_t port_id,
                        int num_modes,
                        uint8_t notifications)
 {
-    uint8_t *response;
     int i;
-    //uint16_t combi_map;
-
     char buf[200];
     char modestr[20];
     char mod[20];
@@ -1375,10 +1279,7 @@ int cmd_set_combi_mode(uint8_t port_id,
     else
         sprintf(buf, "port %u ; combi %d %s\r", port_id, combi_index, modestr);
 
-    response = make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
-    /*if (response == NULL)
-        return -1;*/
-
+    make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
     return 0;
 }
 
