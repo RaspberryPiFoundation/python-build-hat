@@ -81,9 +81,6 @@ static pthread_t comms_tx_thread;
 static int shutdown = 0;
 static int heard_from_hat = 0;
 
-static PyObject *firmware_object = NULL;
-
-
 /* Bit manipulation macros for multi-word bitmaps */
 #define BITS_PER_WORD 32
 #define BITMAP_INDEX(b) ((b) / BITS_PER_WORD)
