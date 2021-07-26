@@ -59,16 +59,16 @@ class Motor(PortDevice):
         else:
             self._motor.run_to_position(degrees, speed)
 
-    def run_for_seconds(self, seconds, speed=None):
+    def run_for_seconds(self, seconds, speed=None, blocking=True):
         """Runs motor for N seconds
 
         :param seconds: Time in seconds
         :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            self._motor.run_for_time(int(seconds * 1000), self.default_speed)
+            self._motor.run_for_time(int(seconds * 1000), self.default_speed, blocking=blocking)
         else:
-            self._motor.run_for_time(int(seconds * 1000), speed)
+            self._motor.run_for_time(int(seconds * 1000), speed, blocking=blocking)
 
     def start(self, speed=None):
         """Start motor
@@ -76,11 +76,9 @@ class Motor(PortDevice):
         :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            #self._motor.run_at_speed(self.default_speed)
-            self._motor.pwm(self.default_speed)
+            self._motor.run_at_speed(self.default_speed)
         else:
-            #self._motor.run_at_speed(speed)
-            self._motor.pwm(speed)
+            self._motor.run_at_speed(speed)
 
     def stop(self):
         """Stops motor"""
@@ -186,8 +184,8 @@ class MotorPair(Device):
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        self._leftmotor.run_for_time(int(seconds * 1000), speedl)
-        self._rightmotor.run_for_time(int(seconds * 1000), speedr)
+        self._leftmotor.run_for_seconds(seconds, speedl, blocking=False)
+        self._rightmotor.run_for_seconds(seconds, speedr)
 
     def start(self, speedl=None, speedr=None):
         """Start motors
@@ -213,11 +211,9 @@ class MotorPair(Device):
            :param degreesr: Position in degrees for right motor
            :param speed: Speed ranging from -100 to 100
         """
-        print("Running to pos", degreesl, degreesr)
         if speed is None:
             self._leftmotor.run_to_position(degreesl, self.default_speed)
             self._rightmotor.run_to_position(degreesr, self.default_speed)
         else:
             self._leftmotor.run_to_position(degreesl, speed)
             self._rightmotor.run_to_position(degreesr, speed)
-

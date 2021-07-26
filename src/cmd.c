@@ -340,7 +340,7 @@ PyObject *cmd_get_firmware_version(void)
 int cmd_get_port_value(uint8_t port_id)
 {
     char buf[100];
-    sprintf(buf, "selonce 0\r");
+    sprintf(buf, "port %d ; selonce 0\r", port_id);
     make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
     return 0;
 }
@@ -721,7 +721,7 @@ static int wait_for_complete_feedback(uint8_t port_id, uint8_t *response)
 int cmd_set_pwm(uint8_t port_id, int8_t pwm)
 {
     char buf[100];
-    sprintf(buf, "port %u ; set %f\r", port_id, ((float)pwm) / 100.0);
+    sprintf(buf, "port %u ; pwm ; set %f\r", port_id, ((float)pwm) / 100.0);
     make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     return 0;
 }
@@ -816,18 +816,10 @@ int cmd_start_speed(uint8_t port_id,
                     uint8_t max_power,
                     uint8_t use_profile)
 {
-    uint8_t *response = make_request(true, 9, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_START_SPEED,
-                                     (uint8_t)speed,
-                                     max_power,
-                                     use_profile);
-    if (response == NULL)
-        return -1;
-
-    return wait_for_complete_feedback(port_id, response);
+    char buf[1000];
+    sprintf(buf, "port %u ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit .6 ; bias .2 ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set %d\r", port_id, speed);
+    make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
+    return 0;
 }
 
 
@@ -862,7 +854,7 @@ int cmd_start_speed_for_time(uint8_t port_id,
                              bool blocking)
 {
     char buf[1000];
-    sprintf(buf, "port %u ; pwm ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
+    sprintf(buf, "port %u ; pwm ; plimit .6 ; bias .4 ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
     make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     if (blocking){
         return wait_for_complete_feedback(port_id, NULL);
@@ -1014,7 +1006,7 @@ int cmd_goto_abs_position(uint8_t port_id,
 {
 
     char buf[1000];
-    sprintf(buf, "port %d ; pid 0 3 0 s2 0.0027777778 1 15 0 .1 3 ; plimit %f ; set %f ;\r", port_id, (float)speed/100.0, (float)position/360.0);
+    sprintf(buf, "port %d ; pid 0 3 0 s2 0.0027777778 1 15 0 .1 3 ; plimit %f ; set %f ;\r", port_id, (float)speed/100.0, (float)position/180.0);
     make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
     /*if (blocking){
         return wait_for_complete_feedback(port_id, NULL);

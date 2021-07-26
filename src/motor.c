@@ -1072,18 +1072,18 @@ Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall) == 0)
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    //if (device_ensure_mode_info(motor->device) < 0)
+    //    return NULL;
 
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
     decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
 
-    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
         set_stall(motor, stall) < 0)
-        return NULL;
+        return NULL;*/
 
     if (cmd_start_speed(port_get_id(motor->port),
                         speed, power, use_profile) < 0)
