@@ -854,6 +854,7 @@ int cmd_start_speed_for_time(uint8_t port_id,
                              bool blocking)
 {
     char buf[1000];
+    // Have to use pulse during parameter to represent speed (it is a PWM value)
     sprintf(buf, "port %u ; pwm ; plimit .6 ; bias .4 ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
     make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     if (blocking){
