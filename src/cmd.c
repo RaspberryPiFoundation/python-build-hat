@@ -982,7 +982,8 @@ int cmd_goto_abs_position(uint8_t port_id,
 {
 
     char buf[1000];
-    sprintf(buf, "port %d ; pid 0 3 0 s2 0.0027777778 1 15 0 .1 3 ; plimit %f ; set %f ;\r", port_id, (float)speed/100.0, (float)position/180.0);
+    // The position PID doesn't actually support speed, so try to make use of plimit somewhat?
+    sprintf(buf, "port %d ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit %f ; bias .4 ;  pid 0 0 5 s2 0.0027777778 1 5 0 .1 3 ; set %f ;\r", port_id, (float)speed/100.0, (float)position/360.0);
     make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
     /*if (blocking){
         return wait_for_complete_feedback(port_id, NULL);
