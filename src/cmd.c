@@ -909,44 +909,20 @@ int cmd_start_speed_for_time_pair(uint8_t port_id,
 
 
 int cmd_start_speed_for_degrees(uint8_t port_id,
-                                int32_t degrees,
+                                double newpos,
+                                double curpos,
                                 int8_t speed,
                                 uint8_t max_power,
                                 uint8_t stop,
                                 uint8_t use_profile,
                                 bool blocking)
 {
-    uint8_t *response = make_request(true, 14, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_START_SPEED_FOR_DEGREES,
-                                     U32_TO_BYTE_ARG((uint32_t)degrees),
-                                     (uint8_t)speed,
-                                     max_power,
-                                     stop,
-                                     use_profile);
-    if (response == NULL)
-        return -1;
-    if (blocking)
-        return wait_for_complete_feedback(port_id, response);
-
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Start Speed For Degrees");
-        return -1;
+    char buf[1000];
+    sprintf(buf, "port %u ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit .6 ; bias .4 ; pid 0 0 5 s2 0.0027777778 1 5 0 .1 3 ; set ramp %f %f %f 0\r", port_id, curpos, newpos, (newpos - curpos) / (double)speed);
+    make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
+    if (blocking){
+        return wait_for_complete_feedback(port_id, NULL);
     }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
     return 0;
 }
 

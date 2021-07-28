@@ -58,6 +58,7 @@ unsigned char imagebuf[IMAGEBUFSIZE + 1];
 #define DISCONNECTED "disconnected"
 #define CONNECTED "connected to active ID "
 #define PULSEDONE "pulse done"
+#define RAMPDONE "ramp done"
 #define ERROR "Error"
 #define MODE "  M"
 #define FORMAT "    format "
@@ -389,6 +390,11 @@ void parse_line(char *serbuf)
             }
             if (strncmp(PULSEDONE, serbuf + 4, strlen(PULSEDONE)) == 0) {
                 DEBUG_PRINT("Pulse done\n");
+                parsed = 1;
+                ret = 0;
+            }
+            if (strncmp(RAMPDONE, serbuf + 4, strlen(RAMPDONE)) == 0) {
+                DEBUG_PRINT("Ramp done\n");
                 parsed = 1;
                 ret = 0;
             }

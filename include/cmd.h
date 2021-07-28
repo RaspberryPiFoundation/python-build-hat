@@ -252,7 +252,8 @@ extern int cmd_start_speed_for_time_pair(uint8_t port_id,
  * have been raised).
  */
 extern int cmd_start_speed_for_degrees(uint8_t port_id,
-                                       int32_t degrees,
+                                       double newpos,
+                                       double curpos,
                                        int8_t speed,
                                        uint8_t max_power,
                                        uint8_t stop,

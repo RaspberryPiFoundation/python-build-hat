@@ -18,6 +18,7 @@ class Motor(PortDevice):
         self.default_speed = 50
         self._device.mode([(1,0),(2,0),(3,0)])
         self._when_rotated = None
+        self._ramp = 0
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
@@ -33,9 +34,9 @@ class Motor(PortDevice):
         :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            self._motor.run_for_degrees(int(rotations * 360), self.default_speed)
+            self.run_for_degrees(int(rotations * 360), self.default_speed)
         else:
-            self._motor.run_for_degrees(int(rotations * 360), speed)
+            self.run_for_degrees(int(rotations * 360), speed)
 
     def run_for_degrees(self, degrees, speed=None):
         """Runs motor for N degrees
@@ -43,10 +44,12 @@ class Motor(PortDevice):
         :param degrees: Number of degrees to rotate
         :param speed: Speed ranging from -100 to 100
         """
+        newpos = (degrees / 360.0) + self._ramp
         if speed is None:
-            self._motor.run_for_degrees(degrees, self.default_speed)
+            self._motor.run_for_degrees(newpos, self._ramp, self.default_speed)
         else:
-            self._motor.run_for_degrees(degrees, speed)
+            self._motor.run_for_degrees(newpos, self._ramp, speed)
+        self._ramp = newpos
 
     def run_to_position(self, degrees, speed=None):
         """Runs motor to position (in degrees)
