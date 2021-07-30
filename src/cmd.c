@@ -1249,68 +1249,6 @@ int cmd_set_combi_mode(uint8_t port_id,
     return 0;
 }
 
-/* For a virtual port connection, we do not expect a reply as such.
- * We should get a Hub Attached IO for the new virtual port, and we
- * give ourselves permission to use the MotorPair from that.  This
- * requires careful interlocking...
- */
-int cmd_connect_virtual_port(uint8_t port_1_id, uint8_t port_2_id)
-{
-    uint8_t *buffer = malloc(6);
-
-    if (buffer == NULL)
-    {
-        PyErr_NoMemory();
-        return -1;
-    }
-
-    buffer[0] = 6;
-    buffer[1] = 0x00; /* Hub ID */
-    buffer[2] = TYPE_VIRTUAL_PORT_SETUP;
-    buffer[3] = 1; /* Connect */
-    buffer[4] = port_1_id;
-    buffer[5] = port_2_id;
-
-    if (queue_add_buffer(buffer) != 0)
-    {
-        /* Exception already raised */
-        free(buffer);
-        return -1;
-    }
-
-    return 0;
-}
-
-
-/* On this occasion we expect a Hub Attached I/O to tell us the
- * virtual port is now detached.
- */
-int cmd_disconnect_virtual_port(uint8_t port_id)
-{
-    uint8_t *buffer = malloc(5);
-
-    if (buffer == NULL)
-    {
-        PyErr_NoMemory();
-        return -1;
-    }
-
-    buffer[0] = 5;
-    buffer[1] = 0x00; /* Hub ID */
-    buffer[2] = TYPE_VIRTUAL_PORT_SETUP;
-    buffer[3] = 0; /* Disconnect */
-    buffer[4] = port_id;
-
-    if (queue_add_buffer(buffer) != 0)
-    {
-        /* Exception already raised */
-        free(buffer);
-        return -1;
-    }
-
-    return 0;
-}
-
 
 int cmd_set_vcc_port(int state)
 {
