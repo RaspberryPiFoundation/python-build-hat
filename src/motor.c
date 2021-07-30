@@ -24,7 +24,6 @@
 #include "motor.h"
 #include "port.h"
 #include "device.h"
-#include "pair.h"
 #include "motor-settings.h"
 #include "callback.h"
 
@@ -1314,11 +1313,6 @@ Motor_pid(PyObject *self, PyObject *args)
 }
 
 
-/* Forward declaration; Motor_pair needs access to MotorType */
-static PyObject *
-Motor_pair(PyObject *self, PyObject *args);
-
-
 static PyMethodDef Motor_methods[] = {
     { "mode", Motor_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Motor_get, METH_VARARGS, "Get a set of readings from the motor" },
@@ -1366,10 +1360,6 @@ static PyMethodDef Motor_methods[] = {
     {
         "pid", Motor_pid, METH_VARARGS,
         "Read or set the P, I and D values"
-    },
-    {
-        "pair", Motor_pair, METH_VARARGS,
-        "Pair two motors to control them as one"
     },
     { NULL, NULL, 0, NULL }
 };
@@ -1496,44 +1486,6 @@ static PyTypeObject MotorType =
     .tp_getset = Motor_getsetters,
     .tp_repr = Motor_repr
 };
-
-
-static PyObject *
-Motor_pair(PyObject *self, PyObject *args)
-{
-    MotorObject *motor = (MotorObject *)self;
-    PyObject *other;
-    PyObject *pair;
-    clock_t start;
-
-    if (PyArg_ParseTuple(args, "O:pair", &other) == 0)
-        return NULL;
-    if (!PyObject_IsInstance(other, (PyObject *)&MotorType))
-    {
-        PyErr_SetString(PyExc_TypeError,
-                        "Argument to pair() must be a Motor");
-        return NULL;
-    }
-
-    if ((pair = pair_get_pair(motor->port,
-                              ((MotorObject *)other)->port)) == NULL)
-        return NULL;
-
-    /* Wait for ID to become valid or timeout */
-    start = clock();
-    while (!pair_is_ready(pair))
-    {
-        if (clock() - start > CLOCKS_PER_SEC)
-        {
-            /* Timeout */
-            if (pair_unpair(pair) < 0)
-                return NULL;
-            Py_RETURN_FALSE;
-        }
-    }
-
-    return pair;
-}
 
 
 int motor_modinit(void)

@@ -21,7 +21,6 @@ hub_module = Extension('build_hat',
                                   'src/port.c',
                                   'src/device.c',
                                   'src/motor.c',
-                                  'src/pair.c',
                                   'src/callback.c'])
 hub_module.define_macros.append(('LIB_VERSION', LIB_VERSION))
 

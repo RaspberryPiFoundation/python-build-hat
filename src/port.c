@@ -23,7 +23,6 @@
 #include "cmd.h"
 #include "device.h"
 #include "motor.h"
-#include "pair.h"
 #include "callback.h"
 #include "protocol.h"
 
@@ -908,7 +907,6 @@ int port_detach_port(uint8_t port_id)
     /* Claim the global interpreter lock */
     gstate = PyGILState_Ensure();
     port = (PortObject *)port_set->ports[port_id];
-    pair_detach_subport(port_id);
 
     device_detach(port->device);
     Py_XDECREF(port->device);

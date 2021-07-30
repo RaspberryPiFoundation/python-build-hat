@@ -24,7 +24,6 @@
 
 #include "callback.h"
 #include "port.h"
-#include "pair.h"
 #include "protocol.h"
 
 typedef struct cb_queue_s
@@ -149,11 +148,6 @@ static void *run_callbacks(void *arg __attribute__((unused)))
             case CALLBACK_MOTOR:
                 if (port_handle_motor_callback(item->port_id,
                                                item->event) < 0)
-                    report_callback_error();
-                break;
-
-            case CALLBACK_PAIR:
-                if (pair_handle_callback(item->port_id, item->event) < 0)
                     report_callback_error();
                 break;
 

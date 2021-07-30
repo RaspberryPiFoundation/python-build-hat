@@ -25,7 +25,6 @@
 #include "port.h"
 #include "device.h"
 #include "motor.h"
-#include "pair.h"
 #include "callback.h"
 
 /* Hijinks is required to pass a string through compiler defines */
@@ -384,18 +383,8 @@ PyInit_build_hat(void)
         return NULL;
     }
 
-    if (pair_modinit() < 0)
-    {
-        port_demodinit();
-        motor_demodinit();
-        device_demodinit();
-        Py_DECREF(&HubType);
-        Py_DECREF(hub);
-    }
-
     if (cmd_modinit(hub) < 0)
     {
-        pair_demodinit();
         port_demodinit();
         motor_demodinit();
         device_demodinit();
@@ -419,7 +408,6 @@ PyInit_build_hat(void)
     if (PyModule_AddObject(hub, "BuildHAT", (PyObject *)&HubType) < 0)
     {
         cmd_demodinit();
-        pair_demodinit();
         port_demodinit();
         motor_demodinit();
         device_demodinit();

@@ -41,7 +41,6 @@
 #include "uart.h"
 #include "queue.h"
 #include "port.h"
-#include "pair.h"
 #include "callback.h"
 #include "protocol.h"
 
