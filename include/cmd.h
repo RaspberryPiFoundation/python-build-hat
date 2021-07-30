@@ -342,29 +342,4 @@ extern int cmd_set_combi_mode(uint8_t port,
                               int num_modes,
                               uint8_t notifications);
 
-/* Sends an Action turning the Vcc Port line (the power to the ports)
- * on or off, as requested.  The "state" parameter is a boolean: if it is
- * non-zero the power will be turned on, if it is zero the power will be
- * turned off.  Returns 0 on success, -1 on error (with an exception
- * raised as usual).
- */
-extern int cmd_set_vcc_port(int state);
-
-/* Sends an Alert message with an Enable operation for the given alert.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_enable_alert(uint8_t alert);
-
-/* Sends an Alert message with a Disable operation for the given alert.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_disable_alert(uint8_t alert);
-
-/* Sends an Alert message with a Request Update operation for the given
- * alert.  Returns the alert status (0x00 for OK, 0xff for alert) on
- * success, -1 on error.
- */
-extern int cmd_request_alert(uint8_t alert);
-
-
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */
