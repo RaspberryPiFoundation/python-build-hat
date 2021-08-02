@@ -337,10 +337,10 @@ PyObject *cmd_get_firmware_version(void)
 }
 
 
-int cmd_get_port_value(uint8_t port_id)
+int cmd_get_port_value(uint8_t port_id, uint8_t selindex)
 {
     char buf[100];
-    sprintf(buf, "port %d ; selonce 0\r", port_id);
+    sprintf(buf, "port %d ; selonce %d\r", port_id, selindex);
     make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
     return 0;
 }
@@ -947,86 +947,12 @@ int cmd_write_mode_data(uint8_t port_id,
 
 int cmd_set_mode(uint8_t port_id, uint8_t mode, uint8_t notifications)
 {
-    uint8_t *response;
-
-    /* Mode zero appears to be a legacy */
-    response = make_request(false, 10, TYPE_PORT_FORMAT_SETUP_SINGLE,
-                            port_id,
-                            mode,
-                            1, 0, 0, 0, /* Delta = 1 */
-                            notifications);
-    if (response == NULL)
-        return -1;
-
-    if (response[0] != 10 ||
-        response[2] != TYPE_PORT_FORMAT_SINGLE ||
-        response[3] != port_id ||
-        response[4] != mode ||
-        response[5] != 1 ||
-        response[6] != 0 ||
-        response[7] != 0 ||
-        response[8] != 0 ||
-        response[9] != notifications)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port Format Setup");
-        return -1;
-    }
-
-    free(response);
-    if (mode == 0)
-        return 0;
-
-    /* Non-legacy modes go through an unexplained dance to change
-     * mode.  First the mode is set as for mode 0 above, then
-     * issue a device reset, then set the mode again.
-     */
-    response = make_request(false, 5, TYPE_PORT_FORMAT_SETUP_COMBINED,
-                            port_id,
-                            INFO_FORMAT_RESET);
-    if (response == NULL)
-        return -1;
-
-    /* The documentation is unclear as to what response to expect.
-     * The code shows a TYPE_PORT_FORMAT_SINGLE for the current mode.
-     */
-    if (response[0] != 10 ||
-        response[2] != TYPE_PORT_FORMAT_SINGLE ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port CombiFormat (Reset)");
-        return -1;
-    }
-
-    /* Now set the mode again */
-    response = make_request(false, 10, TYPE_PORT_FORMAT_SETUP_SINGLE,
-                            port_id,
-                            mode,
-                            1, 0, 0, 0, /* Delta = 1 */
-                            notifications); 
-    if (response == NULL)
-        return -1;
-
-    if (response[0] != 10 ||
-        response[2] != TYPE_PORT_FORMAT_SINGLE ||
-        response[3] != port_id ||
-        response[4] != mode ||
-        response[5] != 1 ||
-        response[6] != 0 ||
-        response[7] != 0 ||
-        response[8] != 0 ||
-        response[9] != notifications)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Port Format Setup");
-        return -1;
-    }
-
-    free(response);
+    char buf[200];
+    if(notifications)
+        sprintf(buf, "port %u ; combi %d; select %d\r", port_id, mode, mode);
+    else
+        sprintf(buf, "port %u ; combi %d; selonce %d\r", port_id, mode, mode);
+    make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
     return 0;
 }
 

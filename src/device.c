@@ -805,93 +805,15 @@ Device_mode(PyObject *self, PyObject *args)
 }
 
 
-static float rescale_float(float value,
-                           min_max_t *inrange,
-                           min_max_t *outrange)
-{
-    float in_interval = inrange->max - inrange->min;
-    float out_interval = outrange->max - outrange->min;
-
-    return  ((value - inrange->min) *
-             out_interval / in_interval) + outrange->min;
-}
-
-
-static long rescale_long(long value, min_max_t *inrange, min_max_t *outrange)
-{
-    return (long)(rescale_float((float)value, inrange, outrange) + 0.5);
-}
-
-
-static PyObject *convert_raw(PyObject *value, int format, mode_info_t *mode)
-{
-    if (PyLong_Check(value))
-    {
-        long long_value = PyLong_AsLong(value);
-
-        if (long_value == -1 && PyErr_Occurred() != NULL)
-            return NULL;
-
-        switch (format)
-        {
-            case DEVICE_FORMAT_PERCENT:
-                long_value = rescale_long(long_value,
-                                          &mode->raw,
-                                          &mode->percent);
-                break;
-
-            case DEVICE_FORMAT_SI:
-                long_value = rescale_long(long_value,
-                                          &mode->raw,
-                                          &mode->si);
-                break;
-
-            default:
-                break;
-        }
-        return PyLong_FromLong(long_value);
-    }
-    else if (PyFloat_Check(value))
-    {
-        float fvalue = (float)PyFloat_AsDouble(value);
-
-        if (fvalue == -1.0 && PyErr_Occurred() != NULL)
-            return NULL;
-
-        switch (format)
-        {
-            case DEVICE_FORMAT_PERCENT:
-                fvalue = rescale_float(fvalue,
-                                       &mode->raw,
-                                       &mode->percent);
-                break;
-
-            case DEVICE_FORMAT_SI:
-                fvalue = rescale_float(fvalue,
-                                       &mode->raw,
-                                       &mode->si);
-                break;
-
-            default:
-                break;
-        }
-        return PyFloat_FromDouble((double)fvalue);
-    }
-    else if (value == Py_None)
-    {
-        Py_RETURN_NONE;
-    }
-
-    /* Otherwise this is unexpected */
-    PyErr_SetString(cmd_get_exception(), "Invalid value");
-    return NULL;
-}
-
-
 static int get_value(DeviceObject *device)
 {
     device->rx_error = DO_RXERR_NONE;
-    if (cmd_get_port_value(port_get_id(device->port)) < 0)
+
+    uint8_t selindex = 0;
+    if (device->current_mode != MODE_IS_COMBI)
+        selindex = device->current_mode;
+
+    if (cmd_get_port_value(port_get_id(device->port), selindex) < 0)
     {
         PyObject *hub_protocol_exception = cmd_get_exception();
 
@@ -988,30 +910,31 @@ Device_get(PyObject *self, PyObject *args)
      * SI (2).
      */
 
-    if (/*device->current_mode != MODE_IS_COMBI*/ 1 == 0)
+    if (device->current_mode != MODE_IS_COMBI)
     {
         /* Simple (single) mode */
         /* Get the current mode data */
         mode = &device->modes[device->current_mode];
         result_count = PyList_Size(device->values);
-        if (result_count != mode->format.datasets)
+        /*if (result_count != mode->format.datasets)
         {
             PyErr_SetString(cmd_get_exception(),
                             "Device value length mismatch");
             return NULL;
-        }
+        }*/
 
         /* We wish to return a list with "mode->format->datasets" data
          * values.
          */
-        if ((results = PyList_New(mode->format.datasets)) == NULL)
+
+        result_count = PyList_Size(device->values);
+        if ((results = PyList_New(result_count)) == NULL)
             return NULL;
 
         /* device->values is a list containing result_count elements */
         for (i = 0; i < result_count; i++)
         {
             PyObject *value = PyList_GetItem(device->values, i);
-            value = convert_raw(value, format, mode);
             if (value == NULL)
             {
                 Py_DECREF(results);
@@ -1086,9 +1009,9 @@ Device_callback(PyObject *self, PyObject *args)
 
     if(device->num_combi_modes == 0)
     {
-        /*if (set_simple_mode(device, device->current_mode) < 0){
+        if (set_simple_mode(device, device->current_mode) < 0){
             return NULL;
-        }*/
+        }
     }
     else
     {
@@ -1580,6 +1503,7 @@ int device_new_combi_value(PyObject *self,
     mode_info_t *mode;
     int bytes_consumed;
     int i;
+    int modes;
 
     device->is_mode_busy = 0;
 
@@ -1592,6 +1516,9 @@ int device_new_combi_value(PyObject *self,
 
     mode_number = (device->combi_mode[entry] >> 4) & 0x0f;
     mode = &device->modes[mode_number];
+    modes = device->num_combi_modes;
+    if (device->current_mode != MODE_IS_COMBI)
+        modes = entry+1;
 
     bytes_consumed = read_value_new(buffer, &value);
     if (bytes_consumed < 0)
@@ -1601,14 +1528,14 @@ int device_new_combi_value(PyObject *self,
     }
 
     /* This is not terribly efficient... */
-    if ((values = PyList_New(device->num_combi_modes)) == NULL)
+    if ((values = PyList_New(modes)) == NULL)
     {
         Py_DECREF(value);
         device->rx_error = DO_RXERR_INTERNAL;
         return -1;
     }
 
-    for (i = 0; i < device->num_combi_modes; i++)
+    for (i = 0; i < modes; i++)
     {
         if (i == entry)
         {
@@ -1831,5 +1758,6 @@ int device_set_device_format(PyObject *device, uint8_t modei, uint8_t type)
     mode_info_t *mode;
     mode = &dev->modes[modei];
     mode->format.type = type;
+    dev->num_modes = modei;
     return 0;
 }

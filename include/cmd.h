@@ -87,7 +87,7 @@ extern PyObject *cmd_get_hardware_version(void);
  * (and the device->values entry will be updated) or -1 on error (when
  * an exception will already be raised).
  */
-extern int cmd_get_port_value(uint8_t port_id);
+extern int cmd_get_port_value(uint8_t port_id, uint8_t selindex);
 
 /* Sends a Hub Port Info Request command for the mode info of the
  * given port.  Fills in the port_modes_t structure with the returned

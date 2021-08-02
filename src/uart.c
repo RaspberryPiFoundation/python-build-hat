@@ -399,7 +399,7 @@ void parse_line(char *serbuf)
             }
         } else if (serbuf[2] == '>') {
             parsed = 1;
-        } else if (serbuf[2] == 'C') {
+        } else if (serbuf[2] == 'C' || serbuf[2] == 'M') {
             //int combiindex = serbuf[3] - 48;
             char *tmp = malloc((strlen(serbuf) - 5) + 1);
             memcpy(tmp, serbuf + 5, strlen(serbuf) - 5);
@@ -419,7 +419,6 @@ void parse_line(char *serbuf)
                 token = strtok(NULL, " ");
                 mcount++;
             }
-
             callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA);
         }
     }
