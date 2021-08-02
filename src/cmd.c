@@ -727,23 +727,6 @@ int cmd_set_pwm(uint8_t port_id, int8_t pwm)
 }
 
 
-int cmd_set_pwm_pair(uint8_t port_id, int8_t pwm0, int8_t pwm1)
-{
-    uint8_t *response = make_request(true, 8, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_START_POWER_2,
-                                     (uint8_t)pwm0,
-                                     (uint8_t)pwm1);
-    if (response == NULL)
-        return -1;
-
-    return wait_for_complete_feedback(port_id, response);
-}
-
-
-
 int cmd_set_acceleration(uint8_t port_id, uint32_t accel)
 {
     uint8_t *response = make_request(true, 9, TYPE_PORT_OUTPUT,
@@ -823,28 +806,6 @@ int cmd_start_speed(uint8_t port_id,
 }
 
 
-int cmd_start_speed_pair(uint8_t port_id,
-                         int8_t speed0,
-                         int8_t speed1,
-                         uint8_t max_power,
-                         uint8_t use_profile)
-{
-    uint8_t *response = make_request(/*XXX:*/true, 10, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_START_SPEED_2,
-                                     (uint8_t)speed0,
-                                     (uint8_t)speed1,
-                                     max_power,
-                                     use_profile);
-    if (response == NULL)
-        return -1;
-
-    return wait_for_complete_feedback(port_id, response);
-}
-
-
 int cmd_start_speed_for_time(uint8_t port_id,
                              uint16_t time,
                              int8_t speed,
@@ -864,51 +825,6 @@ int cmd_start_speed_for_time(uint8_t port_id,
 }
 
 
-int cmd_start_speed_for_time_pair(uint8_t port_id,
-                                  uint16_t time,
-                                  int8_t speed0,
-                                  int8_t speed1,
-                                  uint8_t max_power,
-                                  uint8_t stop,
-                                  uint8_t use_profile,
-                                  bool blocking)
-{
-    uint8_t *response = make_request(true, 13, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_START_SPEED_2_FOR_TIME,
-                                     U16_TO_BYTE_ARG(time),
-                                     (uint8_t)speed0,
-                                     (uint8_t)speed1,
-                                     max_power,
-                                     stop,
-                                     use_profile);
-    if (response == NULL)
-        return -1;
-    if (blocking)
-        return wait_for_complete_feedback(port_id, response);
-
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Start Speed For Time");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
-}
-
-
 int cmd_start_speed_for_degrees(uint8_t port_id,
                                 double newpos,
                                 double curpos,
@@ -924,51 +840,6 @@ int cmd_start_speed_for_degrees(uint8_t port_id,
     if (blocking){
         return wait_for_complete_feedback(port_id, NULL);
     }
-    return 0;
-}
-
-
-int cmd_start_speed_for_degrees_pair(uint8_t port_id,
-                                     int32_t degrees,
-                                     int8_t speed0,
-                                     int8_t speed1,
-                                     uint8_t max_power,
-                                     uint8_t stop,
-                                     uint8_t use_profile,
-                                     bool blocking)
-{
-    uint8_t *response = make_request(true, 15, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_START_SPEED_2_FOR_DEGREES,
-                                     U32_TO_BYTE_ARG((uint32_t)degrees),
-                                     (uint8_t)speed0,
-                                     (uint8_t)speed1,
-                                     max_power,
-                                     stop,
-                                     use_profile);
-    if (response == NULL)
-        return -1;
-    if (blocking)
-        return wait_for_complete_feedback(port_id, response);
-
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Start Speed For Degrees");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
     return 0;
 }
 
@@ -993,51 +864,6 @@ int cmd_goto_abs_position(uint8_t port_id,
 }
 
 
-int cmd_goto_abs_position_pair(uint8_t port_id,
-                               int32_t position0,
-                               int32_t position1,
-                               int8_t speed,
-                               uint8_t max_power,
-                               uint8_t stop,
-                               uint8_t use_profile,
-                               bool blocking)
-{
-    uint8_t *response = make_request(true, 18, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_GOTO_ABS_POSITION_2,
-                                     U32_TO_BYTE_ARG((uint32_t)position0),
-                                     U32_TO_BYTE_ARG((uint32_t)position1),
-                                     (uint8_t)speed,
-                                     max_power,
-                                     stop,
-                                     use_profile);
-    if (response == NULL)
-        return -1;
-    if (blocking)
-        return wait_for_complete_feedback(port_id, response);
-
-    if (response[0] != 5 ||
-        response[2] != TYPE_PORT_OUTPUT_FEEDBACK ||
-        response[3] != port_id)
-    {
-        free(response);
-        PyErr_SetString(hub_protocol_error,
-                        "Unexpected reply to Output Goto Abs Position");
-        return -1;
-    }
-    if ((response[4] & 0x04) != 0)
-    {
-        /* "Current Command(s) Discarded" bit set */
-        PyErr_SetString(hub_protocol_error, "Port busy");
-        return -1;
-    }
-
-    return 0;
-}
-
-
 int cmd_preset_encoder(uint8_t port_id, int32_t position)
 {
     uint8_t *response = make_request(true, 10, TYPE_PORT_OUTPUT,
@@ -1046,23 +872,6 @@ int cmd_preset_encoder(uint8_t port_id, int32_t position)
                                      OUTPUT_COMPLETE_STATUS,
                                      OUTPUT_CMD_PRESET_ENCODER,
                                      U32_TO_BYTE_ARG((uint32_t)position));
-    if (response == NULL)
-        return -1;
-    return wait_for_complete_feedback(port_id, response);
-}
-
-
-int cmd_preset_encoder_pair(uint8_t port_id,
-                            int32_t position0,
-                            int32_t position1)
-{
-    uint8_t *response = make_request(true, 14, TYPE_PORT_OUTPUT,
-                                     port_id,
-                                     OUTPUT_STARTUP_IMMEDIATE |
-                                     OUTPUT_COMPLETE_STATUS,
-                                     OUTPUT_CMD_PRESET_ENCODER_2,
-                                     U32_TO_BYTE_ARG((uint32_t)position0),
-                                     U32_TO_BYTE_ARG((uint32_t)position1));
     if (response == NULL)
         return -1;
     return wait_for_complete_feedback(port_id, response);

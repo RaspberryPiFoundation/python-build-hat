@@ -185,12 +185,6 @@ extern int cmd_get_mode_format(uint8_t port_id,
  */
 extern int cmd_set_pwm(uint8_t port_id, int8_t pwm);
 
-/* Sends a Port Output command to set the start power of the given
- * port pair.  Returns 0 on success, -1 on error (when a Python
- * exception will have been raised).
- */
-extern int cmd_set_pwm_pair(uint8_t port_id, int8_t pwm0, int8_t pwm1);
-
 /* Set the default acceleration profile */
 extern int cmd_set_acceleration(uint8_t port_id, uint32_t accel);
 
@@ -212,16 +206,6 @@ extern int cmd_start_speed(uint8_t port_id,
                            uint8_t max_power,
                            uint8_t use_profile);
 
-/* Sends a Port Output command to set start or hold a motor pair.
- * Returns 0 on success, -1 on error (when a Python exception will
- * have been raised).
- */
-extern int cmd_start_speed_pair(uint8_t port_id,
-                                int8_t speed0,
-                                int8_t speed1,
-                                uint8_t max_power,
-                                uint8_t use_profile);
-
 /* Sends a Port Output command to run a motor for a given number of
  * milliseconds.  Returns 0 on success, -1 on error (when a Python
  * exception will have been raised).
@@ -233,19 +217,6 @@ extern int cmd_start_speed_for_time(uint8_t port_id,
                                     uint8_t stop,
                                     uint8_t use_profile,
                                     bool blocking);
-
-/* Sends a Port Output command to run a motor pair for a given number
- * of milliseconds.  Returns 0 on success, -1 on error (when a Python
- * exception will have been raised).
- */
-extern int cmd_start_speed_for_time_pair(uint8_t port_id,
-                                         uint16_t time,
-                                         int8_t speed0,
-                                         int8_t speed1,
-                                         uint8_t max_power,
-                                         uint8_t stop,
-                                         uint8_t use_profile,
-                                         bool blocking);
 
 /* Sends a Port Output command to run a motor through a given angle.
  * Returns 0 on success, -1 on error (when a Python exception will
@@ -259,19 +230,6 @@ extern int cmd_start_speed_for_degrees(uint8_t port_id,
                                        uint8_t stop,
                                        uint8_t use_profile,
                                        bool blocking);
-
-/* Sends a Port Output command to run a motor pair through a given
- * angle.  Returns 0 on success, -1 on error (when a Python exception
- * will have been raised).
- */
-extern int cmd_start_speed_for_degrees_pair(uint8_t port_id,
-                                            int32_t degrees,
-                                            int8_t speed0,
-                                            int8_t speed1,
-                                            uint8_t max_power,
-                                            uint8_t stop,
-                                            uint8_t use_profile,
-                                            bool blocking);
 
 /* Sends a Port Output command to run a motor to a specified
  * position.  Returns 0 on success, -1 on error (when a Python
@@ -288,32 +246,11 @@ extern int cmd_goto_abs_position(uint8_t port_id,
                                  uint8_t use_profile,
                                  bool blocking);
 
-/* Sends a Port Output command to run a motor pair to specified
- * positions.  Returns 0 on success, -1 on error (when a Python
- * exception will have been raised).
- */
-extern int cmd_goto_abs_position_pair(uint8_t port_id,
-                                      int32_t position0,
-                                      int32_t position1,
-                                      int8_t speed,
-                                      uint8_t max_power,
-                                      uint8_t stop,
-                                      uint8_t use_profile,
-                                      bool blocking);
-
 /* Sends a Port Output command to set the motor's "zero" position.
  * Returns 0 on success, or -1 on error (when a Python exception will
  * have been raised).
  */
 extern int cmd_preset_encoder(uint8_t port_id, int32_t position);
-
-/* Sends a Port Output command to set the motor pair's "zero"
- * positions.  Returns 0 on success, or -1 on error (when a Python
- * exception will have been raised).
- */
-extern int cmd_preset_encoder_pair(uint8_t port_id,
-                                   int32_t position0,
-                                   int32_t position1);
 
 /* Sends a Port Write Direct Mode Data command, writing a byte stream
  * directly to the target device.  Returns 0 on success, -1 on error
