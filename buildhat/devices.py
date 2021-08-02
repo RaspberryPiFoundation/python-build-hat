@@ -27,7 +27,7 @@ class Device:
 
             See if there's a way to detect if hat is ready.
             """
-            time.sleep(10)
+            time.sleep(7)
 
     def whatami(self, port):
         """Determine name of device on port
