@@ -981,7 +981,7 @@ Device_get(PyObject *self, PyObject *args)
         return NULL;
 
     Py_BEGIN_ALLOW_THREADS
-    sleep(1);
+    usleep(200000);
     Py_END_ALLOW_THREADS
 
     /* "format" now contains the format code to use: Raw (0), Pct (1) or
