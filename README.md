@@ -25,14 +25,6 @@ $ python3 -m venv hat_env
 $ source hat_env/bin/activate
 ```
 
-You may need to install the I2C development library:
-
-```
-$ sudo apt install libi2c-dev
-```
-
-and you will certainly need to turn I2C on in your boot configuration file.
-
 Now use the setup.py script to build and install the module:
 
 ```
@@ -44,12 +36,8 @@ Now use the setup.py script to build and install the module:
 You should now be able to "import hub" in a Python3 script and have
 the module available to you.
 
-Optionally the code may be compiled with "DEBUG\_I2C=1" to enable logging
-of the I2C traffic on the hub.
-
-The code may be compiled with "USE\_DUMMY\_I2C=1" to use an ethernet local
-loopback as a fake I2C for test purposes.
-
+Optionally the code may be compiled with "DEBUG\_UART=1" to enable logging
+of the UART traffic on the hub.
 
 Documentation
 -------------
@@ -71,32 +59,37 @@ Usage
 
 See the detailed documentation for the Python objects available.
 
-To control a motor attached to port A:
-
 ```python
-from build_hat import BuildHAT
-
-bh = BuildHAT()
-bh.port.A.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
-bh.port.A.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
-bh.port.A.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
-bh.port.A.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
-bh.port.A.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
-bh.port.A.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
-```
-
-To rotate motor attached to port once clockwise when a button attached to port B is pressed:
-
-```python
-from build_hat import BuildHAT
 import time
+from signal import pause
+from buildhat import Motor
 
-bh = BuildHAT()
-while True:
-	if bh.port.B.device.get() > 0: # test if button is pressed
-		bh.port.A.motor.run_for_degrees(360, 127) # turn 360 degrees clockwise at maximum speed
-		time.sleep(0.5) # Wait half a second for motor to finish turning
+motor = Motor('A')
+motor.set_default_speed(30)
 
+print("Position", motor.get_aposition())
+
+def handle_motor(speed, pos, apos):
+    print("Motor", speed, pos, apos)
+
+motor.when_rotated = handle_motor
+
+print("Run for degrees")
+motor.run_for_degrees(360)
+
+print("Run for seconds")
+motor.run_for_seconds(5)
+
+print("Run for rotations")
+motor.run_for_rotations(2)
+
+print("Start motor")
+motor.start()
+time.sleep(3)
+print("Stop motor")
+motor.stop()
+
+pause()
 ```
 
 Programming Bootloader
