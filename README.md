@@ -95,7 +95,7 @@ pause()
 Programming Bootloader
 ----------------------
 
-* Copy pico\_setup.sh to ~/Repositories and run (this will install openocd along with tools for building the firmware)
+* Copy pico\_setup.sh to ~/Repositories on the Pi and run (this will install openocd along with tools for building the firmware)
 
 * Use the following command to program the bootloader:
 
@@ -103,4 +103,14 @@ Programming Bootloader
 openocd -f ~/Repositories/pico/openocd/tcl/interface/raspberrypi-swd.cfg -f ~/Repositories/pico/openocd/tcl/target/rp2040.cfg -c "program bootloader.elf verify reset exit"
 ```
 
-* Currently need to place firmware.bin and signature.bin in /tmp for the Python library to load
+(I had to run this several times, to get it to program successfully)
+
+* Currently need to place firmware.bin and signature.bin in /tmp for the Python library to load them
+
+Install
+-------
+
+```
+sudo apt install python3-pip
+pip3 install build_hat-*.whl
+```
