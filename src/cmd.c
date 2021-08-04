@@ -23,6 +23,9 @@
 #include "cmd.h"
 #include "protocol.h"
 
+#define MOTOR_BIAS "bias .4"
+#define MOTOR_PLIMIT "plimit .6"
+
 /* Macro to split a uint32_t into bytes for an argument list,
  * intended for making make_request() calls a little easier
  * to write.  Use with care.
@@ -800,7 +803,7 @@ int cmd_start_speed(uint8_t port_id,
                     uint8_t use_profile)
 {
     char buf[1000];
-    sprintf(buf, "port %u ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit .6 ; bias .2 ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set %d\r", port_id, speed);
+    sprintf(buf, "port %u ; combi 0 1 0 2 0 3 0 ; select 0 ; " MOTOR_PLIMIT " ; " MOTOR_BIAS " ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set %d\r", port_id, speed);
     make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     return 0;
 }
@@ -816,7 +819,7 @@ int cmd_start_speed_for_time(uint8_t port_id,
 {
     char buf[1000];
     // Have to use pulse during parameter to represent speed (it is a PWM value)
-    sprintf(buf, "port %u ; pwm ; plimit .6 ; bias .4 ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
+    sprintf(buf, "port %u ; pwm ; " MOTOR_PLIMIT " ; " MOTOR_BIAS " ; set pulse %f 0.0 %f 0\r", port_id, ((float)speed) / 100.0, (double)time / 1000.0);
     make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     if (blocking){
         return wait_for_complete_feedback(port_id, NULL);
@@ -835,7 +838,7 @@ int cmd_start_speed_for_degrees(uint8_t port_id,
                                 bool blocking)
 {
     char buf[1000];
-    sprintf(buf, "port %u ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit .6 ; bias .4 ; pid 0 0 5 s2 0.0027777778 1 5 0 .1 3 ; set ramp %f %f %f 0\r", port_id, curpos, newpos, (newpos - curpos) / (double)speed);
+    sprintf(buf, "port %u ; combi 0 1 0 2 0 3 0 ; select 0 ; " MOTOR_PLIMIT " ; " MOTOR_BIAS " ; pid 0 0 5 s2 0.0027777778 1 5 0 .1 3 ; set ramp %f %f %f 0\r", port_id, curpos, newpos, (newpos - curpos) / (double)speed);
     make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     if (blocking){
         return wait_for_complete_feedback(port_id, NULL);
@@ -855,7 +858,7 @@ int cmd_goto_abs_position(uint8_t port_id,
 
     char buf[1000];
     // The position PID doesn't actually support speed, so try to make use of plimit somewhat?
-    sprintf(buf, "port %d ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit %f ; bias .4 ;  pid 0 0 5 s2 0.0027777778 1 5 0 .1 3 ; set %f ;\r", port_id, (float)speed/100.0, (float)position/360.0);
+    sprintf(buf, "port %d ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit %f ; " MOTOR_BIAS " ;  pid 0 0 5 s2 0.0027777778 1 5 0 .1 3 ; set %f ;\r", port_id, (float)speed/100.0, (float)position/360.0);
     make_request_uart(false, TYPE_PORT_OUTPUT, port_id, buf);
     /*if (blocking){
         return wait_for_complete_feedback(port_id, NULL);
