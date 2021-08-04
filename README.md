@@ -95,15 +95,21 @@ pause()
 Programming Bootloader
 ----------------------
 
-* Copy pico\_setup.sh to ~/Repositories on the Pi and run (this will install openocd along with tools for building the firmware)
+```
+sudo apt install automake autoconf build-essential texinfo libtool libftdi-dev libusb-1.0-0-dev
+git clone https://github.com/raspberrypi/openocd.git --recursive --branch rp2040 --depth=1
+cd openocd
+./bootstrap
+./configure --enable-ftdi --enable-sysfsgpio --enable-bcm2835gpio
+make -j4
+sudo make install
+```
 
 * Use the following command to program the bootloader:
 
 ```
-openocd -f ~/Repositories/pico/openocd/tcl/interface/raspberrypi-swd.cfg -f ~/Repositories/pico/openocd/tcl/target/rp2040.cfg -c "program bootloader.elf verify reset exit"
+openocd -s /usr/local/share/openocd/scripts -f interface/raspberrypi-swd.cfg -f target/rp2040.cfg -c "program bootloader.elf verify reset exit"
 ```
-
-(I had to run this several times, to get it to program successfully)
 
 * Currently need to place firmware.bin and signature.bin in /tmp for the Python library to load them
 
