@@ -57,10 +57,17 @@ class Motor(PortDevice):
         :param degrees: Position in degrees
         :param speed: Speed ranging from -100 to 100
         """
-        if speed is None:
+        """if speed is None:
             self._motor.run_to_position(degrees, self.default_speed)
         else:
             self._motor.run_to_position(degrees, speed)
+        """
+        newpos = (degrees / 360.0) + round(self._ramp)
+        if speed is None:
+            self._motor.run_for_degrees(newpos, self._ramp, self.default_speed)
+        else:
+            self._motor.run_for_degrees(newpos, self._ramp, speed)
+        self._ramp = newpos
 
     def run_for_seconds(self, seconds, speed=None, blocking=True):
         """Runs motor for N seconds

@@ -37,4 +37,7 @@ setup(name='build_hat',
       author='Rhodri James',
       author_email='rhodri@kynesim.co.uk',
       packages=['buildhat'],
+      package_data={
+          "": ["data/firmware.bin", "data/signature.bin"],
+      },
       ext_modules=[hub_module])

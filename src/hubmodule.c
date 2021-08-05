@@ -129,6 +129,13 @@ static PyObject *
 Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     HubObject *self;
+    char *firmware_path;
+    char *signature_path;
+
+    static char *kwlist[] = { "firmware", "signature", NULL };
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ss", kwlist, &firmware_path, &signature_path))
+        return -1;
 
     if (build_hat_created != 0)
     {
@@ -154,7 +161,7 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_DECREF(self);
         return NULL;
     }
-    if (uart_open_hat() < 0)
+    if (uart_open_hat(firmware_path, signature_path) < 0)
     {
         Py_DECREF(self);
         return NULL;
@@ -168,10 +175,6 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = { NULL };
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "", kwlist))
-        return -1;
     if (self->initialised)
         return 0;
 

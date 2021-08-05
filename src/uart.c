@@ -674,14 +674,14 @@ int getprompt()
     }
 }
 
-int load_firmware()
+int load_firmware(char *firmware_path, char *signature_path)
 {
     char s[1000];
     int image_size;
     FILE *fp;
     int i;
 
-    fp = fopen("/tmp/firmware.bin", "rb");
+    fp = fopen(firmware_path, "rb");
     if (!fp) {
         fprintf(stderr, "Failed to open image file\n");
         return -1;
@@ -697,7 +697,7 @@ int load_firmware()
                 IMAGEBUFSIZE);
         return -1;
     }
-    fp=fopen("/tmp/signature.bin","rb");
+    fp=fopen(signature_path,"rb");
     if(!fp) {
         fprintf(stderr,"Failed to open signature file\n");
         return -1;
@@ -740,7 +740,7 @@ int load_firmware()
  * and return the file descriptor.  You must close the file descriptor
  * when you are done with it.
  */
-int uart_open_hat(void)
+int uart_open_hat(char *firmware_path, char *signature_path)
 {
     int rv;
     struct termios ttyopt;
@@ -779,7 +779,7 @@ int uart_open_hat(void)
         return -1;
     }
 
-    if (load_firmware() < 0){
+    if (load_firmware(firmware_path, signature_path) < 0){
         PyErr_SetString(PyExc_IOError, "Failed to load firmware");
         return -1;
     }

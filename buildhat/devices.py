@@ -1,5 +1,7 @@
 from build_hat import BuildHAT
 import time
+import os
+import sys
 
 class Device:
     """Creates a single instance of the buildhat for all devices to use"""
@@ -20,7 +22,10 @@ class Device:
     
     def __init__(self):
         if not Device._instance:
-            Device._instance = BuildHAT()
+            data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
+            firm = os.path.join(data,"firmware.bin")
+            sig = os.path.join(data,"signature.bin")
+            Device._instance = BuildHAT(firm, sig)
             """FixMe - this is added so that we wait a little before
             initialising sensors etc. otherwise we can get 
             RuntimeError: There is no device attached to port B.
