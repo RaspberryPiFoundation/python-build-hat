@@ -838,57 +838,7 @@ int port_detach_port(uint8_t port_id)
 
 
 /* Called from the background context */
-int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
-{
-    /* Some or all of the buffer will be the values we crave */
-    PyGILState_STATE gstate;
-    PortObject *port;
-    int rv;
-
-    if (port_id >= NUM_HUB_PORTS)
-    {
-        /* To process this, we need MotorPair to grow an associated
-         * Device/Port.  But even if it does, the Python API gives us
-         * no opportunity to get at the information.  Don't waste
-         * time, therefore.
-         */
-        return nbytes;
-    }
-    gstate = PyGILState_Ensure();
-    port = (PortObject *)port_set->ports[port_id];
-
-    if (port->device == Py_None)
-    {
-        /* We don't think we have anything attached.  Unfortunately
-         * this means we cannot tell how much of the buffer was the
-         * value for this port.  Options are:
-         *
-         * a) Assume this was a simple case, consume the whole buffer
-         * and return success, since this is most likely something
-         * happening in an unhelpful order, or
-         *
-         * b) Report an error and get the lower levels to abandon
-         * processing.
-         *
-         * We'll go with the error for safety.
-         */
-        rv = -1;
-    }
-    else
-    {
-        rv = device_new_value(port->device, buffer, nbytes);
-    }
-
-    PyGILState_Release(gstate);
-    if(rv > 0)
-        callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA);
-
-    return rv;
-}
-
-
-/* Called from the background context */
-int port_new_combi_value(uint8_t port_id,
+int port_new_any_value(uint8_t port_id,
                          int entry,
                          data_t *buffer)
 {
@@ -913,7 +863,7 @@ int port_new_combi_value(uint8_t port_id,
     }
     else
     {
-        rv = device_new_combi_value(port->device, entry, buffer);
+        rv = device_new_any_value(port->device, entry, buffer);
     }
     PyGILState_Release(gstate);
     return rv;

@@ -588,8 +588,6 @@ Device_mode(PyObject *self, PyObject *args)
     }
     if (!PyArg_ParseTuple(args, "|OO:mode", &arg1, &arg2))
         return NULL;
-    /*if (device_ensure_mode_info(self) < 0)
-        return NULL;*/
 
     if (arg1 == NULL)
     {
@@ -861,7 +859,6 @@ static int get_value(DeviceObject *device)
 }
 
 
-
 static PyObject *
 Device_get(PyObject *self, PyObject *args)
 {
@@ -895,10 +892,7 @@ Device_get(PyObject *self, PyObject *args)
             }
         }
     }
-
-
-    /*if (device_ensure_mode_info(self) < 0)
-        return NULL;*/
+    
     if (get_value(device) < 0)
         return NULL;
 
@@ -906,32 +900,12 @@ Device_get(PyObject *self, PyObject *args)
     usleep(200000);
     Py_END_ALLOW_THREADS
 
-    /* "format" now contains the format code to use: Raw (0), Pct (1) or
-     * SI (2).
-     */
-
     if (device->current_mode != MODE_IS_COMBI)
     {
-        /* Simple (single) mode */
-        /* Get the current mode data */
-        //mode = &device->modes[device->current_mode];
-        result_count = PyList_Size(device->values);
-        /*if (result_count != mode->format.datasets)
-        {
-            PyErr_SetString(cmd_get_exception(),
-                            "Device value length mismatch");
-            return NULL;
-        }*/
-
-        /* We wish to return a list with "mode->format->datasets" data
-         * values.
-         */
-
         result_count = PyList_Size(device->values);
         if ((results = PyList_New(result_count)) == NULL)
             return NULL;
 
-        /* device->values is a list containing result_count elements */
         for (i = 0; i < result_count; i++)
         {
             PyObject *value = PyList_GetItem(device->values, i);
@@ -951,18 +925,12 @@ Device_get(PyObject *self, PyObject *args)
 
         for (i = 0; i < device->num_combi_modes; i++)
         {
-            PyObject *value;
-            //uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
-            //mode = &device->modes[mode_number];
-
-            value = PyList_GetItem(device->values, i);
-            //value = convert_raw(value, format, mode);
-            /*if (value == NULL)
+            PyObject *value = PyList_GetItem(device->values, i);
+            if (value == NULL)
             {
                 Py_DECREF(results);
                 return NULL;
-            }*/
-
+            }
             PyList_SET_ITEM(results, i, value);
         }
     }
@@ -1342,142 +1310,18 @@ static int read_value_new(data_t *buffer,
 }
 
 
-static int read_value(uint8_t format_type,
-                      uint8_t *buffer,
-                      uint16_t nbytes,
-                      PyObject **pvalue)
-{
-    *pvalue = NULL;
-
-    switch (format_type)
-    {
-        case FORMAT_8BIT:
-            if (nbytes < 1)
-                return -1;
-            if ((*pvalue = PyLong_FromLong((int8_t)buffer[0])) == NULL)
-                return -1;
-            return 1;
-
-        case FORMAT_16BIT:
-            if (nbytes < 2)
-                return -1;
-            *pvalue = PyLong_FromLong((int16_t)(buffer[0] |
-                                                (buffer[1] << 8)));
-            if (*pvalue == NULL)
-                return -1;
-            return 2;
-
-        case FORMAT_32BIT:
-            if (nbytes < 4)
-                return -1;
-            *pvalue = PyLong_FromLong((int32_t)(buffer[0] |
-                                                (buffer[1] << 8) |
-                                                (buffer[2] << 16) |
-                                                (buffer[3] << 24)));
-            if (*pvalue == NULL)
-                return -1;
-            return 4;
-
-        case FORMAT_FLOAT:
-        {
-            uint32_t bytes;
-            float fvalue;
-
-            if (nbytes < 4)
-                return -1;
-            bytes = (buffer[0] |
-                     (buffer[1] << 8) |
-                     (buffer[2] << 16) |
-                     (buffer[3] << 24));
-            memcpy(&fvalue, &bytes, 4);
-            if ((*pvalue = PyFloat_FromDouble((double)fvalue)) == NULL)
-                return -1;
-            return 4;
-        }
-
-        default:
-            break;
-    }
-    return -1;
-}
-
-
-int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes)
-{
-    DeviceObject *device = (DeviceObject *)self;
-    PyObject *values;
-    PyObject *value;
-    mode_info_t *mode;
-    int i;
-    uint16_t bytes_consumed = 1;
-
-    device->is_mode_busy = 0;
-
-    if (device->current_mode == MODE_IS_COMBI)
-    {
-        /* This must be some sort of race condition */
-        device->rx_error = DO_RXERR_BAD_MODE;
-        return -1;
-    }
-
-    mode = &device->modes[device->current_mode];
-
-    /* Construct the list to contain these results */
-    if ((values = PyList_New(mode->format.datasets)) == NULL)
-    {
-        device->rx_error = DO_RXERR_INTERNAL;
-        return -1;
-    }
-
-    for (i = 0; i < mode->format.datasets; i++)
-    {
-        int nread = read_value(mode->format.type, buffer, nbytes, &value);
-
-        if (nread < 0)
-        {
-            Py_DECREF(values);
-            device->rx_error = DO_RXERR_BAD_FORMAT;
-            return -1;
-        }
-        buffer += nread;
-        nbytes -= nread;
-        bytes_consumed += nread;
-        PyList_SET_ITEM(values, i, value);
-    }
-
-    /* Swap the new data into place */
-    PyObject *old_values = device->values;
-    device->values = values;
-    Py_XDECREF(old_values);
-
-    return bytes_consumed;
-}
-
-
-int device_new_combi_value(PyObject *self,
+int device_new_any_value(PyObject *self,
                            int entry,
                            data_t *buffer)
 {
     DeviceObject *device = (DeviceObject *)self;
     PyObject *values;
     PyObject *value;
-    //uint8_t mode_number;
-    //mode_info_t *mode;
     int bytes_consumed;
     int i;
     int modes;
 
     device->is_mode_busy = 0;
-
-    /*if (device->current_mode != MODE_IS_COMBI)
-    {
-        // A combined value in a simple mode is probably a race
-        device->rx_error = DO_RXERR_BAD_MODE;
-        return -1;
-    }*/
-
-    //mode_number = (device->combi_mode[entry] >> 4) & 0x0f;
-    //mode = &device->modes[mode_number];
     modes = device->num_combi_modes;
     if (device->current_mode != MODE_IS_COMBI)
         modes = entry+1;

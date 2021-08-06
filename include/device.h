@@ -44,16 +44,11 @@ extern PyObject *device_new_device(PyObject *port,
  */
 extern PyObject *device_get_info(PyObject *self, uint8_t port_id);
 
-/* Parse an input buffer and update the stored values.  Returns the number
- * of bytes in the buffer consumed, or -1 on failure.
- */
-extern int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes);
-
 /* Parse an input buffer and update the stored values for a single
- * mode/dataset combination from a Combi-mode value update.  Returns
+ * mode/dataset combination from a Combi-mode or simple mode value update.  Returns
  * the number of bytes in the buffer consumed, or -1 on failure.
  */
-extern int device_new_combi_value(PyObject *self,
+extern int device_new_any_value(PyObject *self,
                                   int entry,
                                   data_t *buffer);
 

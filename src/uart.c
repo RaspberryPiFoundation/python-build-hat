@@ -415,7 +415,7 @@ void parse_line(char *serbuf)
                     tmpval->i_data = strtol(token, NULL, 10);
                     tmpval->t = INTEGER;
                 }
-                port_new_combi_value(port, mcount, tmpval);
+                port_new_any_value(port, mcount, tmpval);
                 token = strtok(NULL, " ");
                 mcount++;
             }
