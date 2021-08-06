@@ -869,7 +869,7 @@ Device_get(PyObject *self, PyObject *args)
     PyObject *arg1 = NULL;
     PyObject *results;
     int format = DEVICE_FORMAT_SI;
-    mode_info_t *mode;
+    //mode_info_t *mode;
     int result_count, i;
 
     if (!PyArg_ParseTuple(args, "|O:get", &arg1))
@@ -914,7 +914,7 @@ Device_get(PyObject *self, PyObject *args)
     {
         /* Simple (single) mode */
         /* Get the current mode data */
-        mode = &device->modes[device->current_mode];
+        //mode = &device->modes[device->current_mode];
         result_count = PyList_Size(device->values);
         /*if (result_count != mode->format.datasets)
         {
@@ -952,9 +952,9 @@ Device_get(PyObject *self, PyObject *args)
         for (i = 0; i < device->num_combi_modes; i++)
         {
             PyObject *value;
-            uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
+            //uint8_t mode_number = (device->combi_mode[i] >> 4) & 0x0f;
+            //mode = &device->modes[mode_number];
 
-            mode = &device->modes[mode_number];
             value = PyList_GetItem(device->values, i);
             //value = convert_raw(value, format, mode);
             /*if (value == NULL)
@@ -1499,8 +1499,8 @@ int device_new_combi_value(PyObject *self,
     DeviceObject *device = (DeviceObject *)self;
     PyObject *values;
     PyObject *value;
-    uint8_t mode_number;
-    mode_info_t *mode;
+    //uint8_t mode_number;
+    //mode_info_t *mode;
     int bytes_consumed;
     int i;
     int modes;
@@ -1514,8 +1514,8 @@ int device_new_combi_value(PyObject *self,
         return -1;
     }*/
 
-    mode_number = (device->combi_mode[entry] >> 4) & 0x0f;
-    mode = &device->modes[mode_number];
+    //mode_number = (device->combi_mode[entry] >> 4) & 0x0f;
+    //mode = &device->modes[mode_number];
     modes = device->num_combi_modes;
     if (device->current_mode != MODE_IS_COMBI)
         modes = entry+1;

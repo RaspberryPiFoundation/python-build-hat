@@ -135,7 +135,7 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     static char *kwlist[] = { "firmware", "signature", NULL };
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "ss", kwlist, &firmware_path, &signature_path))
-        return -1;
+        return NULL;
 
     if (build_hat_created != 0)
     {
@@ -266,32 +266,35 @@ static PyGetSetDef Hub_getsetters[] =
 static PyObject *
 Hub_info(PyObject *self, PyObject *args)
 {
-    PyObject *dict;
+    /*PyObject *dict;
     PyObject *hw_revision;
     PyObject *fw_revision;
 
-    if (!PyArg_ParseTuple(args, "")) /* No args to this function */
+    if (!PyArg_ParseTuple(args, "")) // No args to this function 
         return NULL;
 
-    /* Add the hardware revision to the dictionary */
+    // Add the hardware revision to the dictionary 
     hw_revision = cmd_get_hardware_version();
     if (hw_revision == NULL)
         return NULL;
 
-    /* ...and the firmware revision while we're at it */
-    /*fw_revision = cmd_get_firmware_version();
+    // ...and the firmware revision while we're at it 
+    fw_revision = cmd_get_firmware_version();
     if (fw_revision == NULL)
     {
         Py_DECREF(hw_revision);
         return NULL;
-    }*/
+    }
 
     dict = Py_BuildValue("{sOsO}",
                          "hardware_revision", hw_revision,
                          "firmware_revision", fw_revision);
+    
     Py_DECREF(hw_revision);
     Py_DECREF(fw_revision);
-    return dict;
+    return dict;*/
+
+    return NULL;
 }
 
 
