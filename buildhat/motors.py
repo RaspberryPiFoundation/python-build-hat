@@ -1,5 +1,7 @@
 from .devices import PortDevice, Device
-import threading
+from threading import Condition
+from collections import deque
+import statistics
 
 # See hub-python-module/drivers/m_sched_shortcake.h
 MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
@@ -19,6 +21,9 @@ class Motor(PortDevice):
         self._device.mode([(1,0),(2,0),(3,0)])
         self._when_rotated = None
         self._ramp = 0
+        self._release = True
+        self._bqueue = deque(maxlen=5)
+        self._cvqueue = Condition()
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
@@ -26,6 +31,23 @@ class Motor(PortDevice):
         :param default_speed: Speed ranging from -100 to 100
         """
         self.default_speed = default_speed
+
+    def _isfinishedcb(self, speed, pos, apos):
+        self._cvqueue.acquire()
+        self._bqueue.append(pos)
+        self._cvqueue.notify()
+        self._cvqueue.release()
+
+    def _blocktillfin(self):
+        self._cvqueue.acquire()
+        while True:
+            self._cvqueue.wait()
+            if len(self._bqueue) >= 5:
+                dev = statistics.stdev(self._bqueue)
+                if dev < 1:
+                    self._motor.pwm(0)
+                    self._cvqueue.release()
+                    return
 
     def run_for_rotations(self, rotations, speed=None):
         """Runs motor for N rotations
@@ -50,6 +72,8 @@ class Motor(PortDevice):
         else:
             self._motor.run_for_degrees(newpos, self._ramp, speed)
         self._ramp = newpos
+        if self._release:
+            self._blocktillfin()
 
     def run_to_position(self, degrees, speed=None):
         """Runs motor to position (in degrees)
@@ -68,6 +92,8 @@ class Motor(PortDevice):
         else:
             self._motor.run_for_degrees(newpos, self._ramp, speed)
         self._ramp = newpos
+        if self._release:
+            self._blocktillfin()
 
     def run_for_seconds(self, seconds, speed=None, blocking=True):
         """Runs motor for N seconds
@@ -79,6 +105,8 @@ class Motor(PortDevice):
             self._motor.run_for_time(int(seconds * 1000), self.default_speed, blocking=blocking)
         else:
             self._motor.run_for_time(int(seconds * 1000), speed, blocking=blocking)
+        if self._release:
+            self._motor.float()
 
     def start(self, speed=None):
         """Start motor
@@ -131,7 +159,7 @@ class Motor(PortDevice):
     @when_rotated.setter
     def when_rotated(self, value):
         """Calls back, when motor has been rotated"""
-        self._when_rotated = lambda lst: value(lst[0], lst[1], lst[2])
+        self._when_rotated = lambda lst: [value(lst[0], lst[1], lst[2]),self._isfinishedcb(lst[0], lst[1], lst[2])]
         self._device.callback(self._when_rotated)
 
 
