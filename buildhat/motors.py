@@ -19,11 +19,11 @@ class Motor(PortDevice):
         self._motor = self._port.motor
         self.default_speed = 50
         self._device.mode([(1,0),(2,0),(3,0)])
-        self._when_rotated = None
         self._ramp = 0
         self._release = True
         self._bqueue = deque(maxlen=5)
         self._cvqueue = Condition()
+        self.when_rotated = None
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
@@ -159,7 +159,10 @@ class Motor(PortDevice):
     @when_rotated.setter
     def when_rotated(self, value):
         """Calls back, when motor has been rotated"""
-        self._when_rotated = lambda lst: [value(lst[0], lst[1], lst[2]),self._isfinishedcb(lst[0], lst[1], lst[2])]
+        if value is not None:
+            self._when_rotated = lambda lst: [value(lst[0], lst[1], lst[2]),self._isfinishedcb(lst[0], lst[1], lst[2])]
+        else:
+            self._when_rotated = lambda lst: self._isfinishedcb(lst[0], lst[1], lst[2])
         self._device.callback(self._when_rotated)
 
 
