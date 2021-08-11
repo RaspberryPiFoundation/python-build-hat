@@ -23,8 +23,8 @@
 #include "cmd.h"
 #include "protocol.h"
 
-#define MOTOR_BIAS "bias .4"
-#define MOTOR_PLIMIT "plimit .6"
+#define MOTOR_BIAS "bias .2"
+#define MOTOR_PLIMIT "plimit .5"
 
 /* Macro to split a uint32_t into bytes for an argument list,
  * intended for making make_request() calls a little easier

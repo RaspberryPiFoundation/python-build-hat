@@ -1,7 +1,12 @@
 from build_hat import BuildHAT
+import weakref
 import time
 import os
 import sys
+import gc
+
+def cleanup(obj):
+    obj.close()
 
 class Device:
     """Creates a single instance of the buildhat for all devices to use"""
@@ -26,6 +31,7 @@ class Device:
             firm = os.path.join(data,"firmware.bin")
             sig = os.path.join(data,"signature.bin")
             Device._instance = BuildHAT(firm, sig)
+            weakref.finalize(self, cleanup, self)
             """FixMe - this is added so that we wait a little before
             initialising sensors etc. otherwise we can get 
             RuntimeError: There is no device attached to port B.
@@ -44,6 +50,10 @@ class Device:
             return self._device_names[port.info()['type']]
         else:
             return "Unknown"
+
+    def close(self):
+        del Device._instance
+        gc.collect()
 
 class PortDevice(Device):
     """Device which uses port"""

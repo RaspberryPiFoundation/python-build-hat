@@ -852,6 +852,9 @@ int uart_close_hat(void)
     
     if (uart_fd != -1)
     {
+        char *buffer = "port 0 ; pwm ; set 0.000000 ; port 1 ; pwm ; set 0.000000 ; port 2 ; pwm ; set 0.000000 ; port 3 ; pwm ; set 0.000000\r";
+        if (write(uart_fd, buffer, strlen((char*)buffer)) < 0){
+        }
         close(uart_fd);
         uart_fd = -1;
     }

@@ -112,18 +112,26 @@ Hub_clear(HubObject *self)
     return 0;
 }
 
+/* Make this class a singleton */
+static int build_hat_created = 0;
 
 static void
 Hub_dealloc(HubObject *self)
 {
+    PyObject *etype, *evalue, *etraceback;
+
+    PyErr_Fetch(&etype, &evalue, &etraceback);
+    uart_close_hat();
+    callback_finalize();
+    PyErr_Restore(etype, evalue, etraceback);
+
     PyObject_GC_UnTrack(self);
     Hub_clear(self);
     Py_TYPE(self)->tp_free((PyObject *)self);
+
+    build_hat_created = 0;
 }
 
-
-/* Make this class a singleton */
-static int build_hat_created = 0;
 
 static PyObject *
 Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -208,19 +216,6 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     }*/
 
     return 0;
-}
-
-
-static void
-Hub_finalize(PyObject *self)
-{
-    PyObject *etype, *evalue, *etraceback;
-
-    PyErr_Fetch(&etype, &evalue, &etraceback);
-    uart_close_hat();
-    callback_finalize();
-    PyErr_Restore(etype, evalue, etraceback);
-    build_hat_created = 0;
 }
 
 
@@ -338,7 +333,6 @@ static PyTypeObject HubType =
     .tp_clear = (inquiry)Hub_clear,
     .tp_getset = Hub_getsetters,
     .tp_methods = Hub_methods,
-    .tp_finalize = Hub_finalize
 };
 
 
