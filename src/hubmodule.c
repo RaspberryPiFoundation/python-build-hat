@@ -139,10 +139,11 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     HubObject *self;
     char *firmware_path;
     char *signature_path;
+    long version = 0;
 
-    static char *kwlist[] = { "firmware", "signature", NULL };
+    static char *kwlist[] = { "firmware", "signature", "version", NULL };
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ss", kwlist, &firmware_path, &signature_path))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ssl", kwlist, &firmware_path, &signature_path, &version))
         return NULL;
 
     if (build_hat_created != 0)
@@ -169,7 +170,7 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_DECREF(self);
         return NULL;
     }
-    if (uart_open_hat(firmware_path, signature_path) < 0)
+    if (uart_open_hat(firmware_path, signature_path, version) < 0)
     {
         Py_DECREF(self);
         return NULL;

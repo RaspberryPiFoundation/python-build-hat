@@ -21,7 +21,7 @@
  * (open) UART bus, or -1 on error.  On failure, a Python exception
  * will have been raised.
  */
-extern int uart_open_hat(char *firmware_path, char *signature_path);
+extern int uart_open_hat(char *firmware_path, char *signature_path, long version);
 
 /* Finalise the UART subsystem, closing the file descriptor.  Returns 0
  * for success, -1 on failure.  If the close call fails, an exception

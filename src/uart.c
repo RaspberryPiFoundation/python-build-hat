@@ -61,6 +61,8 @@ unsigned char imagebuf[IMAGEBUFSIZE + 1];
 #define ERROR "Error"
 #define MODE "  M"
 #define FORMAT "    format "
+#define VERSION "Firmware version: "
+#define DONEINIT "Done initialising ports"
 
 #define BASE_DIRECTORY "/sys/class/gpio"
 #define EXPORT_PSEUDOFILE BASE_DIRECTORY "/export"
@@ -80,6 +82,7 @@ static pthread_t comms_rx_thread;
 static pthread_t comms_tx_thread;
 static int shutdown = 0;
 static int heard_from_hat = 0;
+static pthread_mutex_t mtxhatready = PTHREAD_MUTEX_INITIALIZER;
 
 /* Bit manipulation macros for multi-word bitmaps */
 #define BITS_PER_WORD 32
@@ -101,6 +104,7 @@ DEFINE_BITMAP(expecting_value_on_port, 256);
 /* Bitmap indicating that the given alert is expected */
 DEFINE_BITMAP(expecting_alert, 5);
 
+enum hatstate { bootloader, firmware, other };
 
 static inline uint16_t extract_uint16(uint8_t *buffer)
 {
@@ -422,6 +426,10 @@ void parse_line(char *serbuf)
             callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA);
         }
     }
+    if (strncmp(DONEINIT, serbuf, strlen(DONEINIT)) == 0) {
+        DEBUG_PRINT("Ready for unlocking!");
+        pthread_mutex_unlock(&mtxhatready);
+    }
     if (strncmp(MODE, serbuf, strlen(MODE)) == 0) {
         int current = strtol(serbuf+strlen(MODE), NULL, 10);
         DEBUG_PRINT("cur mode: %d\n", current);
@@ -473,6 +481,7 @@ static void *run_comms_rx(void *args __attribute__((unused)))
     int sercounter = 0;
     int nfds;
     int lfound = 0;
+    pthread_mutex_lock(&mtxhatready);
 
     struct epoll_event ev1, events[MAX_EVENTS];
     int epollfd;
@@ -740,8 +749,9 @@ int load_firmware(char *firmware_path, char *signature_path)
  * and return the file descriptor.  You must close the file descriptor
  * when you are done with it.
  */
-int uart_open_hat(char *firmware_path, char *signature_path)
+int uart_open_hat(char *firmware_path, char *signature_path, long version)
 {
+    enum hatstate state = other;
     int rv;
     struct termios ttyopt;
 
@@ -767,20 +777,66 @@ int uart_open_hat(char *firmware_path, char *signature_path)
     tcsetattr(uart_fd, TCSANOW, &ttyopt);
     tcflush(uart_fd, TCIOFLUSH);
 
-    //if (open_wake_gpio() < 0)
-    //    return -1; /* Exception already raised */
+    if(getprompt()){
+        state = bootloader;
+        if (load_firmware(firmware_path, signature_path) < 0){
+            PyErr_SetString(PyExc_IOError, "Failed to load firmware");
+            close(uart_fd);
+            return -1;
+        }
+    } else {
+        long ver = 0;
+        char vbuf[100];
+        char *vbuf_t = vbuf;
+        char *buffer = "version\r";
 
-    /* Reset the hat */
-    if (uart_reset_hat() < 0)
-    {
-        /* Exception already raised */
-        //close_wake_gpio();
-        close(uart_fd);
-        return -1;
+        if (write(uart_fd, buffer, strlen((char*)buffer)) < 0){
+            PyErr_SetString(PyExc_IOError, "Failed to send command");
+            close(uart_fd);
+            return -1;
+        }
+
+        while(1){
+            int ret = read(uart_fd, vbuf_t, 1);
+            if(ret == 1){
+                if(vbuf_t[0] == '\n'){
+                    if (strncmp(VERSION, vbuf, strlen(VERSION)) == 0) {
+                        state = firmware;
+                        ver = strtol(vbuf+strlen(VERSION), NULL, 10);
+                        break;
+                    }
+                    vbuf_t = vbuf;
+                    continue;
+                }
+                vbuf_t++;
+            }
+        }
+
+        if(state == firmware){
+            if(ver != version){
+                if (uart_reset_hat() < 0){
+                    PyErr_SetString(PyExc_IOError, "Failed to reset hat for new firmware");
+                    close(uart_fd);
+                    return -1;
+                }
+                if(getprompt()){
+                    state = bootloader;
+                    if (load_firmware(firmware_path, signature_path) < 0){
+                        PyErr_SetString(PyExc_IOError, "Failed to load new firmware");
+                        close(uart_fd);
+                        return -1;
+                    }
+                } else {
+                    // Something has gone wrong?
+                    state = other;
+                }
+            }
+        }
     }
 
-    if (load_firmware(firmware_path, signature_path) < 0){
-        PyErr_SetString(PyExc_IOError, "Failed to load firmware");
+    if(state == other){
+        PyErr_SetString(PyExc_IOError, "Failed to find hat");
+        close(uart_fd);
         return -1;
     }
 
@@ -788,7 +844,6 @@ int uart_open_hat(char *firmware_path, char *signature_path)
     if ((rv = queue_init()) != 0)
     {
         errno = rv;
-        //close_wake_gpio();
         PyErr_SetFromErrno(PyExc_IOError);
         close(uart_fd);
         return -1;
@@ -798,7 +853,6 @@ int uart_open_hat(char *firmware_path, char *signature_path)
     if ((rx_event_fd = eventfd(0, 0)) == -1)
     {
         errno = rv;
-        //close_wake_gpio();
         PyErr_SetFromErrno(PyExc_IOError);
         close(uart_fd);
         return -1;
@@ -807,15 +861,16 @@ int uart_open_hat(char *firmware_path, char *signature_path)
     /* Start the Rx and Tx threads */
     if (!PyEval_ThreadsInitialized())
         PyEval_InitThreads();
+
     if ((rv = pthread_create(&comms_rx_thread, NULL, run_comms_rx, NULL)) != 0)
     {
         errno = rv;
-        //close_wake_gpio();
         close(rx_event_fd);
         PyErr_SetFromErrno(PyExc_IOError);
         close(uart_fd);
         return -1;
     }
+
     if ((rv = pthread_create(&comms_tx_thread, NULL, run_comms_tx, NULL)) != 0)
     {
         shutdown = 1;
@@ -825,14 +880,24 @@ int uart_open_hat(char *firmware_path, char *signature_path)
         errno = rv;
         PyErr_SetFromErrno(PyExc_IOError);
 
-        //close_wake_gpio();
         close(rx_event_fd);
         close(uart_fd);
         uart_fd = -1;
         return -1;
     }
 
-    ostr("reboot\r");
+    if(state == bootloader){
+        ostr("reboot\r");
+        // Block till firmware loaded
+        pthread_mutex_lock(&mtxhatready);
+        sleep(7);
+    } else if(state == firmware){
+        // Already in current firmware, so just list devices that are connected
+        char *buffer = "list\r";
+        if (write(uart_fd, buffer, strlen((char*)buffer)) < 0){
+        }
+    }
+
     return uart_fd;
 }
 
@@ -852,8 +917,11 @@ int uart_close_hat(void)
     
     if (uart_fd != -1)
     {
-        char *buffer = "port 0 ; pwm ; set 0.000000 ; port 1 ; pwm ; set 0.000000 ; port 2 ; pwm ; set 0.000000 ; port 3 ; pwm ; set 0.000000\r";
-        if (write(uart_fd, buffer, strlen((char*)buffer)) < 0){
+        char *buffer1 = "port 0 ; pwm ; set 0.000000 ; port 1 ; pwm ; set 0.000000 ; port 2 ; pwm ; set 0.000000 ; port 3 ; pwm ; set 0.000000\r";
+        if (write(uart_fd, buffer1, strlen((char*)buffer1)) < 0){
+        }
+        char *buffer2 = "port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select\r";
+        if (write(uart_fd, buffer2, strlen((char*)buffer2)) < 0){
         }
         close(uart_fd);
         uart_fd = -1;

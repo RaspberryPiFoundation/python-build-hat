@@ -30,15 +30,12 @@ class Device:
             data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
             firm = os.path.join(data,"firmware.bin")
             sig = os.path.join(data,"signature.bin")
-            Device._instance = BuildHAT(firm, sig)
+            ver = os.path.join(data,"version")
+            vfile = open(ver)
+            v = int(vfile.read())
+            vfile.close()
+            Device._instance = BuildHAT(firm, sig, v)
             weakref.finalize(self, cleanup, self)
-            """FixMe - this is added so that we wait a little before
-            initialising sensors etc. otherwise we can get 
-            RuntimeError: There is no device attached to port B.
-
-            See if there's a way to detect if hat is ready.
-            """
-            time.sleep(7)
 
     def whatami(self, port):
         """Determine name of device on port
