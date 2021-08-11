@@ -745,12 +745,68 @@ int load_firmware(char *firmware_path, char *signature_path)
     return -1;
 }
 
+
+long checkversion(){
+    char vbuf[100];
+    char *vbuf_t = vbuf;
+    int nfds;
+    struct epoll_event ev1, events[1];
+    int epollfd;
+
+    epollfd = epoll_create1(0);
+    if (epollfd == -1) {
+        perror("epoll_create1");
+        exit(EXIT_FAILURE);
+    }
+
+    ev1.events = EPOLLIN;
+    ev1.data.fd = uart_fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, uart_fd, &ev1) == -1) {
+        perror("epoll_ctl: listen_sock");
+        exit(EXIT_FAILURE);
+    }
+
+    while(1){
+        nfds = epoll_wait(epollfd, events, MAX_EVENTS, 2000);
+        if (nfds == -1) {
+            perror("epoll_wait");
+            exit(EXIT_FAILURE);
+        }
+        if(nfds == 0){
+            // No data
+            return 0;
+        }
+        for (int n = 0; n < nfds; ++n) {
+            if ( events[n].data.fd == uart_fd){
+                int rcount = read(events[n].data.fd, vbuf_t, 1);
+                if(rcount == 1){
+                    if(vbuf_t[0] == '\n'){
+                        if (strncmp(VERSION, vbuf, strlen(VERSION)) == 0) {
+                            return strtol(vbuf+strlen(VERSION), NULL, 10);
+                        }
+                        vbuf_t = vbuf;
+                        break;
+                    }
+                    vbuf_t++;
+                    if((vbuf_t-vbuf) >= sizeof vbuf)
+                        vbuf_t = 0;
+                } else {
+                    // No data
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 /* Open the UART bus, select the Hat as the device to communicate with,
  * and return the file descriptor.  You must close the file descriptor
  * when you are done with it.
  */
 int uart_open_hat(char *firmware_path, char *signature_path, long version)
 {
+    char *buffer = "version\r";
     enum hatstate state = other;
     int rv;
     struct termios ttyopt;
@@ -786,9 +842,6 @@ int uart_open_hat(char *firmware_path, char *signature_path, long version)
         }
     } else {
         long ver = 0;
-        char vbuf[100];
-        char *vbuf_t = vbuf;
-        char *buffer = "version\r";
 
         if (write(uart_fd, buffer, strlen((char*)buffer)) < 0){
             PyErr_SetString(PyExc_IOError, "Failed to send command");
@@ -796,21 +849,9 @@ int uart_open_hat(char *firmware_path, char *signature_path, long version)
             return -1;
         }
 
-        while(1){
-            int ret = read(uart_fd, vbuf_t, 1);
-            if(ret == 1){
-                if(vbuf_t[0] == '\n'){
-                    if (strncmp(VERSION, vbuf, strlen(VERSION)) == 0) {
-                        state = firmware;
-                        ver = strtol(vbuf+strlen(VERSION), NULL, 10);
-                        break;
-                    }
-                    vbuf_t = vbuf;
-                    continue;
-                }
-                vbuf_t++;
-            }
-        }
+        ver = checkversion();
+        if(ver > 0)
+            state = firmware;
 
         if(state == firmware){
             if(ver != version){
