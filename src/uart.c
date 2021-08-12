@@ -62,6 +62,7 @@ unsigned char imagebuf[IMAGEBUFSIZE + 1];
 #define MODE "  M"
 #define FORMAT "    format "
 #define VERSION "Firmware version: "
+#define BOOTVERSION "BuildHAT bootloader"
 #define DONEINIT "Done initialising ports"
 
 #define BASE_DIRECTORY "/sys/class/gpio"
@@ -745,9 +746,9 @@ int load_firmware(char *firmware_path, char *signature_path)
     return -1;
 }
 
-
-long checkversion(){
-    char vbuf[100];
+char * checkmessage(char *message, char *send){
+    int buffsize = 100;
+    char *vbuf = malloc(buffsize);
     char *vbuf_t = vbuf;
     int nfds;
     struct epoll_event ev1, events[1];
@@ -766,6 +767,13 @@ long checkversion(){
         exit(EXIT_FAILURE);
     }
 
+    if(write(uart_fd, send, strlen(send)) != strlen(send)){
+        // Failed to write data
+        goto cleanup;
+    }
+
+    int diffcount = 0;
+
     while(1){
         nfds = epoll_wait(epollfd, events, MAX_EVENTS, 2000);
         if (nfds == -1) {
@@ -774,31 +782,42 @@ long checkversion(){
         }
         if(nfds == 0){
             // No data
-            return 0;
+            goto cleanup;
         }
         for (int n = 0; n < nfds; ++n) {
             if ( events[n].data.fd == uart_fd){
                 int rcount = read(events[n].data.fd, vbuf_t, 1);
                 if(rcount == 1){
                     if(vbuf_t[0] == '\n'){
-                        if (strncmp(VERSION, vbuf, strlen(VERSION)) == 0) {
-                            return strtol(vbuf+strlen(VERSION), NULL, 10);
+                        vbuf_t[0] = 0;
+                        if (strncmp(message, vbuf, strlen(message)) == 0) {
+                            return vbuf;
+                        } else {
+                            // Different message than expected
+                            diffcount++;
+                            if(diffcount >= 2)
+                                goto cleanup;
                         }
                         vbuf_t = vbuf;
                         break;
                     }
                     vbuf_t++;
-                    if((vbuf_t-vbuf) >= sizeof vbuf)
-                        vbuf_t = 0;
+                    if((vbuf_t-vbuf) >= buffsize){
+                        vbuf_t = vbuf;
+                    }
                 } else {
                     // No data
-                    return 0;
+                    goto cleanup;
                 }
             }
         }
     }
-    return 0;
+
+cleanup:
+    epoll_ctl(epollfd, EPOLL_CTL_DEL, uart_fd, &ev1);
+    return NULL;
 }
+
 
 /* Open the UART bus, select the Hat as the device to communicate with,
  * and return the file descriptor.  You must close the file descriptor
@@ -806,7 +825,6 @@ long checkversion(){
  */
 int uart_open_hat(char *firmware_path, char *signature_path, long version)
 {
-    char *buffer = "version\r";
     enum hatstate state = other;
     int rv;
     struct termios ttyopt;
@@ -833,7 +851,7 @@ int uart_open_hat(char *firmware_path, char *signature_path, long version)
     tcsetattr(uart_fd, TCSANOW, &ttyopt);
     tcflush(uart_fd, TCIOFLUSH);
 
-    if(getprompt()){
+    if(checkmessage(BOOTVERSION,"version\r") != NULL){
         state = bootloader;
         if (load_firmware(firmware_path, signature_path) < 0){
             PyErr_SetString(PyExc_IOError, "Failed to load firmware");
@@ -841,17 +859,14 @@ int uart_open_hat(char *firmware_path, char *signature_path, long version)
             return -1;
         }
     } else {
+
         long ver = 0;
-
-        if (write(uart_fd, buffer, strlen((char*)buffer)) < 0){
-            PyErr_SetString(PyExc_IOError, "Failed to send command");
-            close(uart_fd);
-            return -1;
+        char *vers = checkmessage(VERSION,"version\r");
+        if(vers != NULL){
+            ver = strtol(vers+strlen(VERSION), NULL, 10);
+            if(ver > 0)
+                state = firmware;
         }
-
-        ver = checkversion();
-        if(ver > 0)
-            state = firmware;
 
         if(state == firmware){
             if(ver != version){
@@ -860,7 +875,7 @@ int uart_open_hat(char *firmware_path, char *signature_path, long version)
                     close(uart_fd);
                     return -1;
                 }
-                if(getprompt()){
+                if(checkmessage(BOOTVERSION,"version\r") != NULL){
                     state = bootloader;
                     if (load_firmware(firmware_path, signature_path) < 0){
                         PyErr_SetString(PyExc_IOError, "Failed to load new firmware");
@@ -934,8 +949,11 @@ int uart_open_hat(char *firmware_path, char *signature_path, long version)
         sleep(7);
     } else if(state == firmware){
         // Already in current firmware, so just list devices that are connected
-        char *buffer = "list\r";
+        char *buffer = "echo 0; list\r";
         if (write(uart_fd, buffer, strlen((char*)buffer)) < 0){
+            PyErr_SetString(PyExc_IOError, "Failed to list devices");
+            close(uart_fd);
+            return -1;
         }
     }
 
