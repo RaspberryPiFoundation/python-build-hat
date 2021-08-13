@@ -24,7 +24,6 @@
 #include "motor.h"
 #include "port.h"
 #include "device.h"
-#include "pair.h"
 #include "motor-settings.h"
 #include "callback.h"
 
@@ -700,6 +699,7 @@ Motor_get(PyObject *self, PyObject *args)
 
     if ((get_fn = PyObject_GetAttrString(motor->device, "get")) == NULL)
         return NULL;
+
     result = PyObject_CallObject(get_fn, args);
     Py_DECREF(get_fn);
     return result;
@@ -740,8 +740,8 @@ Motor_pwm(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    //if (device_ensure_mode_info(motor->device) < 0)
+    //   return NULL;
 
     if ((pwm_fn = PyObject_GetAttrString(motor->port, "pwm")) == NULL)
         return NULL;
@@ -767,8 +767,8 @@ Motor_float(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    //if (device_ensure_mode_info(motor->device) < 0)
+    //    return NULL;
 
     return PyObject_CallMethod(motor->port, "pwm", "i", 0);
 }
@@ -1071,18 +1071,18 @@ Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall) == 0)
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    //if (device_ensure_mode_info(motor->device) < 0)
+    //    return NULL;
 
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
     decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
 
-    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
         set_stall(motor, stall) < 0)
-        return NULL;
+        return NULL;*/
 
     if (cmd_start_speed(port_get_id(motor->port),
                         speed, power, use_profile) < 0)
@@ -1097,11 +1097,12 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
 {
     MotorObject *motor = (MotorObject *)self;
     static char *kwlist[] = {
-        "degrees", "speed", "max_power", "stop",
+        "newpos", "curpos", "speed", "max_power", "stop",
         "acceleration", "deceleration", "stall",
         "blocking", NULL
     };
-    int32_t degrees;
+    double newpos;
+    double curpos;
     int32_t speed;
     uint32_t power = motor->default_max_power;
     uint32_t accel = motor->default_acceleration;
@@ -1119,13 +1120,13 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     if (PyArg_ParseTupleAndKeywords(args, kwds,
-                                    "ii|IIIIpp:run_for_degrees", kwlist,
-                                    &degrees, &speed, &power, &stop,
+                                    "ddi|IIIIpp:run_for_degrees", kwlist,
+                                    &newpos, &curpos, &speed, &power, &stop,
                                     &accel, &decel, &stall, &blocking) == 0)
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    //if (device_ensure_mode_info(motor->device) < 0)
+    //    return NULL;
 
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
@@ -1137,75 +1138,14 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
         set_stall(motor, stall) < 0)
-        return NULL;
+        return NULL;*/
 
     if (cmd_start_speed_for_degrees(port_get_id(motor->port),
-                                    degrees, speed, power,
-                                    (uint8_t)parsed_stop, use_profile,
-                                    blocking) < 0)
-        return NULL;
-
-    Py_RETURN_NONE;
-}
-
-
-static PyObject *
-Motor_run_for_rotations(PyObject *self, PyObject *args, PyObject *kwds)
-{
-    MotorObject *motor = (MotorObject *)self;
-    static char *kwlist[] = {
-        "rotations", "speed", "max_power", "stop",
-        "acceleration", "deceleration", "stall",
-        "blocking", NULL
-    };
-    int32_t rotations;
-    int32_t speed;
-    uint32_t power = motor->default_max_power;
-    uint32_t accel = motor->default_acceleration;
-    uint32_t decel = motor->default_deceleration;
-    int stall = motor->default_stall;
-    uint32_t stop = MOTOR_STOP_USE_DEFAULT;
-    uint8_t use_profile = 0;
-    int parsed_stop;
-    int blocking = 1;
-
-    if (motor->is_detached)
-    {
-        PyErr_SetString(cmd_get_exception(), "Motor is detached");
-        return NULL;
-    }
-
-    if (PyArg_ParseTupleAndKeywords(args, kwds,
-                                    "ii|IIIIpp:run_for_rotations", kwlist,
-                                    &rotations, &speed, &power, &stop,
-                                    &accel, &decel, &stall, &blocking) == 0)
-        return NULL;
-
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
-
-    speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
-    power = CLIP(power, POWER_MIN, POWER_MAX);
-    accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
-    decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
-    if ((parsed_stop = parse_stop(motor, stop)) < 0)
-    {
-        PyErr_Format(PyExc_ValueError, "Invalid stop state: %d", stop);
-        return NULL;
-    }
-
-    if (set_acceleration(motor, accel, &use_profile) < 0 ||
-        set_deceleration(motor, decel, &use_profile) < 0 ||
-        set_stall(motor, stall) < 0)
-        return NULL;
-
-    if (cmd_start_speed_for_degrees(port_get_id(motor->port),
-                                    rotations * 360, speed, power,
-                                    (uint8_t)parsed_stop, use_profile,
-                                    blocking) < 0)
+                                    newpos, curpos, speed, power,
+                                    (uint8_t)parsed_stop, use_profile, blocking) < 0)
         return NULL;
 
     Py_RETURN_NONE;
@@ -1245,8 +1185,8 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
                                     &blocking) == 0)
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    /*if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;*/
 
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
@@ -1260,10 +1200,10 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
 
     position -= motor->preset_position;
 
-    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
         set_stall(motor, stall) < 0)
-        return NULL;
+        return NULL;*/
 
     if (cmd_goto_abs_position(port_get_id(motor->port),
                               position, speed, power,
@@ -1307,8 +1247,8 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall, &blocking) == 0)
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
+    /*if (device_ensure_mode_info(motor->device) < 0)
+        return NULL;*/
 
     time = CLIP(time, RUN_TIME_MIN, RUN_TIME_MAX);
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
@@ -1321,10 +1261,10 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    if (set_acceleration(motor, accel, &use_profile) < 0 ||
+    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
         set_deceleration(motor, decel, &use_profile) < 0 ||
         set_stall(motor, stall) < 0)
-        return NULL;
+        return NULL;*/
 
     if (cmd_start_speed_for_time(port_get_id(motor->port),
                                  time, speed, power,
@@ -1373,11 +1313,6 @@ Motor_pid(PyObject *self, PyObject *args)
 }
 
 
-/* Forward declaration; Motor_pair needs access to MotorType */
-static PyObject *
-Motor_pair(PyObject *self, PyObject *args);
-
-
 static PyMethodDef Motor_methods[] = {
     { "mode", Motor_mode, METH_VARARGS, "Get or set the current mode" },
     { "get", Motor_get, METH_VARARGS, "Get a set of readings from the motor" },
@@ -1413,11 +1348,6 @@ static PyMethodDef Motor_methods[] = {
         "Run the motor for the given angle"
     },
     {
-        "run_for_rotations", (PyCFunction)Motor_run_for_rotations,
-        METH_VARARGS | METH_KEYWORDS,
-        "Run the motor for rotations"
-    },
-    {
         "run_to_position", (PyCFunction)Motor_run_to_position,
         METH_VARARGS | METH_KEYWORDS,
         "Run the motor to the given position"
@@ -1430,10 +1360,6 @@ static PyMethodDef Motor_methods[] = {
     {
         "pid", Motor_pid, METH_VARARGS,
         "Read or set the P, I and D values"
-    },
-    {
-        "pair", Motor_pair, METH_VARARGS,
-        "Pair two motors to control them as one"
     },
     { NULL, NULL, 0, NULL }
 };
@@ -1560,44 +1486,6 @@ static PyTypeObject MotorType =
     .tp_getset = Motor_getsetters,
     .tp_repr = Motor_repr
 };
-
-
-static PyObject *
-Motor_pair(PyObject *self, PyObject *args)
-{
-    MotorObject *motor = (MotorObject *)self;
-    PyObject *other;
-    PyObject *pair;
-    clock_t start;
-
-    if (PyArg_ParseTuple(args, "O:pair", &other) == 0)
-        return NULL;
-    if (!PyObject_IsInstance(other, (PyObject *)&MotorType))
-    {
-        PyErr_SetString(PyExc_TypeError,
-                        "Argument to pair() must be a Motor");
-        return NULL;
-    }
-
-    if ((pair = pair_get_pair(motor->port,
-                              ((MotorObject *)other)->port)) == NULL)
-        return NULL;
-
-    /* Wait for ID to become valid or timeout */
-    start = clock();
-    while (!pair_is_ready(pair))
-    {
-        if (clock() - start > CLOCKS_PER_SEC)
-        {
-            /* Timeout */
-            if (pair_unpair(pair) < 0)
-                return NULL;
-            Py_RETURN_FALSE;
-        }
-    }
-
-    return pair;
-}
 
 
 int motor_modinit(void)

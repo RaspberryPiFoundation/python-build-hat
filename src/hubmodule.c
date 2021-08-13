@@ -10,7 +10,7 @@
  *     Copyright (c) 2020 Kynesim Ltd
  *     Copyright (c) 2017-2020 LEGO System A/S
  *
- * Module to provide Python access to the Build HAT via I2C
+ * Module to provide Python access to the Build HAT via UART
  */
 
 #define PY_SSIZE_T_CLEAN
@@ -20,19 +20,12 @@
 #include <stddef.h>
 #include <unistd.h>
 
-#include "i2c.h"
+#include "uart.h"
 #include "cmd.h"
 #include "port.h"
 #include "device.h"
 #include "motor.h"
-#include "pair.h"
 #include "callback.h"
-#include "firmware.h"
-
-#ifdef DEBUG_I2C
-#include "debug-i2c.h"
-#endif
-
 
 /* Hijinks is required to pass a string through compiler defines */
 #define XSTR(s) #s
@@ -98,7 +91,6 @@ typedef struct
     PyObject_HEAD
     PyObject *ports;
     PyObject *exception;
-    PyObject *firmware;
     int initialised;
 } HubObject;
 
@@ -107,7 +99,6 @@ static int
 Hub_traverse(HubObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->ports);
-    Py_VISIT(self->firmware);
     Py_VISIT(self->exception);
     return 0;
 }
@@ -117,28 +108,49 @@ static int
 Hub_clear(HubObject *self)
 {
     Py_CLEAR(self->ports);
-    Py_CLEAR(self->firmware);
     Py_CLEAR(self->exception);
     return 0;
 }
 
+/* Make this class a singleton */
+static int build_hat_created = 0;
 
 static void
 Hub_dealloc(HubObject *self)
 {
-    PyObject_GC_UnTrack(self);
-    Hub_clear(self);
-    Py_TYPE(self)->tp_free((PyObject *)self);
+    //PyObject_GC_UnTrack(self); // calling this means finalize isn't called
+    //Hub_clear(self);
+    //Py_TYPE(self)->tp_free((PyObject *)self); // calling this means finalize isn't called
 }
 
+static void
+Hub_finalize(PyObject *self)
+{
+    PyObject *etype, *evalue, *etraceback;
 
-/* Make this class a singleton */
-static int build_hat_created = 0;
+    PyErr_Fetch(&etype, &evalue, &etraceback);
+    uart_close_hat();
+    callback_finalize();
+    PyErr_Restore(etype, evalue, etraceback);
+
+    PyObject_GC_UnTrack(self);
+    Hub_clear((HubObject*)self);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+    build_hat_created = 0;
+}
 
 static PyObject *
 Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     HubObject *self;
+    char *firmware_path;
+    char *signature_path;
+    long version = 0;
+
+    static char *kwlist[] = { "firmware", "signature", "version", NULL };
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ssl", kwlist, &firmware_path, &signature_path, &version))
+        return NULL;
 
     if (build_hat_created != 0)
     {
@@ -159,14 +171,12 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     Py_INCREF(Py_None);
     self->exception = Py_None;
-    Py_INCREF(Py_None);
-    self->firmware = Py_None;
     if (callback_init() < 0)
     {
         Py_DECREF(self);
         return NULL;
     }
-    if (i2c_open_hat() < 0)
+    if (uart_open_hat(firmware_path, signature_path, version) < 0)
     {
         Py_DECREF(self);
         return NULL;
@@ -180,16 +190,10 @@ Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = { NULL };
-    PyObject *new;
-    PyObject *old;
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "", kwlist))
-        return -1;
     if (self->initialised)
         return 0;
 
-    new = cmd_get_exception();
+    /*new = cmd_get_exception();
     Py_INCREF(new);
     old = self->exception;
     Py_DECREF(old);
@@ -203,7 +207,7 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     }
     old = self->firmware;
     Py_DECREF(old);
-    self->firmware = new;
+    self->firmware = new;*/
     self->initialised = 1;
 
     /* Give the HAT a chance to recognise what is attached to it */
@@ -212,26 +216,13 @@ Hub_init(HubObject *self, PyObject *args, PyObject *kwds)
     Py_END_ALLOW_THREADS
 
     /* By this time we should at least have heard from the HAT */
-    if (i2c_check_comms_error() < 0)
+    /*if (uart_check_comms_error() < 0)
     {
         build_hat_created = 0;
         return -1;
-    }
+    }*/
 
     return 0;
-}
-
-
-static void
-Hub_finalize(PyObject *self)
-{
-    PyObject *etype, *evalue, *etraceback;
-
-    PyErr_Fetch(&etype, &evalue, &etraceback);
-    i2c_close_hat();
-    callback_finalize();
-    PyErr_Restore(etype, evalue, etraceback);
-    build_hat_created = 0;
 }
 
 
@@ -252,12 +243,12 @@ Hub_get_exception(HubObject *self, void *closure)
 }
 
 /* Ditto the firmware upgrader */
-static PyObject *
+/*static PyObject *
 Hub_get_firmware(HubObject *self, void *closure)
 {
     Py_INCREF(self->firmware);
     return self->firmware;
-}
+}*/
 
 
 static PyGetSetDef Hub_getsetters[] =
@@ -270,13 +261,6 @@ static PyGetSetDef Hub_getsetters[] =
         "The internal protocol error",
         NULL
     },
-    {
-        "firmware",
-        (getter)Hub_get_firmware,
-        NULL,
-        "The firmware upgrader",
-        NULL
-    },
     { NULL }
 };
 
@@ -284,19 +268,19 @@ static PyGetSetDef Hub_getsetters[] =
 static PyObject *
 Hub_info(PyObject *self, PyObject *args)
 {
-    PyObject *dict;
+    /*PyObject *dict;
     PyObject *hw_revision;
     PyObject *fw_revision;
 
-    if (!PyArg_ParseTuple(args, "")) /* No args to this function */
+    if (!PyArg_ParseTuple(args, "")) // No args to this function 
         return NULL;
 
-    /* Add the hardware revision to the dictionary */
+    // Add the hardware revision to the dictionary 
     hw_revision = cmd_get_hardware_version();
     if (hw_revision == NULL)
         return NULL;
 
-    /* ...and the firmware revision while we're at it */
+    // ...and the firmware revision while we're at it 
     fw_revision = cmd_get_firmware_version();
     if (fw_revision == NULL)
     {
@@ -307,9 +291,12 @@ Hub_info(PyObject *self, PyObject *args)
     dict = Py_BuildValue("{sOsO}",
                          "hardware_revision", hw_revision,
                          "firmware_revision", fw_revision);
+    
     Py_DECREF(hw_revision);
     Py_DECREF(fw_revision);
-    return dict;
+    return dict;*/
+
+    return NULL;
 }
 
 
@@ -329,26 +316,9 @@ Hub_status(PyObject *self, PyObject *args)
 }
 
 
-#ifdef DEBUG_I2C
-static PyObject *
-Hub_debug_i2c(PyObject *self, PyObject *args)
-{
-    if (!PyArg_ParseTuple(args, "")) /* No args here either */
-        return NULL;
-
-    log_i2c_dump();
-
-    Py_RETURN_NONE;
-}
-#endif /* DEBUG_I2C */
-
-
 static PyMethodDef Hub_methods[] = {
     { "info", Hub_info, METH_VARARGS, "Information about the Hub" },
     { "status", Hub_status, METH_VARARGS, "Status of the Hub" },
-#ifdef DEBUG_I2C
-    { "debug_i2c", Hub_debug_i2c, METH_VARARGS, "Dump recorded I2C traffic" },
-#endif
     { NULL, NULL, 0, NULL }
 };
 
@@ -370,7 +340,7 @@ static PyTypeObject HubType =
     .tp_clear = (inquiry)Hub_clear,
     .tp_getset = Hub_getsetters,
     .tp_methods = Hub_methods,
-    .tp_finalize = Hub_finalize
+    .tp_finalize = (destructor)Hub_finalize
 };
 
 
@@ -421,18 +391,8 @@ PyInit_build_hat(void)
         return NULL;
     }
 
-    if (pair_modinit() < 0)
-    {
-        port_demodinit();
-        motor_demodinit();
-        device_demodinit();
-        Py_DECREF(&HubType);
-        Py_DECREF(hub);
-    }
-
     if (cmd_modinit(hub) < 0)
     {
-        pair_demodinit();
         port_demodinit();
         motor_demodinit();
         device_demodinit();
@@ -441,7 +401,7 @@ PyInit_build_hat(void)
         return NULL;
     }
 
-    if (firmware_modinit() < 0)
+    /*if (firmware_modinit() < 0)
     {
         cmd_demodinit();
         pair_demodinit();
@@ -451,13 +411,11 @@ PyInit_build_hat(void)
         Py_DECREF(&HubType);
         Py_DECREF(hub);
         return NULL;
-    }
+    }*/
 
     if (PyModule_AddObject(hub, "BuildHAT", (PyObject *)&HubType) < 0)
     {
-        firmware_demodinit();
         cmd_demodinit();
-        pair_demodinit();
         port_demodinit();
         motor_demodinit();
         device_demodinit();

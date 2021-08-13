@@ -1,5 +1,13 @@
 from build_hat import BuildHAT
+import weakref
 import time
+import os
+import sys
+import gc
+
+def cleanup(obj):
+    obj.close()
+    gc.collect()
 
 class Device:
     """Creates a single instance of the buildhat for all devices to use"""
@@ -20,14 +28,15 @@ class Device:
     
     def __init__(self):
         if not Device._instance:
-            Device._instance = BuildHAT()
-            """FixMe - this is added so that we wait a little before
-            initialising sensors etc. otherwise we can get 
-            RuntimeError: There is no device attached to port B.
-
-            See if there's a way to detect if hat is ready.
-            """
-            time.sleep(1)
+            data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
+            firm = os.path.join(data,"firmware.bin")
+            sig = os.path.join(data,"signature.bin")
+            ver = os.path.join(data,"version")
+            vfile = open(ver)
+            v = int(vfile.read())
+            vfile.close()
+            Device._instance = BuildHAT(firm, sig, v)
+            weakref.finalize(self, cleanup, self)
 
     def whatami(self, port):
         """Determine name of device on port
@@ -39,6 +48,9 @@ class Device:
             return self._device_names[port.info()['type']]
         else:
             return "Unknown"
+
+    def close(self):
+        del Device._instance
 
 class PortDevice(Device):
     """Device which uses port"""

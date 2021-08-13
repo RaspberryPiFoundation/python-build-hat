@@ -25,14 +25,6 @@ $ python3 -m venv hat_env
 $ source hat_env/bin/activate
 ```
 
-You may need to install the I2C development library:
-
-```
-$ sudo apt install libi2c-dev
-```
-
-and you will certainly need to turn I2C on in your boot configuration file.
-
 Now use the setup.py script to build and install the module:
 
 ```
@@ -44,12 +36,8 @@ Now use the setup.py script to build and install the module:
 You should now be able to "import hub" in a Python3 script and have
 the module available to you.
 
-Optionally the code may be compiled with "DEBUG\_I2C=1" to enable logging
-of the I2C traffic on the hub.
-
-The code may be compiled with "USE\_DUMMY\_I2C=1" to use an ethernet local
-loopback as a fake I2C for test purposes.
-
+Optionally the code may be compiled with "DEBUG\_UART=1" to enable logging
+of the UART traffic on the hub.
 
 Documentation
 -------------
@@ -71,30 +59,64 @@ Usage
 
 See the detailed documentation for the Python objects available.
 
-To control a motor attached to port A:
-
 ```python
-from build_hat import BuildHAT
+import time
+from signal import pause
+from buildhat import Motor
 
-bh = BuildHAT()
-bh.port.A.motor.run_for_time(1000, 127) # run for 1000ms at maximum clockwise speed
-bh.port.A.motor.run_for_time(1000, -127) # run for 1000ms at maximum anticlockwise speed
-bh.port.A.motor.run_for_degrees(180, 127) # turn 180 degrees clockwise at maximum speed
-bh.port.A.motor.run_for_degrees(720, -127) # Make two rotations anticlockwise at maximum speed
-bh.port.A.motor.run_to_position(0, 127) # Move to top dead centre at maximum speed (positioning seems to be absolute)
-bh.port.A.motor.run_to_position(180, 127) # Move to 180 degrees forward of top dead centre at maximum speed
+motor = Motor('A')
+motor.set_default_speed(30)
+
+print("Position", motor.get_aposition())
+
+def handle_motor(speed, pos, apos):
+    print("Motor", speed, pos, apos)
+
+motor.when_rotated = handle_motor
+
+print("Run for degrees")
+motor.run_for_degrees(360)
+
+print("Run for seconds")
+motor.run_for_seconds(5)
+
+print("Run for rotations")
+motor.run_for_rotations(2)
+
+print("Start motor")
+motor.start()
+time.sleep(3)
+print("Stop motor")
+motor.stop()
+
+pause()
 ```
 
-To rotate motor attached to port once clockwise when a button attached to port B is pressed:
+Programming Bootloader
+----------------------
 
-```python
-from build_hat import BuildHAT
-import time
+```
+sudo apt install automake autoconf build-essential texinfo libtool libftdi-dev libusb-1.0-0-dev
+git clone https://github.com/raspberrypi/openocd.git --recursive --branch rp2040 --depth=1
+cd openocd
+./bootstrap
+./configure --enable-ftdi --enable-sysfsgpio --enable-bcm2835gpio
+make -j4
+sudo make install
+```
 
-bh = BuildHAT()
-while True:
-	if bh.port.B.device.get() > 0: # test if button is pressed
-		bh.port.A.motor.run_for_degrees(360, 127) # turn 360 degrees clockwise at maximum speed
-		time.sleep(0.5) # Wait half a second for motor to finish turning
+* Use the following command to program the bootloader:
 
+```
+openocd -s /usr/local/share/openocd/scripts -f interface/raspberrypi-swd.cfg -f target/rp2040.cfg -c "program bootloader.elf verify reset exit"
+```
+
+* Currently need to place firmware.bin and signature.bin in /tmp for the Python library to load them
+
+Install
+-------
+
+```
+sudo apt install python3-pip
+pip3 install build_hat-*.whl
 ```

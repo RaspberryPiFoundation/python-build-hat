@@ -23,7 +23,6 @@
 #include "cmd.h"
 #include "device.h"
 #include "motor.h"
-#include "pair.h"
 #include "callback.h"
 #include "protocol.h"
 
@@ -693,95 +692,7 @@ static PyGetSetDef PortSet_getsetters[] =
 };
 
 
-static PyObject *
-PortSet_power(PyObject *self, PyObject *args)
-{
-    PortSetObject *ports = (PortSetObject *)self;
-    int power_state = -1;
-
-    if (!PyArg_ParseTuple(args, "|p:power", &power_state))
-        return NULL;
-
-    if (power_state == -1)
-    {
-        /* The caller wants the current (believed) power state */
-        return PyBool_FromLong(ports->power_state);
-    }
-    if (cmd_set_vcc_port(power_state) < 0)
-        return NULL;
-    ports->power_state = power_state;
-
-    Py_RETURN_NONE;
-}
-
-
-static PyObject *
-PortSet_power_callback(PyObject *self, PyObject *args)
-{
-    PortSetObject *ports = (PortSetObject *)self;
-    PyObject *temp = NULL;
-
-    if (!PyArg_ParseTuple(args, "O:power_callback", &temp))
-        return NULL;
-
-    if (temp == NULL)
-    {
-        Py_INCREF(ports->callback_fn);
-        return ports->callback_fn;
-    }
-
-    if (temp != Py_None && !PyCallable_Check(temp))
-    {
-        PyErr_SetString(PyExc_TypeError, "callback must be callable");
-        return NULL;
-    }
-    Py_XINCREF(temp);
-    Py_XDECREF(ports->callback_fn);
-    ports->callback_fn = temp;
-
-    if (temp == Py_None)
-        cmd_disable_alert(ALERT_OVER_POWER);
-    else
-        cmd_enable_alert(ALERT_OVER_POWER);
-
-    Py_RETURN_NONE;
-}
-
-
-static PyObject *
-PortSet_overpower_state(PyObject *self, PyObject *args)
-{
-    int alert_state;
-
-    if (!PyArg_ParseTuple(args, ""))
-        return NULL;
-
-    if ((alert_state = cmd_request_alert(ALERT_OVER_POWER)) < 0)
-        return NULL;
-
-    return PyBool_FromLong(alert_state);
-}
-
-
 static PyMethodDef PortSet_methods[] = {
-    {
-        "power",
-        PortSet_power,
-        METH_VARARGS,
-        "Read or set the port power state"
-    },
-    {
-        "power_callback",
-        PortSet_power_callback,
-        METH_VARARGS,
-        "Read or set the callback function for overpower alerts"
-    },
-    {
-        "overpower_state",
-        PortSet_overpower_state,
-        METH_VARARGS,
-        "Read the Hat's overpower alert flag"
-    },
     { NULL, NULL, 0, NULL }
 };
 
@@ -891,7 +802,7 @@ int port_attach_port(uint8_t port_id,
     PyGILState_Release(gstate);
 
     /* Queue a callback */
-    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_ATTACHED, NULL);
+    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_ATTACHED);
 }
 
 
@@ -908,7 +819,6 @@ int port_detach_port(uint8_t port_id)
     /* Claim the global interpreter lock */
     gstate = PyGILState_Ensure();
     port = (PortObject *)port_set->ports[port_id];
-    pair_detach_subport(port_id);
 
     device_detach(port->device);
     Py_XDECREF(port->device);
@@ -923,65 +833,14 @@ int port_detach_port(uint8_t port_id)
     /* Release the penguins^WGIL */
     PyGILState_Release(gstate);
 
-    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_DETACHED, NULL);
+    return callback_queue(CALLBACK_PORT, port_id, CALLBACK_DETACHED);
 }
 
 
 /* Called from the background context */
-int port_new_value(uint8_t port_id, uint8_t *buffer, uint16_t nbytes)
-{
-    /* Some or all of the buffer will be the values we crave */
-    PyGILState_STATE gstate;
-    PortObject *port;
-    int rv;
-
-    if (port_id >= NUM_HUB_PORTS)
-    {
-        /* To process this, we need MotorPair to grow an associated
-         * Device/Port.  But even if it does, the Python API gives us
-         * no opportunity to get at the information.  Don't waste
-         * time, therefore.
-         */
-        return nbytes;
-    }
-    gstate = PyGILState_Ensure();
-    port = (PortObject *)port_set->ports[port_id];
-
-    if (port->device == Py_None)
-    {
-        /* We don't think we have anything attached.  Unfortunately
-         * this means we cannot tell how much of the buffer was the
-         * value for this port.  Options are:
-         *
-         * a) Assume this was a simple case, consume the whole buffer
-         * and return success, since this is most likely something
-         * happening in an unhelpful order, or
-         *
-         * b) Report an error and get the lower levels to abandon
-         * processing.
-         *
-         * We'll go with the error for safety.
-         */
-        rv = -1;
-    }
-    else
-    {
-        rv = device_new_value(port->device, buffer, nbytes);
-    }
-
-    PyGILState_Release(gstate);
-    if(rv > 0)
-        callback_queue(CALLBACK_DEVICE, port_id, CALLBACK_DATA, NULL);
-
-    return rv;
-}
-
-
-/* Called from the background context */
-int port_new_combi_value(uint8_t port_id,
+int port_new_any_value(uint8_t port_id,
                          int entry,
-                         uint8_t *buffer,
-                         uint16_t nbytes)
+                         data_t *buffer)
 {
     /* Some or all of the buffer will be the values we want */
     PyGILState_STATE gstate;
@@ -991,7 +850,8 @@ int port_new_combi_value(uint8_t port_id,
     if (port_id >= NUM_HUB_PORTS)
     {
         /* See above */
-        return nbytes;
+        //return nbytes;
+        return 0;
     }
 
     gstate = PyGILState_Ensure();
@@ -1003,7 +863,7 @@ int port_new_combi_value(uint8_t port_id,
     }
     else
     {
-        rv = device_new_combi_value(port->device, entry, buffer, nbytes);
+        rv = device_new_any_value(port->device, entry, buffer);
     }
     PyGILState_Release(gstate);
     return rv;
@@ -1066,12 +926,11 @@ int port_feedback_status(uint8_t port_id, uint8_t status)
     if (port->motor != Py_None)
     {
         if ((status & 0x02) != 0)
-            callback_queue(CALLBACK_MOTOR, port_id, CALLBACK_COMPLETE, NULL);
+            callback_queue(CALLBACK_MOTOR, port_id, CALLBACK_COMPLETE);
         if ((status & 0x04) != 0)
             callback_queue(CALLBACK_MOTOR, port_id,
                            ((status & 0x20) != 0) ? CALLBACK_STALLED :
-                           CALLBACK_INTERRUPTED,
-                           NULL);
+                           CALLBACK_INTERRUPTED);
     }
     return device_set_port_busy(port->device, status & 0x01);
 }
@@ -1247,4 +1106,18 @@ int port_set_motor_preset(PyObject *self, long position)
         return -1;
     motor_set_preset(port->motor, position);
     return 0;
+}
+
+int port_set_device_format(uint8_t port_id, uint8_t mode, uint8_t type)
+{
+    PortObject *port;
+
+    if (port_id >= NUM_HUB_PORTS)
+        return 0;
+
+    port = (PortObject *)port_set->ports[port_id];
+    if (port->device == NULL)
+        return 0;
+
+    return device_set_device_format(port->device, mode, type);
 }

@@ -18,6 +18,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "port.h"
 
 /* Device ID manifest constants */
 #define ID_MOTOR_MEDIUM            0x30
@@ -43,19 +44,13 @@ extern PyObject *device_new_device(PyObject *port,
  */
 extern PyObject *device_get_info(PyObject *self, uint8_t port_id);
 
-/* Parse an input buffer and update the stored values.  Returns the number
- * of bytes in the buffer consumed, or -1 on failure.
- */
-extern int device_new_value(PyObject *self, uint8_t *buffer, uint16_t nbytes);
-
 /* Parse an input buffer and update the stored values for a single
- * mode/dataset combination from a Combi-mode value update.  Returns
+ * mode/dataset combination from a Combi-mode or simple mode value update.  Returns
  * the number of bytes in the buffer consumed, or -1 on failure.
  */
-extern int device_new_combi_value(PyObject *self,
+extern int device_new_any_value(PyObject *self,
                                   int entry,
-                                  uint8_t *buffer,
-                                  uint16_t nbytes);
+                                  data_t *buffer);
 
 /* Update internal state from the format information */
 extern int device_new_format(PyObject *self);
@@ -102,5 +97,7 @@ extern int device_ensure_mode_info(PyObject *self);
 
 /* Handles device callbacks */
 extern int device_callback(PyObject *self, int event);
+
+int device_set_device_format(PyObject *device, uint8_t modei, uint8_t type);
 
 #endif /* RPI_STRAWBERRY_DEVICE_H_INCLUDED */

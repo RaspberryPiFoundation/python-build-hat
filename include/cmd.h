@@ -81,19 +81,13 @@ extern PyObject *cmd_version_as_unicode(uint8_t *buffer);
  */
 extern PyObject *cmd_get_hardware_version(void);
 
-/* Sends a Hub Property Request Update command for the FW Version
- * property and waits for the Hub Property Update in response.  The
- * version is converted into a Python string of the form "M.m.BB.bbbb"
- */
-extern PyObject *cmd_get_firmware_version(void);
-
 /* Sends a Port Information Request command for the value and waits
  * for the Port Value (Single or Combination) response.  The values
  * will be inserted into the device structure.  Returns 0 on success
  * (and the device->values entry will be updated) or -1 on error (when
  * an exception will already be raised).
  */
-extern int cmd_get_port_value(uint8_t port_id);
+extern int cmd_get_port_value(uint8_t port_id, uint8_t selindex);
 
 /* Sends a Hub Port Info Request command for the mode info of the
  * given port.  Fills in the port_modes_t structure with the returned
@@ -191,12 +185,6 @@ extern int cmd_get_mode_format(uint8_t port_id,
  */
 extern int cmd_set_pwm(uint8_t port_id, int8_t pwm);
 
-/* Sends a Port Output command to set the start power of the given
- * port pair.  Returns 0 on success, -1 on error (when a Python
- * exception will have been raised).
- */
-extern int cmd_set_pwm_pair(uint8_t port_id, int8_t pwm0, int8_t pwm1);
-
 /* Set the default acceleration profile */
 extern int cmd_set_acceleration(uint8_t port_id, uint32_t accel);
 
@@ -218,16 +206,6 @@ extern int cmd_start_speed(uint8_t port_id,
                            uint8_t max_power,
                            uint8_t use_profile);
 
-/* Sends a Port Output command to set start or hold a motor pair.
- * Returns 0 on success, -1 on error (when a Python exception will
- * have been raised).
- */
-extern int cmd_start_speed_pair(uint8_t port_id,
-                                int8_t speed0,
-                                int8_t speed1,
-                                uint8_t max_power,
-                                uint8_t use_profile);
-
 /* Sends a Port Output command to run a motor for a given number of
  * milliseconds.  Returns 0 on success, -1 on error (when a Python
  * exception will have been raised).
@@ -240,43 +218,18 @@ extern int cmd_start_speed_for_time(uint8_t port_id,
                                     uint8_t use_profile,
                                     bool blocking);
 
-/* Sends a Port Output command to run a motor pair for a given number
- * of milliseconds.  Returns 0 on success, -1 on error (when a Python
- * exception will have been raised).
- */
-extern int cmd_start_speed_for_time_pair(uint8_t port_id,
-                                         uint16_t time,
-                                         int8_t speed0,
-                                         int8_t speed1,
-                                         uint8_t max_power,
-                                         uint8_t stop,
-                                         uint8_t use_profile,
-                                         bool blocking);
-
 /* Sends a Port Output command to run a motor through a given angle.
  * Returns 0 on success, -1 on error (when a Python exception will
  * have been raised).
  */
 extern int cmd_start_speed_for_degrees(uint8_t port_id,
-                                       int32_t degrees,
+                                       double newpos,
+                                       double curpos,
                                        int8_t speed,
                                        uint8_t max_power,
                                        uint8_t stop,
                                        uint8_t use_profile,
                                        bool blocking);
-
-/* Sends a Port Output command to run a motor pair through a given
- * angle.  Returns 0 on success, -1 on error (when a Python exception
- * will have been raised).
- */
-extern int cmd_start_speed_for_degrees_pair(uint8_t port_id,
-                                            int32_t degrees,
-                                            int8_t speed0,
-                                            int8_t speed1,
-                                            uint8_t max_power,
-                                            uint8_t stop,
-                                            uint8_t use_profile,
-                                            bool blocking);
 
 /* Sends a Port Output command to run a motor to a specified
  * position.  Returns 0 on success, -1 on error (when a Python
@@ -293,32 +246,11 @@ extern int cmd_goto_abs_position(uint8_t port_id,
                                  uint8_t use_profile,
                                  bool blocking);
 
-/* Sends a Port Output command to run a motor pair to specified
- * positions.  Returns 0 on success, -1 on error (when a Python
- * exception will have been raised).
- */
-extern int cmd_goto_abs_position_pair(uint8_t port_id,
-                                      int32_t position0,
-                                      int32_t position1,
-                                      int8_t speed,
-                                      uint8_t max_power,
-                                      uint8_t stop,
-                                      uint8_t use_profile,
-                                      bool blocking);
-
 /* Sends a Port Output command to set the motor's "zero" position.
  * Returns 0 on success, or -1 on error (when a Python exception will
  * have been raised).
  */
 extern int cmd_preset_encoder(uint8_t port_id, int32_t position);
-
-/* Sends a Port Output command to set the motor pair's "zero"
- * positions.  Returns 0 on success, or -1 on error (when a Python
- * exception will have been raised).
- */
-extern int cmd_preset_encoder_pair(uint8_t port_id,
-                                   int32_t position0,
-                                   int32_t position1);
 
 /* Sends a Port Write Direct Mode Data command, writing a byte stream
  * directly to the target device.  Returns 0 on success, -1 on error
@@ -346,87 +278,5 @@ extern int cmd_set_combi_mode(uint8_t port,
                               uint8_t *modes,
                               int num_modes,
                               uint8_t notifications);
-
-
-/* Sends a Virtual Port Setup command to connect two ports as a pair.
- * Returns 0 on success, -1 on error.  The ports are not actually
- * paired until the corresponding MotorPair object has a valid id
- * field.
- */
-extern int cmd_connect_virtual_port(uint8_t port_1_id,
-                                    uint8_t port_2_id);
-
-/* Sends a Virtual Port Setup command to disconnect the virtual port.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_disconnect_virtual_port(uint8_t port_id);
-
-/* Sends a Firmware Request to initialize the external SPI Flash on
- * the HAT for a new firmware image.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_firmware_init(uint32_t nbytes);
-
-/* Sends a Firmware Request to write up to 64 bytes to the next area
- * in external SPI Flash.  Returns 0 on success, -1 on error.
- */
-extern int cmd_firmware_store(const uint8_t *data, uint32_t nbytes);
-
-/* Sends a Firmware Request for the number of bytes currently written
- * to external SPI Flash for the new image.  Returns -1 on error, and
- * the number of bytes written on success.
- */
-extern int cmd_firmware_length(void);
-
-/* Sends a Firmware Request for the running (internal) application's
- * stored or calculated checksum.
- * Returns 0 on success, -1 on error (with an exception already set).
- * The checksum is returned through the pchecksum parameter.
- */
-extern int cmd_firmware_checksum(uint8_t request_type, uint32_t *pchecksum);
-
-/* Sends a Firmware Request to validate the image in external flash.
- * Returns 0 on success, -1 on error (with an exception already raised).
- * The validity and checksums are returned through pointer arguments.
- */
-extern int cmd_firmware_validate_image(int *pvalid,
-                                       uint32_t *pstored_checksum,
-                                       uint32_t *pcalc_checksum);
-
-/* Sends a Firmware Request asking for the Device ID of the external
- * flash device.  Returns 0 on success, -1 on error.
- */
-extern int cmd_firmware_get_flash_devid(uint32_t *pdev_id);
-
-/* Sends a Firmware Request asking for 16 bytes from flash memory.
- * The "buffer" parameter must be a 16-byte array.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_firmware_read_flash(uint32_t addr, uint8_t *buffer);
-
-/* Sends an Action turning the Vcc Port line (the power to the ports)
- * on or off, as requested.  The "state" parameter is a boolean: if it is
- * non-zero the power will be turned on, if it is zero the power will be
- * turned off.  Returns 0 on success, -1 on error (with an exception
- * raised as usual).
- */
-extern int cmd_set_vcc_port(int state);
-
-/* Sends an Alert message with an Enable operation for the given alert.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_enable_alert(uint8_t alert);
-
-/* Sends an Alert message with a Disable operation for the given alert.
- * Returns 0 on success, -1 on error.
- */
-extern int cmd_disable_alert(uint8_t alert);
-
-/* Sends an Alert message with a Request Update operation for the given
- * alert.  Returns the alert status (0x00 for OK, 0xff for alert) on
- * success, -1 on error.
- */
-extern int cmd_request_alert(uint8_t alert);
-
 
 #endif /* RPI_STRAWBERRY_CMD_H_INCLUDED */
