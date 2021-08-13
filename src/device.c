@@ -1014,16 +1014,17 @@ int device_callback(PyObject *self, int event)
         {
             PyObject *value;
             value = PyList_GetItem(device->values, i);
+            Py_INCREF(value);
             if (value == NULL)
             {
                 Py_DECREF(results);
                 return -1;
             }
             PyList_SET_ITEM(results, i, value);
+            Py_DECREF(value);
         }
 
         PyObject *args = Py_BuildValue("(O)", results);
-
         rv = (PyObject_CallObject(device->callback, args) != NULL) ? 0 : -1;
         Py_XDECREF(args);
     }

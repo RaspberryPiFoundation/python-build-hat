@@ -7,6 +7,7 @@ import gc
 
 def cleanup(obj):
     obj.close()
+    gc.collect()
 
 class Device:
     """Creates a single instance of the buildhat for all devices to use"""
@@ -50,7 +51,6 @@ class Device:
 
     def close(self):
         del Device._instance
-        gc.collect()
 
 class PortDevice(Device):
     """Device which uses port"""

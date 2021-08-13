@@ -118,6 +118,14 @@ static int build_hat_created = 0;
 static void
 Hub_dealloc(HubObject *self)
 {
+    //PyObject_GC_UnTrack(self); // calling this means finalize isn't called
+    //Hub_clear(self);
+    //Py_TYPE(self)->tp_free((PyObject *)self); // calling this means finalize isn't called
+}
+
+static void
+Hub_finalize(PyObject *self)
+{
     PyObject *etype, *evalue, *etraceback;
 
     PyErr_Fetch(&etype, &evalue, &etraceback);
@@ -126,12 +134,10 @@ Hub_dealloc(HubObject *self)
     PyErr_Restore(etype, evalue, etraceback);
 
     PyObject_GC_UnTrack(self);
-    Hub_clear(self);
+    Hub_clear((HubObject*)self);
     Py_TYPE(self)->tp_free((PyObject *)self);
-
     build_hat_created = 0;
 }
-
 
 static PyObject *
 Hub_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -334,6 +340,7 @@ static PyTypeObject HubType =
     .tp_clear = (inquiry)Hub_clear,
     .tp_getset = Hub_getsetters,
     .tp_methods = Hub_methods,
+    .tp_finalize = (destructor)Hub_finalize
 };
 
 

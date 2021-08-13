@@ -424,6 +424,13 @@ void parse_line(char *serbuf)
                 token = strtok(NULL, " ");
                 mcount++;
             }
+
+            // Add extra value, to prevent current segfault - Needs more investigation!
+            data_t *tmpval = malloc(sizeof(data_t));
+            tmpval->i_data = strtof("1.0", NULL);
+            tmpval->t = FLOAT;
+            port_new_any_value(port, mcount, tmpval);
+
             callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA);
         }
     }
