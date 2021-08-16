@@ -523,71 +523,6 @@ static int parse_stop(MotorObject *motor, uint32_t stop)
 }
 
 
-static int set_acceleration(MotorObject *motor,
-                            uint32_t accel,
-                            uint8_t *p_use_profile)
-{
-    if (accel != motor->default_acceleration)
-    {
-        motor->want_default_acceleration_set = 1;
-        *p_use_profile |= USE_PROFILE_ACCELERATE;
-        return cmd_set_acceleration(port_get_id(motor->port), accel);
-    }
-    if (motor->want_default_acceleration_set)
-    {
-        if (cmd_set_acceleration(port_get_id(motor->port),
-                                 motor->default_acceleration) < 0)
-            return -1;
-        motor->want_default_acceleration_set = 0;
-    }
-    /* Else the right acceleration value has already been set */
-    return 0;
-}
-
-
-static int set_deceleration(MotorObject *motor,
-                            uint32_t decel,
-                            uint8_t *p_use_profile)
-{
-    if (decel != motor->default_deceleration)
-    {
-        motor->want_default_deceleration_set = 1;
-        *p_use_profile |= USE_PROFILE_DECELERATE;
-        return cmd_set_deceleration(port_get_id(motor->port), decel);
-    }
-    if (motor->want_default_deceleration_set)
-    {
-        if (cmd_set_deceleration(port_get_id(motor->port),
-                                 motor->default_deceleration) < 0)
-            return -1;
-        motor->want_default_deceleration_set = 0;
-    }
-    /* Else the right deceleration value has already been set */
-    return 0;
-}
-
-
-static int set_stall(MotorObject *motor, int stall)
-{
-    stall = stall ? 1 : 0;
-    if (stall != motor->default_stall)
-    {
-        motor->want_default_stall_set = 1;
-        return cmd_set_stall(port_get_id(motor->port), stall);
-    }
-    if (motor->want_default_stall_set)
-    {
-        if (cmd_set_stall(port_get_id(motor->port),
-                          motor->default_stall) < 0)
-            return -1;
-        motor->want_default_stall_set = 0;
-    }
-    /* Else the right stall detection is already set */
-    return 0;
-}
-
-
-
 static int
 Motor_traverse(MotorObject *self, visitproc visit, void *arg)
 {
@@ -740,9 +675,6 @@ Motor_pwm(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    //if (device_ensure_mode_info(motor->device) < 0)
-    //   return NULL;
-
     if ((pwm_fn = PyObject_GetAttrString(motor->port, "pwm")) == NULL)
         return NULL;
     result = PyObject_CallObject(pwm_fn, args);
@@ -767,122 +699,7 @@ Motor_float(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
-    //if (device_ensure_mode_info(motor->device) < 0)
-    //    return NULL;
-
     return PyObject_CallMethod(motor->port, "pwm", "i", 0);
-}
-
-
-static PyObject *
-Motor_brake(PyObject *self, PyObject *args)
-{
-    MotorObject *motor = (MotorObject *)self;
-
-    if (motor->is_detached)
-    {
-        PyErr_SetString(cmd_get_exception(), "Motor is detached");
-        return NULL;
-    }
-
-    /* brake() is equivalent to pwm(127) */
-
-    if (!PyArg_ParseTuple(args, ""))
-        return NULL;
-
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
-
-    return PyObject_CallMethod(motor->port, "pwm", "i", 127);
-}
-
-
-static PyObject *
-Motor_hold(PyObject *self, PyObject *args)
-{
-    MotorObject *motor = (MotorObject *)self;
-    int max_power = 100;
-    uint8_t use_profile = 0;
-
-    if (motor->is_detached)
-    {
-        PyErr_SetString(cmd_get_exception(), "Motor is detached");
-        return NULL;
-    }
-
-    if (!PyArg_ParseTuple(args, "|i", &max_power))
-        return NULL;
-
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
-
-    if (max_power > 100 || max_power < 0)
-    {
-        PyErr_Format(PyExc_ValueError,
-                     "Max power %d out of range",
-                     max_power);
-        return NULL;
-    }
-    if (motor->default_acceleration != 0)
-        use_profile |= USE_PROFILE_ACCELERATE;
-    if (motor->default_deceleration != 0)
-        use_profile |= USE_PROFILE_DECELERATE;
-
-    if (cmd_start_speed(port_get_id(motor->port), 0,
-                        max_power, use_profile) < 0)
-        return NULL;
-
-    Py_RETURN_NONE;
-}
-
-
-static PyObject *
-Motor_busy(PyObject *self, PyObject *args)
-{
-    MotorObject *motor = (MotorObject *)self;
-    int type;
-
-    if (motor->is_detached)
-    {
-        PyErr_SetString(cmd_get_exception(), "Motor is detached");
-        return NULL;
-    }
-
-    if (!PyArg_ParseTuple(args, "i", &type))
-        return NULL;
-
-    return device_is_busy(motor->device, type);
-}
-
-
-static PyObject *
-Motor_preset(PyObject *self, PyObject *args)
-{
-    MotorObject *motor = (MotorObject *)self;
-    int32_t position;
-    long pos_from_preset;
-
-    if (motor->is_detached)
-    {
-        PyErr_SetString(cmd_get_exception(), "Motor is detached");
-        return NULL;
-    }
-
-    if (!PyArg_ParseTuple(args, "i", &position))
-        return NULL;
-
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
-
-    if (motor_get_position(self, &pos_from_preset) < 0)
-        return NULL;
-
-    if (cmd_preset_encoder(port_get_id(motor->port), position) < 0)
-        return NULL;
-
-    motor->preset_position -= position - pos_from_preset;
-
-    Py_RETURN_NONE;
 }
 
 
@@ -948,53 +765,10 @@ Motor_default(PyObject *self, PyObject *args, PyObject *kwds)
     motor->default_speed = speed;
     motor->default_max_power = power;
 
-    if (acceleration != motor->default_acceleration)
-    {
-        motor->default_acceleration = acceleration;
-        if (cmd_set_acceleration(port_get_id(motor->port), acceleration) < 0)
-        {
-            motor->want_default_acceleration_set = 1;
-            return NULL;
-        }
-        motor->want_default_acceleration_set = 0;
-    }
-
-    if (deceleration != motor->default_deceleration)
-    {
-        motor->default_deceleration = deceleration;
-        if (cmd_set_deceleration(port_get_id(motor->port), deceleration) < 0)
-        {
-            motor->want_default_deceleration_set = 1;
-            return NULL;
-        }
-        motor->want_default_deceleration_set = 0;
-    }
-
     if ((parsed_stop = parse_stop(motor, stop)) < 0)
     {
         PyErr_SetString(PyExc_ValueError, "Invalid stop mode setting\n");
         return NULL;
-    }
-    motor->default_stop = (uint32_t)parsed_stop;
-
-    if (pid[0] != motor->default_position_pid[0] ||
-        pid[1] != motor->default_position_pid[1] ||
-        pid[2] != motor->default_position_pid[2])
-    {
-        if (cmd_set_pid(port_get_id(motor->port), pid) < 0)
-            return NULL;
-        memcpy(motor->default_position_pid, pid, sizeof(pid));
-    }
-
-    if (stall != motor->default_stall)
-    {
-        motor->default_stall = stall;
-        if (cmd_set_stall(port_get_id(motor->port), stall) < 0)
-        {
-            motor->want_default_stall_set = 1;
-            return NULL;
-        }
-        motor->want_default_stall_set = 0;
     }
 
     if (callback != NULL)
@@ -1071,18 +845,10 @@ Motor_run_at_speed(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall) == 0)
         return NULL;
 
-    //if (device_ensure_mode_info(motor->device) < 0)
-    //    return NULL;
-
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
     decel = CLIP(decel, DECEL_MIN, DECEL_MAX);
-
-    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
-        set_deceleration(motor, decel, &use_profile) < 0 ||
-        set_stall(motor, stall) < 0)
-        return NULL;*/
 
     if (cmd_start_speed(port_get_id(motor->port),
                         speed, power, use_profile) < 0)
@@ -1125,9 +891,6 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall, &blocking) == 0)
         return NULL;
 
-    //if (device_ensure_mode_info(motor->device) < 0)
-    //    return NULL;
-
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
@@ -1137,11 +900,6 @@ Motor_run_for_degrees(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_ValueError, "Invalid stop state");
         return NULL;
     }
-
-    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
-        set_deceleration(motor, decel, &use_profile) < 0 ||
-        set_stall(motor, stall) < 0)
-        return NULL;*/
 
     if (cmd_start_speed_for_degrees(port_get_id(motor->port),
                                     newpos, curpos, speed, power,
@@ -1185,9 +943,6 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
                                     &blocking) == 0)
         return NULL;
 
-    /*if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;*/
-
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
     accel = CLIP(accel, ACCEL_MIN, ACCEL_MAX);
@@ -1199,11 +954,6 @@ Motor_run_to_position(PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     position -= motor->preset_position;
-
-    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
-        set_deceleration(motor, decel, &use_profile) < 0 ||
-        set_stall(motor, stall) < 0)
-        return NULL;*/
 
     if (cmd_goto_abs_position(port_get_id(motor->port),
                               position, speed, power,
@@ -1247,9 +997,6 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
                                     &accel, &decel, &stall, &blocking) == 0)
         return NULL;
 
-    /*if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;*/
-
     time = CLIP(time, RUN_TIME_MIN, RUN_TIME_MAX);
     speed = CLIP(speed, SPEED_MIN, SPEED_MAX);
     power = CLIP(power, POWER_MIN, POWER_MAX);
@@ -1260,11 +1007,6 @@ Motor_run_for_time(PyObject *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_ValueError, "Invalid stop state");
         return NULL;
     }
-
-    /*if (set_acceleration(motor, accel, &use_profile) < 0 ||
-        set_deceleration(motor, decel, &use_profile) < 0 ||
-        set_stall(motor, stall) < 0)
-        return NULL;*/
 
     if (cmd_start_speed_for_time(port_get_id(motor->port),
                                  time, speed, power,
@@ -1303,12 +1045,6 @@ Motor_pid(PyObject *self, PyObject *args)
                          &motor->default_position_pid[2]) == 0)
         return NULL;
 
-    if (device_ensure_mode_info(motor->device) < 0)
-        return NULL;
-
-    if (cmd_set_pid(port_get_id(motor->port), motor->default_position_pid) < 0)
-        return NULL;
-
     Py_RETURN_NONE;
 }
 
@@ -1321,16 +1057,6 @@ static PyMethodDef Motor_methods[] = {
         "float", Motor_float, METH_VARARGS,
         "Force the motor driver to floating state"
     },
-    {
-        "brake", Motor_brake, METH_VARARGS,
-        "Force the motor driver to brake state"
-    },
-    {
-        "hold", Motor_hold, METH_VARARGS,
-        "Force the motor driver to hold position"
-    },
-    { "busy", Motor_busy, METH_VARARGS, "Check if the motor is busy" },
-    { "preset", Motor_preset, METH_VARARGS, "Set the encoder position" },
     {
         "default", (PyCFunction)Motor_default,
         METH_VARARGS | METH_KEYWORDS,
@@ -1540,45 +1266,6 @@ void motor_detach(PyObject *self)
 }
 
 
-static int get_value_in_mode(PyObject *self, int mode, long *pvalue)
-{
-    MotorObject *motor = (MotorObject *)self;
-    int is_in_mode;
-
-    /* Get the value for a particular mode.  If that's part of the
-     * current mode set we can just call get(), otherwise we need to
-     * set the mode, get the info and reset the mode.  Urgh!
-     */
-    if ((is_in_mode = device_is_in_mode(motor->device, mode)) < 0)
-    {
-        return -1;
-    }
-    else if (is_in_mode)
-    {
-        /* We are already in the requested mode, just read it */
-        if (device_read_mode_value(motor->device, mode, pvalue) < 0)
-            return -1;
-    }
-    else
-    {
-        /* First switch modes */
-        if (device_push_mode(motor->device, mode) < 0 ||
-            device_read_mode_value(motor->device, mode, pvalue) < 0 ||
-            device_pop_mode(motor->device) < 0)
-        {
-            return -1;
-        }
-    }
-    return 0;
-}
-
-
-int motor_get_position(PyObject *self, long *pposition)
-{
-    return get_value_in_mode(self, 2, pposition);
-}
-
-
 int motor_set_preset(PyObject *self, long position)
 {
     MotorObject *motor = (MotorObject *)self;
@@ -1590,14 +1277,6 @@ void motor_update_preset(PyObject *self, long position)
 {
     MotorObject *motor = (MotorObject *)self;
     motor->preset_position -= position;
-}
-
-
-int motor_ensure_mode_info(PyObject *self)
-{
-    MotorObject *motor = (MotorObject *)self;
-
-    return device_ensure_mode_info(motor->device);
 }
 
 

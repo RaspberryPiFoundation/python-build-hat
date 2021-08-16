@@ -205,58 +205,7 @@ typedef struct
 } default_mode_t;
 
 #define NUM_DEFAULT_MODES 7
-
 #define MODE(m,d) (((m) << 4) | (d))
-static default_mode_t default_modes[NUM_DEFAULT_MODES] = {
-    {
-        ID_MOTOR_SMALL,
-        0x000f,
-        4,
-        /* Speed      Pos        APos       Power */
-        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
-    },
-    {
-        ID_MOTOR_MEDIUM,
-        0x000f,
-        4,
-        /* Speed      Pos        APos       Power */
-        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
-    },
-    {
-        ID_MOTOR_LARGE,
-        0x000f,
-        4,
-        /* Speed      Pos        APos       Power */
-        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
-    },
-    {
-        ID_STONE_GREY_MOTOR_MEDIUM,
-        0x000f,
-        4,
-        /* Speed      Pos        APos       Power */
-        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
-    },
-    {
-        ID_STONE_GREY_MOTOR_LARGE,
-        0x000f,
-        4,
-        /* Speed      Pos        APos       Power */
-        { MODE(1,0), MODE(2,2), MODE(3,1), MODE(0,0) },
-    },
-    {
-        ID_COLOUR,
-        0x0023,
-        5,
-        /* Colour     Reflect    Red        Green      Blue */
-        { MODE(1,0), MODE(0,0), MODE(5,0), MODE(5,1), MODE(5,2) },
-    },
-    {
-        ID_FORCE,
-        0x0013,
-        3,
-        { MODE(0,0), MODE(1,0), MODE(4,0) },
-    }
-};
 #undef MODE
 
 
@@ -270,18 +219,6 @@ pthread_mutex_t mtxgotdata[NUM_PORTS] = {
     PTHREAD_MUTEX_INITIALIZER,
     PTHREAD_MUTEX_INITIALIZER
 };
-
-
-static default_mode_t *
-get_default_mode(uint16_t id)
-{
-    int i;
-
-    for (i = 0; i < NUM_DEFAULT_MODES; i++)
-        if (default_modes[i].type_id == id)
-            return &default_modes[i];
-    return NULL;
-}
 
 
 static int
@@ -471,116 +408,6 @@ static int set_combi_mode(DeviceObject *device,
 }
 
 
-
-static int
-get_mode_info(DeviceObject *device, uint8_t port_id)
-{
-    port_modes_t mode;
-    default_mode_t *default_mode;
-    int i;
-
-    if (cmd_get_port_modes(port_id, &mode) < 0)
-    {
-        return -1;
-    }
-    device->input_mode_mask = mode.input_mode_mask;
-    device->output_mode_mask = mode.output_mode_mask;
-    device->num_modes = mode.count;
-    if ((mode.capabilities & CAP_MODE_COMBINABLE) != 0)
-    {
-        combi_mode_t combi_modes;
-
-        device->flags |= DO_FLAGS_COMBINABLE;
-        if (cmd_get_combi_modes(port_id, combi_modes) < 0)
-            return -1;
-        memcpy(device->combi_modes, combi_modes, sizeof(combi_mode_t));
-    }
-
-    for (i = 0; i < device->num_modes; i++)
-    {
-        mode_info_t *mode = &device->modes[i];
-
-        if (cmd_get_mode_name(port_id, i, mode->name) < 0 ||
-            cmd_get_mode_raw(port_id, i,
-                             &mode->raw.min,
-                             &mode->raw.max) < 0 ||
-            cmd_get_mode_percent(port_id, i,
-                                 &mode->percent.min,
-                                 &mode->percent.max) < 0 ||
-            cmd_get_mode_si(port_id, i,
-                            &mode->si.min,
-                            &mode->si.max) < 0 ||
-            cmd_get_mode_symbol(port_id, i, mode->symbol) < 0 ||
-            cmd_get_mode_mapping(port_id, i,
-                                 &mode->input_mapping,
-                                 &mode->output_mapping) < 0 ||
-            cmd_get_mode_capability(port_id, i,
-                                    mode->capability) < 0 ||
-            cmd_get_mode_format(port_id, i, &mode->format) < 0)
-        {
-            return -1;
-        }
-    }
-
-    device->flags |= DO_FLAGS_GOT_MODE_INFO;
-
-    /* The Micropython runtime sets some devices to more user-friendly modes
-     */
-    if ((default_mode = get_default_mode(device->type_id)) != NULL)
-    {
-        int combi_index;
-
-        for (combi_index = 0;
-             combi_index < MAX_COMBI_MODES;
-             combi_index++)
-        {
-            if (device->combi_modes[combi_index] == 0)
-                break;  /* Run out of possible modes */
-            if ((device->combi_modes[combi_index] &
-                 default_mode->mode_mask) == default_mode->mode_mask)
-            {
-                /* This has all the modes we need */
-                if (set_combi_mode(device, combi_index,
-                                   default_mode->mode_list,
-                                   default_mode->num_modes) < 0)
-                    return -1;
-                break;
-            }
-        }
-
-        /* Assert that any formally recognised motor is set up to Get
-         * the Speed, Position, Absolute Position and Power, and needs
-         * to have its delta (preset) calculated.
-         */
-        if (motor_is_motor(device->type_id))
-        {
-            long position_from_zero;
-
-            if (get_value(device) < 0)
-                return -1;
-            if (extract_value(device, 2, &position_from_zero) < 0)
-                return -1;
-            if (port_set_motor_preset(device->port, position_from_zero) < 0)
-                return -1;
-        }
-    }
-
-    return 0;
-}
-
-
-int
-device_ensure_mode_info(PyObject *self)
-{
-    DeviceObject *device = (DeviceObject *)self;
-
-    if ((device->flags & DO_FLAGS_GOT_MODE_INFO) == 0)
-        return get_mode_info(device, port_get_id(device->port));
-
-    return 0;
-}
-
-
 static PyObject *
 Device_mode(PyObject *self, PyObject *args)
 {
@@ -680,29 +507,14 @@ Device_mode(PyObject *self, PyObject *args)
         }
 
         /* If we have a second parameter, it must be a byte string
-         * that will be sent to the device as Mode Data.
+         * that will be sent to the device as Mode Data. -- Can no longer send mode data
          */
         if (PyBytes_Check(arg2))
         {
-            char *buffer;
-            Py_ssize_t nbytes;
-
-            if (PyBytes_AsStringAndSize(arg2, &buffer, &nbytes) < 0)
-                return NULL;
-            if (cmd_write_mode_data(port_get_id(device->port),
-                                    device->current_mode,
-                                    nbytes,
-                                    buffer) < 0)
-                return NULL;
             Py_RETURN_NONE;
         }
         else if (PyByteArray_Check(arg2))
         {
-            if (cmd_write_mode_data(port_get_id(device->port),
-                                    device->current_mode,
-                                    PyByteArray_Size(arg2),
-                                    PyByteArray_AsString(arg2)) < 0)
-                return NULL;
             Py_RETURN_NONE;
         }
         PyErr_SetString(
@@ -1435,27 +1247,6 @@ void device_detach(PyObject *self)
 }
 
 
-int device_is_in_mode(PyObject *self, int mode)
-{
-    DeviceObject *device = (DeviceObject *)self;
-    uint8_t i;
-
-    if (device_ensure_mode_info(self) < 0)
-        return -1;
-    if (device->current_mode == mode)
-        return 1;
-    if (device->current_mode != MODE_IS_COMBI)
-        return 0;
-
-    /* Search the combi-mode list for the mode, don't care which dataset */
-    for (i = 0; i < device->num_combi_modes; i++)
-        if (((device->combi_mode[i] >> 4) & 0x0f) == mode)
-            return 1;
-
-    return 0;
-}
-
-
 static int extract_value(DeviceObject *device, uint8_t index, long *pvalue)
 {
     PyObject *value = PyList_GetItem(device->values, index);
@@ -1513,60 +1304,6 @@ int device_read_mode_value(PyObject *self, int mode, long *pvalue)
     return 0;
 }
 
-
-int device_push_mode(PyObject *self, int mode)
-{
-    DeviceObject *device = (DeviceObject *)self;
-
-    if (device_ensure_mode_info(self) < 0)
-        return -1;
-
-    if (mode < 0 || mode >= device->num_modes)
-    {
-        PyErr_SetString(PyExc_ValueError, "Invalid mode number");
-        return -1;
-    }
-
-    /* First stash everything */
-    device->saved_current_mode    = device->current_mode;
-    device->saved_num_combi_modes = device->num_combi_modes;
-    device->saved_combi_index     = device->combi_index;
-    memcpy(device->saved_combi_mode, device->combi_mode, MAX_DATASETS);
-
-    if (cmd_set_mode(port_get_id(device->port), mode, device->notifications) < 0)
-        return -1;
-    device->current_mode = mode;
-
-    if (set_simple_mode(device, mode) < 0)
-        return -1;
-
-    return 0;
-}
-
-
-int device_pop_mode(PyObject *self)
-{
-    DeviceObject *device = (DeviceObject *)self;
-
-    if (device_ensure_mode_info(self) < 0)
-        return -1;
-
-    if (device->saved_current_mode == MODE_IS_COMBI)
-    {
-        if (set_combi_mode(device,
-                           device->saved_combi_index,
-                           device->saved_combi_mode,
-                           device->saved_num_combi_modes) < 0)
-            return -1;
-    }
-    else
-    {
-        if (set_simple_mode(device, device->saved_current_mode) < 0)
-            return -1;
-    }
-
-    return 0;
-}
 
 int device_set_device_format(PyObject *device, uint8_t modei, uint8_t type)
 {

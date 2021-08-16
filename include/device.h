@@ -85,19 +85,6 @@ extern int device_is_in_mode(PyObject *self, int mode);
  */
 extern int device_read_mode_value(PyObject *self, int mode, long *pvalue);
 
-/* Save the current mode (simple or combi) and set the given simple
- * mode.  Returns 0 on success, -1 on failure.
- */
-extern int device_push_mode(PyObject *self, int mode);
-
-/* Restore the previously pushed mode */
-extern int device_pop_mode(PyObject *self);
-
-/* Ensures that the initialisation that cannot be done in the background
- * has in fact been done.
- */
-extern int device_ensure_mode_info(PyObject *self);
-
 /* Handles device callbacks */
 extern int device_callback(PyObject *self, int event);
 
