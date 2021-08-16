@@ -264,6 +264,13 @@ static default_mode_t default_modes[NUM_DEFAULT_MODES] = {
 static int get_value(DeviceObject *self);
 static int extract_value(DeviceObject *self, uint8_t index, long *pvalue);
 
+pthread_mutex_t mtxgotdata[NUM_PORTS] = {
+    PTHREAD_MUTEX_INITIALIZER,
+    PTHREAD_MUTEX_INITIALIZER,
+    PTHREAD_MUTEX_INITIALIZER,
+    PTHREAD_MUTEX_INITIALIZER
+};
+
 
 static default_mode_t *
 get_default_mode(uint16_t id)
@@ -863,6 +870,8 @@ static PyObject *
 Device_get(PyObject *self, PyObject *args)
 {
     DeviceObject *device = (DeviceObject *)self;
+    int port = port_get_id(device->port);
+
     PyObject *arg1 = NULL;
     PyObject *results;
     int format = DEVICE_FORMAT_SI;
@@ -892,12 +901,12 @@ Device_get(PyObject *self, PyObject *args)
             }
         }
     }
-    
+
     if (get_value(device) < 0)
         return NULL;
 
     Py_BEGIN_ALLOW_THREADS
-    usleep(200000);
+    pthread_mutex_lock(&mtxgotdata[port]);
     Py_END_ALLOW_THREADS
 
     if (device->current_mode != MODE_IS_COMBI)

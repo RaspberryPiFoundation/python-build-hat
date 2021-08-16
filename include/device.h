@@ -30,6 +30,9 @@
 #define ID_STONE_GREY_MOTOR_MEDIUM 0x4b
 #define ID_STONE_GREY_MOTOR_LARGE  0x4c
 
+#define NUM_PORTS 4
+extern pthread_mutex_t mtxgotdata[NUM_PORTS];
+
 extern int device_modinit(void);
 extern void device_demodinit(void);
 

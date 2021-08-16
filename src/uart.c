@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
+#include "device.h"
 #include "uart.h"
 #include "queue.h"
 #include "port.h"
@@ -432,6 +433,7 @@ void parse_line(char *serbuf)
             port_new_any_value(port, mcount, tmpval);
 
             callback_queue(CALLBACK_DEVICE, port, CALLBACK_DATA);
+            pthread_mutex_unlock(&mtxgotdata[port]);
         }
     }
     if (strncmp(DONEINIT, serbuf, strlen(DONEINIT)) == 0) {
@@ -489,7 +491,10 @@ static void *run_comms_rx(void *args __attribute__((unused)))
     int sercounter = 0;
     int nfds;
     int lfound = 0;
+
     pthread_mutex_lock(&mtxhatready);
+    for(int i=0; i<4; i++)
+        pthread_mutex_lock(&mtxgotdata[i]);
 
     struct epoll_event ev1, events[MAX_EVENTS];
     int epollfd;
