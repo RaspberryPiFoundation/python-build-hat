@@ -106,7 +106,12 @@ class Motor(PortDevice):
             self._motor.run_for_time(int(seconds * 1000), self.default_speed, blocking=blocking)
         else:
             self._motor.run_for_time(int(seconds * 1000), speed, blocking=blocking)
-        if self._release:
+
+        # If the motor is used in non-blocking mode, we can't switch the motor off to release it 
+        # straight away here. Should we spawn a thread that switches the motor 
+        # off later? That is probably a bad idea though, as the motor could be doing
+        # other operations then.
+        if blocking and self._release:
             self._motor.float()
 
     def start(self, speed=None):
