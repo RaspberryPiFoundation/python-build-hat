@@ -369,7 +369,7 @@ int cmd_start_speed_for_degrees(uint8_t port_id,
                                 bool blocking)
 {
     char buf[1000];
-    sprintf(buf, "port %u ; combi 0 1 0 2 0 3 0 ; select 0 ; " MOTOR_PLIMIT " ; " MOTOR_BIAS " ; pid 0 0 5 s2 0.0027777778 1 5 0 .1 3 ; set ramp %f %f %f 0\r", port_id, curpos, newpos, (newpos - curpos) / (double)speed);
+    sprintf(buf, "port %u ; combi 0 1 0 2 0 3 0 ; select 0 ; " MOTOR_PLIMIT " ; " MOTOR_BIAS " ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp %f %f %f 0\r", port_id, curpos, newpos, (newpos - curpos) / (double)speed);
     make_request_uart(true, TYPE_PORT_OUTPUT, port_id, buf);
     if (blocking){
         return wait_for_complete_feedback(port_id, NULL);

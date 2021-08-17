@@ -19,7 +19,6 @@ class Motor(PortDevice):
         self._motor = self._port.motor
         self.default_speed = 50
         self._device.mode([(1,0),(2,0),(3,0)])
-        self._ramp = 0
         self._release = True
         self._bqueue = deque(maxlen=5)
         self._cvqueue = Condition()
@@ -67,12 +66,12 @@ class Motor(PortDevice):
         :param degrees: Number of degrees to rotate
         :param speed: Speed ranging from -100 to 100
         """
-        newpos = (degrees / 360.0) + self._ramp
+        ramp = self.get_position() / 360
+        newpos = (degrees / 360.0) + ramp
         if speed is None:
-            self._motor.run_for_degrees(newpos, self._ramp, self.default_speed)
+            self._motor.run_for_degrees(newpos, ramp, self.default_speed)
         else:
-            self._motor.run_for_degrees(newpos, self._ramp, speed)
-        self._ramp = newpos
+            self._motor.run_for_degrees(newpos, ramp, speed)
         if self._release:
             self._blocktillfin()
 
@@ -87,12 +86,12 @@ class Motor(PortDevice):
         else:
             self._motor.run_to_position(degrees, speed)
         """
-        newpos = (degrees / 360.0) + round(self._ramp)
+        ramp = self.get_position() / 360
+        newpos = (degrees / 360.0) + round(ramp)
         if speed is None:
-            self._motor.run_for_degrees(newpos, self._ramp, self.default_speed)
+            self._motor.run_for_degrees(newpos, ramp, self.default_speed)
         else:
-            self._motor.run_for_degrees(newpos, self._ramp, speed)
-        self._ramp = newpos
+            self._motor.run_for_degrees(newpos, ramp, speed)
         if self._release:
             self._blocktillfin()
 
