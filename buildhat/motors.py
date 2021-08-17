@@ -1,4 +1,5 @@
 from .devices import PortDevice, Device
+import threading
 from threading import Condition
 from collections import deque
 import statistics
@@ -95,12 +96,7 @@ class Motor(PortDevice):
         if self._release:
             self._blocktillfin()
 
-    def run_for_seconds(self, seconds, speed=None, blocking=True):
-        """Runs motor for N seconds
-
-        :param seconds: Time in seconds
-        :param speed: Speed ranging from -100 to 100
-        """
+    def _run_for_seconds(self, seconds, speed=None, blocking=True):
         if speed is None:
             self._motor.run_for_time(int(seconds * 1000), self.default_speed, blocking=blocking)
         else:
@@ -112,6 +108,19 @@ class Motor(PortDevice):
         # other operations then.
         if blocking and self._release:
             self._motor.float()
+
+    def run_for_seconds(self, seconds, speed=None, blocking=True):
+        """Runs motor for N seconds
+
+        :param seconds: Time in seconds
+        :param speed: Speed ranging from -100 to 100
+        """
+        if not blocking:
+            th = threading.Thread(target=self._run_for_seconds, args=(seconds,), kwargs={'speed': speed, 'blocking': True})
+            th.daemon = True
+            th.start()
+        else:
+            self._run_for_seconds(seconds, speed=speed, blocking=blocking)
 
     def start(self, speed=None):
         """Start motor
@@ -238,8 +247,15 @@ class MotorPair(Device):
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        self._leftmotor.run_for_seconds(seconds, speedl, blocking=False)
-        self._rightmotor.run_for_seconds(seconds, speedr)
+
+        th1 = threading.Thread(target=self._leftmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedl, 'blocking': True})
+        th1.daemon = True
+        th2 = threading.Thread(target=self._rightmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedr, 'blocking': True})
+        th2.daemon = True
+        th1.start()
+        th2.start()
+        th1.join()
+        th2.join()
 
     def start(self, speedl=None, speedr=None):
         """Start motors

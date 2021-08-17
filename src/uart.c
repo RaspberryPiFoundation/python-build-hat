@@ -958,7 +958,9 @@ int uart_open_hat(char *firmware_path, char *signature_path, long version)
         ostr("reboot\r");
         // Block till firmware loaded
         pthread_mutex_lock(&mtxhatready);
+        Py_BEGIN_ALLOW_THREADS
         sleep(7);
+        Py_END_ALLOW_THREADS
     } else if(state == firmware){
         // Already in current firmware, so just list devices that are connected
         char *buffer = "echo 0; list\r";
