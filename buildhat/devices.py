@@ -1,4 +1,4 @@
-from build_hat import BuildHAT
+from .serinterface import BuildHAT
 import weakref
 import time
 import os
