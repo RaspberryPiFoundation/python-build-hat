@@ -64,7 +64,8 @@ class ForceSensor(PortDevice):
         def both(lst):
             if lst[1] == 1:
                 lock.release()
-            oldcall(lst)
+            if oldcall is not None:
+                oldcall(lst)
 
         self._device.callback(both)
         lock.acquire()
@@ -81,7 +82,8 @@ class ForceSensor(PortDevice):
         def both(lst):
             if lst[1] == 0:
                 lock.release()
-            oldcall(lst)
+            if oldcall is not None:
+                oldcall(lst)
 
         self._device.callback(both)
         lock.acquire()

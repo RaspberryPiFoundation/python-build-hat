@@ -6,13 +6,24 @@ CONNECTED = ": connected to active ID"
 NOTCONNECTED = ": no device detected"
 MOTOR_BIAS="bias .2"
 MOTOR_PLIMIT="plimit .4"
+PULSEDONE=": pulse done"
+RAMPDONE=": ramp done"
 
 class Device():
-    def __init__(self, port, buildhat):
+    def __init__(self, port, porto, buildhat):
         self.port = port
+        self.porto = porto
         self.buildhat = buildhat
         self.callit = None
-    
+        self.FORMAT_SI = 0
+
+    def get(self, ig):
+        self.buildhat.write("port {} ; selonce 0\r".format(self.port).encode())
+        # wait for data
+        with self.buildhat.portcond[self.port]:
+            self.buildhat.portcond[self.port].wait()
+        return self.porto.data
+
     def mode(self, modev):
         if isinstance(modev, list):
             modestr = ""
@@ -39,25 +50,37 @@ class InternalMotor:
         return self.porto.data
 
     def run_for_degrees(self, newpos, curpos, speed):
-        print(newpos , curpos, speed)
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port, MOTOR_BIAS, MOTOR_PLIMIT, curpos, 
+        #port 0 ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit .5 ; bias .2 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp 1.000000 2.000000 0.033333 0
+
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port, MOTOR_PLIMIT, MOTOR_BIAS, curpos, 
                                                                                                                     newpos, (newpos - curpos) / speed).encode()
-        print(cmd)
-        #self.buildhat.write(cmd);
+        self.buildhat.write(cmd);
+        with self.buildhat.rampcond[self.port]:
+            self.buildhat.rampcond[self.port].wait()
 
     def pwm(self, pwmv):
-        print(pwmv)
         self.buildhat.write("port {} ; pwm ; set {}\r".format(self.port,pwmv/100.0).encode())
 
     def float(self):
         self.pwm(0)
+
+    def run_for_time(self, time, speed, blocking): 
+        cmd = "port {} ; pwm ; {} ; {} ; set pulse {} 0.0 {} 0\r".format(self.port, MOTOR_PLIMIT, MOTOR_BIAS,speed/100.0, time/1000.0).encode();
+        self.buildhat.write(cmd);
+        if blocking:
+            with self.buildhat.pulsecond[self.port]:
+                self.buildhat.pulsecond[self.port].wait()
+
+    def run_at_speed(self, speed):
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, MOTOR_PLIMIT, MOTOR_BIAS, speed).encode()
+        self.buildhat.write(cmd)
 
 class Port:
     def __init__(self, port, buildhat):
         self.data = []
         self.port = port
         self.buildhat = buildhat
-        self.device = Device(port, self.buildhat)    
+        self.device = Device(port, self, self.buildhat)    
         self.motor = InternalMotor(port, self, self.buildhat)
 
     def info(self):    
@@ -76,8 +99,13 @@ class BuildHAT:
         self.cond = Condition()
         
         self.portcond = []
+        self.pulsecond = []
+        self.rampcond = []
+
         for i in range(4):
             self.portcond.append(Condition())
+            self.pulsecond.append(Condition())
+            self.rampcond.append(Condition())
 
         self.ser = serial.Serial('/dev/serial0',115200)
         self.port = Ports(self)
@@ -91,10 +119,8 @@ class BuildHAT:
         # Wait for initialisation to finish
         with self.cond:
             self.cond.wait()
-            print("wait fin")
 
     def write(self, data):
-        print(data)
         self.ser.write(data)
 
     def loop(self, cond):
@@ -104,7 +130,6 @@ class BuildHAT:
                 line = self.ser.readline().decode('utf-8')
                 if line[0] == "P" and line[2] == ":":
                     portid = int(line[1])
-                    print(portid)
                     port = getattr(self.port,chr(ord('A')+portid))
                     if line[2:2+len(CONNECTED)] == CONNECTED:
                         typeid = int(line[2+len(CONNECTED):],16)
@@ -114,6 +139,12 @@ class BuildHAT:
                         typeid = -1
                         count += 1
                         port.typeid = typeid
+                    if line[2:2+len(RAMPDONE)] == RAMPDONE:
+                        with self.rampcond[portid]:
+                            self.rampcond[portid].notify()
+                    if line[2:2+len(PULSEDONE)] == PULSEDONE:
+                        with self.pulsecond[portid]:
+                            self.pulsecond[portid].notify()
                     if count == 4:
                         with cond:
                             cond.notify()
