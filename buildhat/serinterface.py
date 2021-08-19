@@ -146,7 +146,7 @@ class BuildHAT:
             self.pulsecond.append(Condition())
             self.rampcond.append(Condition())
 
-        self.ser = serial.Serial('/dev/serial0',115200, timeout=1)
+        self.ser = serial.Serial('/dev/serial0',115200, timeout=5)
         self.port = Ports(self)
         # Check if we're in the bootloader or the firmware
         self.write(b"version\r")
