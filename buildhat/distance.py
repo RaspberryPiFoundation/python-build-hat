@@ -11,6 +11,7 @@ class DistanceSensor(PortDevice):
         super().__init__(port)
         if self._port.info()['type'] != 62:
             raise RuntimeError('There is not a distance sensor connected to port %s (Found %s)' % (port, self.whatami(port)))
+        self._device.reverse()
         self._device.mode(0)
         self._when_motion = None
 
@@ -68,7 +69,8 @@ class DistanceSensor(PortDevice):
         def both(lst):
             if lst[0] > distance:
                 lock.release()
-            oldcall(lst)
+            if oldcall is not None:
+                oldcall(lst)
 
         self._device.callback(both)
         lock.acquire()
@@ -87,7 +89,8 @@ class DistanceSensor(PortDevice):
         def both(lst):
             if lst[0] != 0 and lst[0] < distance:
                 lock.release()
-            oldcall(lst)
+            if oldcall is not None:
+                oldcall(lst)
 
         self._device.callback(both)
         lock.acquire()

@@ -87,12 +87,14 @@ class Motor(PortDevice):
         else:
             self._motor.run_to_position(degrees, speed)
         """
-        ramp = self.get_position() / 360
-        newpos = (degrees / 360.0) + round(ramp)
+        pos = self.get_position()
+        apos = self.get_aposition()
+        newpos = (degrees-apos+pos)/360.0
         if speed is None:
-            self._motor.run_for_degrees(newpos, ramp, self.default_speed)
+            self._motor.run_for_degrees(newpos, pos, self.default_speed)
         else:
-            self._motor.run_for_degrees(newpos, ramp, speed)
+            self._motor.run_for_degrees(newpos, pos, speed)
+
         if self._release:
             self._blocktillfin()
 

@@ -10,15 +10,24 @@ PULSEDONE=": pulse done"
 RAMPDONE=": ramp done"
 
 class Device():
+
     def __init__(self, port, porto, buildhat):
         self.port = port
         self.porto = porto
         self.buildhat = buildhat
         self.callit = None
         self.FORMAT_SI = 0
+        self.simplemode = -1
+        self.combiindex = -1
+
+    def reverse(self):
+        self.buildhat.write("port {} ; plimit 1 ; set -1\r".format(self.port).encode())
 
     def get(self, ig):
-        self.buildhat.write("port {} ; selonce 0\r".format(self.port).encode())
+        if self.simplemode != -1:
+            self.buildhat.write("port {} ; selonce {}\r".format(self.port, self.simplemode).encode())
+        else:
+            self.buildhat.write("port {} ; selonce {}\r".format(self.port, self.combiindex).encode())
         # wait for data
         with self.buildhat.portcond[self.port]:
             self.buildhat.portcond[self.port].wait()
@@ -26,14 +35,28 @@ class Device():
 
     def mode(self, modev):
         if isinstance(modev, list):
+            self.combiindex = 0
             modestr = ""
             for t in modev:
                 modestr += "{} {} ".format(t[0],t[1])
-            self.buildhat.write("port {} ; combi 0 {}\r".format(self.port,modestr).encode())
+            self.buildhat.write("port {} ; combi {} {}\r".format(self.port,self.combiindex, modestr).encode())
+            self.simplemode = -1
+        else:
+            # Remove combi mode
+            if self.combiindex != -1:
+                self.buildhat.write("port {} ; combi {}\r".format(self.port,self.combiindex).encode())
+            self.combiindex = -1
+            self.simplemode = int(modev)
     
     def callback(self, func):
         if func is not None:
-            self.buildhat.write("port {} ; select 0\r".format(self.port).encode())
+
+            if self.simplemode != -1:
+                mode = "select {}".format(self.simplemode)
+            elif self.combiindex != -1:
+                mode = "select {}".format(self.combiindex)
+
+            self.buildhat.write("port {} ; {}\r".format(self.port, mode).encode())
         self.callit = func
 
 class InternalMotor:
@@ -148,7 +171,7 @@ class BuildHAT:
                     if count == 4:
                         with cond:
                             cond.notify()
-                if line[0] == "P" and line[2] == "C":
+                if line[0] == "P" and (line[2] == "C" or line[2] == "M"):
                     portid = int(line[1])
                     port = getattr(self.port,chr(ord('A')+portid))
                     data = line[5:].strip().split(" ")
