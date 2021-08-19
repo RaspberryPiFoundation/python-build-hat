@@ -2,7 +2,7 @@ import threading
 import gpiozero
 import serial
 import time
-from threading import Condition
+from threading import Condition, Timer
 from gpiozero import DigitalOutputDevice
 from enum import Enum
 
@@ -14,6 +14,7 @@ PULSEDONE=": pulse done"
 RAMPDONE=": ramp done"
 FIRMWARE="Firmware version: "
 BOOTLOADER="BuildHAT bootloader version"
+DONE="Done initialising ports"
 PROMPT="BHBL>"
 
 class HatNotFound(Exception):
@@ -94,6 +95,9 @@ class InternalMotor:
     def pwm(self, pwmv):
         self.buildhat.write("port {} ; pwm ; set {}\r".format(self.port,pwmv/100.0).encode())
 
+    def coast(self):
+        self.buildhat.write("port {} ; coast\r".format(self.port).encode())
+
     def float(self):
         self.pwm(0)
 
@@ -113,6 +117,7 @@ class Port:
         self.data = []
         self.port = port
         self.buildhat = buildhat
+        self.typeid = -1
         self.device = Device(port, self, self.buildhat)    
         self.motor = InternalMotor(port, self, self.buildhat)
 
@@ -171,6 +176,9 @@ class BuildHAT:
             except serial.SerialException:
                 pass
 
+        # Use to force hat reset
+        #self.state = HatState.NEEDNEWFIRMWARE
+
         if self.state == HatState.NEEDNEWFIRMWARE:
             self.resethat()
             self.loadfirmware(firmware, signature)
@@ -179,7 +187,7 @@ class BuildHAT:
         elif self.state == HatState.OTHER:
             raise HatNotFound()
 
-        th = threading.Thread(target=self.loop, args=(self.cond, ))
+        th = threading.Thread(target=self.loop, args=(self.cond, self.state == HatState.FIRMWARE))
         th.daemon = True
         th.start()
 
@@ -248,7 +256,7 @@ class BuildHAT:
     def write(self, data):
         self.ser.write(data)
 
-    def loop(self, cond):
+    def loop(self, cond, uselist):
         count = 0
         while True:
             line = b""
@@ -256,28 +264,41 @@ class BuildHAT:
                 line = self.ser.readline().decode('utf-8')
             except serial.SerialException:
                 pass
+
             if len(line) == 0:
                 continue
+
             if line[0] == "P" and line[2] == ":":
                 portid = int(line[1])
                 port = getattr(self.port,chr(ord('A')+portid))
                 if line[2:2+len(CONNECTED)] == CONNECTED:
                     typeid = int(line[2+len(CONNECTED):],16)
-                    count += 1
                     port.typeid = typeid
+                    if uselist:
+                        count += 1
                 if line[2:2+len(NOTCONNECTED)] == NOTCONNECTED:
                     typeid = -1
-                    count += 1
                     port.typeid = typeid
+                    if uselist:
+                        count += 1
                 if line[2:2+len(RAMPDONE)] == RAMPDONE:
                     with self.rampcond[portid]:
                         self.rampcond[portid].notify()
                 if line[2:2+len(PULSEDONE)] == PULSEDONE:
                     with self.pulsecond[portid]:
                         self.pulsecond[portid].notify()
-                if count == 4:
+
+            if uselist and count == 4:
+                with cond:
+                    cond.notify()
+
+            if not uselist and line[:len(DONE)] == DONE:
+                def runit():
                     with cond:
                         cond.notify()
+                t = Timer(8.0, runit)
+                t.start()
+
             if line[0] == "P" and (line[2] == "C" or line[2] == "M"):
                 portid = int(line[1])
                 port = getattr(self.port,chr(ord('A')+portid))

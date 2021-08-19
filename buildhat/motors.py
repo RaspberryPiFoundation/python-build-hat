@@ -25,6 +25,7 @@ class Motor(PortDevice):
         self._cvqueue = Condition()
         self.when_rotated = None
         self._oldpos = None
+        #self._motor.coast()
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
