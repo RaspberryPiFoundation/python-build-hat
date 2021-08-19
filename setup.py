@@ -40,4 +40,5 @@ setup(name='build_hat',
       package_data={
           "": ["data/firmware.bin", "data/signature.bin", "data/version"],
       },
+      install_requires=['gpiozero','pyserial'],
       ext_modules=[hub_module])
