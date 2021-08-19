@@ -5,10 +5,6 @@ import os
 import sys
 import gc
 
-def cleanup(obj):
-    obj.close()
-    gc.collect()
-
 class Device:
     """Creates a single instance of the buildhat for all devices to use"""
     _instance = None
@@ -36,7 +32,7 @@ class Device:
             v = int(vfile.read())
             vfile.close()
             Device._instance = BuildHAT(firm, sig, v)
-            weakref.finalize(self, cleanup, self)
+            weakref.finalize(self, self.close)
 
     def whatami(self, port):
         """Determine name of device on port
@@ -50,7 +46,7 @@ class Device:
             return "Unknown"
 
     def close(self):
-        del Device._instance
+        Device._instance.shutdown()
 
 class PortDevice(Device):
     """Device which uses port"""

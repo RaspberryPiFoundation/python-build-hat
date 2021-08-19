@@ -145,6 +145,8 @@ class BuildHAT:
         self.portcond = []
         self.pulsecond = []
         self.rampcond = []
+        self.fin = False
+        self.running = True
 
         for i in range(4):
             self.portcond.append(Condition())
@@ -155,6 +157,7 @@ class BuildHAT:
         self.port = Ports(self)
         # Check if we're in the bootloader or the firmware
         self.write(b"version\r")
+
         while True:
             try:
                 line = self.ser.readline().decode('utf-8')
@@ -187,9 +190,11 @@ class BuildHAT:
         elif self.state == HatState.OTHER:
             raise HatNotFound()
 
-        th = threading.Thread(target=self.loop, args=(self.cond, self.state == HatState.FIRMWARE))
-        th.daemon = True
-        th.start()
+        # Drop timeout value to 1s
+        self.ser.timeout = 1
+        self.th = threading.Thread(target=self.loop, args=(self.cond, self.state == HatState.FIRMWARE))
+        self.th.daemon = True
+        self.th.start()
 
         if self.state == HatState.FIRMWARE:
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
@@ -256,9 +261,17 @@ class BuildHAT:
     def write(self, data):
         self.ser.write(data)
 
+    def shutdown(self):
+        if not self.fin:
+            self.fin = True
+            self.running = False
+            self.th.join()
+            self.write(b"port 0 ; pwm ; off ; port 1 ; pwm ; off ; port 2 ; pwm ; off ; port 3 ; pwm ; pwm\r")
+            self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
+
     def loop(self, cond, uselist):
         count = 0
-        while True:
+        while self.running:
             line = b""
             try:
                 line = self.ser.readline().decode('utf-8')
