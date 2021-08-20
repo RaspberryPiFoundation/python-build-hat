@@ -4,9 +4,6 @@ from threading import Condition
 from collections import deque
 import statistics
 
-# See hub-python-module/drivers/m_sched_shortcake.h
-MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
-
 class MotorException(Exception):
     pass
 
@@ -16,9 +13,12 @@ class Motor(PortDevice):
     :param port: Port of device
     :raises RuntimeError: Occurs if there is no motor attached to port
     """
+    # See hub-python-module/drivers/m_sched_shortcake.h
+    MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
+
     def __init__(self, port):
         super().__init__(port)
-        if self._port.info()['type'] not in MOTOR_SET:
+        if self._port.info()['type'] not in Motor.MOTOR_SET:
             raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (port, self.whatami(port)))
         self._motor = self._port.motor
         self.default_speed = 50

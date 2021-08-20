@@ -73,13 +73,15 @@ class InternalDevice:
 class InternalMotor:
     MOTOR_BIAS="bias .2"
     MOTOR_PLIMIT="plimit .4"
+    # See hub-python-module/drivers/m_sched_shortcake.h
+    MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
 
     def __init__(self, port, buildhat):
         self.port = port
         self.buildhat = buildhat
 
     def isconnected(self):
-        if not self.port.connected:
+        if not self.port.connected or self.port.typeid not in InternalMotor.MOTOR_SET:
             raise DeviceNotFound("No motor found")
 
     def get(self):
