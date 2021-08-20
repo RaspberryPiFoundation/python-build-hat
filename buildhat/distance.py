@@ -11,6 +11,7 @@ class DistanceSensor(PortDevice):
         super().__init__(port)
         if self._port.info()['type'] != 62:
             raise RuntimeError('There is not a distance sensor connected to port %s (Found %s)' % (port, self.whatami(port)))
+        self._typeid = 62
         self._device.reverse()
         self._device.mode(0)
         self._when_motion = None
@@ -22,7 +23,7 @@ class DistanceSensor(PortDevice):
         :return: Distance from ultrasonic sensor
         :rtype: int
         """
-        return self._device.get(self._device.FORMAT_SI)[0]
+        return self._device.get(self._typeid)[0]
 
     def get_distance_inches(self):
         """
@@ -31,7 +32,7 @@ class DistanceSensor(PortDevice):
         :return: Distance from ultrasonic sensor
         :rtype: float
         """
-        return self._device.get(self._device.FORMAT_SI)[0] * 0.393701
+        return self._device.get(self._typeid)[0] * 0.393701
 
     def get_distance_percentage(self):
         """
@@ -40,7 +41,7 @@ class DistanceSensor(PortDevice):
         :return: Distance from ultrasonic sensor
         :rtype: int
         """
-        return self._device.get(self._device.FORMAT_PCT)[0]
+        return self._device.get(self._typeid)[0]
 
     @property
     def when_motion(self):

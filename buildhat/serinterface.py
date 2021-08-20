@@ -25,16 +25,18 @@ class InternalDevice:
         self.simplemode = -1
         self.combiindex = -1
 
-    def isconnected(self):
+    def isconnected(self, typeid=None):
         if not self.port.connected:
             raise DeviceNotFound("No device found")
+        if typeid is not None and self.port.typeid != typeid:
+            raise DeviceChanged("Device has changed")
 
     def reverse(self):
         self.isconnected()
         self.buildhat.write("port {} ; plimit 1 ; set -1\r".format(self.port.portid).encode())
 
-    def get(self, ig):
-        self.isconnected()
+    def get(self, typeid):
+        self.isconnected(typeid)
         if self.simplemode != -1:
             self.buildhat.write("port {} ; selonce {}\r".format(self.port.portid, self.simplemode).encode())
         else:

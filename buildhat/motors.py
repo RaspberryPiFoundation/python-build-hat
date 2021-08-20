@@ -176,7 +176,7 @@ class Motor(PortDevice):
         :return: Speed of motor
         :rtype: int
         """
-        return self._device.get()[0]
+        return self._motor.get()[0]
 
     @property
     def when_rotated(self):

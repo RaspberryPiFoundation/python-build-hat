@@ -12,6 +12,7 @@ class ColorSensor(PortDevice):
         super().__init__(port)
         if self._port.info()['type'] != 61:
             raise RuntimeError('There is not a color sensor connected to port %s (Found %s)' % (port, self.whatami(port)))
+        self._typeid = 61
         self._device.reverse()
         self._device.mode(6)
         self.avg_reads = 5
@@ -93,7 +94,7 @@ class ColorSensor(PortDevice):
         self._device.mode(2)
         readings = []
         for i in range(self.avg_reads):
-            readings.append(self._device.get(self._device.FORMAT_SI)[0])
+            readings.append(self._device.get(self._typeid)[0])
         return int(sum(readings)/len(readings))
     
     def get_reflected_light(self):
@@ -105,7 +106,7 @@ class ColorSensor(PortDevice):
         self._device.mode(1)
         readings = []
         for i in range(self.avg_reads):
-            readings.append(self._device.get(self._device.FORMAT_SI)[0])
+            readings.append(self._device.get(self._typeid)[0])
         return int(sum(readings)/len(readings))
 
     def get_color_rgbi(self):
@@ -117,7 +118,7 @@ class ColorSensor(PortDevice):
         self._device.mode(5)
         readings = []
         for i in range(self.avg_reads):
-            read = self._device.get(self._device.FORMAT_SI)
+            read = self._device.get(self._typeid)
             read = [int((read[0]/1024)*255), int((read[1]/1024)*255), int((read[2]/1024)*255), int((read[3]/1024)*255)]
             readings.append(read)
         rgbi = []
@@ -134,7 +135,7 @@ class ColorSensor(PortDevice):
         self._device.mode(6)
         readings = []
         for i in range(self.avg_reads):
-            read = self._device.get(self._device.FORMAT_SI)
+            read = self._device.get(self._typeid)
             read = [read[0], int((read[1]/1024)*100), int((read[2]/1024)*100)]
             readings.append(read)
         s = c = 0

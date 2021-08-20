@@ -11,6 +11,7 @@ class ForceSensor(PortDevice):
         super().__init__(port)
         if self._port.info()['type'] != 63:
             raise RuntimeError('There is not a force sensor connected to port %s (Found %s)' % (port, self.whatami(port)))
+        self._typeid = 63
         self._device.mode([(0,0),(1,0)])
         self._when_force = None
 
@@ -20,7 +21,7 @@ class ForceSensor(PortDevice):
         :return: The force exherted on the button
         :rtype: int
         """
-        return self._device.get(self._device.FORMAT_PCT)[0]
+        return self._device.get(self._typeid)[0]
 
     def get_force_newton(self):
         """Returns the force in newtons
@@ -28,7 +29,7 @@ class ForceSensor(PortDevice):
         :return: The force exherted on the button
         :rtype: int
         """
-        return self._device.get(self._device.FORMAT_SI)[0]
+        return self._device.get(self._typeid)[0]
 
     def is_pressed(self):
         """Gets whether the button is pressed
@@ -36,7 +37,7 @@ class ForceSensor(PortDevice):
         :return: If button is pressed
         :rtype: bool
         """
-        return self._device.get()[1] == 1
+        return self._device.get(self._typeid)[1] == 1
 
     @property
     def when_force(self):
