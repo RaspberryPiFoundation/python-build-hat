@@ -2,6 +2,9 @@ from .devices import PortDevice
 import threading
 import time
 
+class MatrixInvalidPixel(Exception):
+    pass
+
 class Matrix(PortDevice):
     """LED Matrix
 
@@ -18,5 +21,12 @@ class Matrix(PortDevice):
     
     def write(self, pixels):
         self._device.select()
-        self._device.write([0xc2]+[0xA0 | x for x in pixels])
+        pix = []
+        for colour, brightness in pixels:
+            if not (brightness >= 0 and brightness <= 10):
+                raise MatrixInvalidPixel("Invalid brightness specified")
+            if not (colour >= 0 and colour <= 9):
+                raise MatrixInvalidPixel("Invalid pixel specified")
+            pix.append((brightness << 4) | colour)
+        self._device.write([0xc2]+pix)
         self._device.deselect()
