@@ -85,8 +85,6 @@ class InternalMotor:
         return self.porto.data
 
     def run_for_degrees(self, newpos, curpos, speed):
-        #port 0 ; combi 0 1 0 2 0 3 0 ; select 0 ; plimit .5 ; bias .2 ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp 1.000000 2.000000 0.033333 0
-
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port, MOTOR_PLIMIT, MOTOR_BIAS, curpos, 
                                                                                                                     newpos, (newpos - curpos) / speed).encode()
         self.buildhat.write(cmd);
