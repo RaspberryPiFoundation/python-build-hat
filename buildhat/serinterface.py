@@ -7,22 +7,10 @@ from threading import Condition, Timer
 from gpiozero import DigitalOutputDevice
 from enum import Enum
 
-CONNECTED = ": connected to active ID"
-NOTCONNECTED = ": no device detected"
-MOTOR_BIAS="bias .2"
-MOTOR_PLIMIT="plimit .4"
-PULSEDONE=": pulse done"
-RAMPDONE=": ramp done"
-FIRMWARE="Firmware version: "
-BOOTLOADER="BuildHAT bootloader version"
-DONE="Done initialising ports"
-PROMPT="BHBL>"
-
 class HatNotFound(Exception):
     pass
 
-class Device():
-
+class Device:
     def __init__(self, port, porto, buildhat):
         self.port = port
         self.porto = porto
@@ -70,6 +58,9 @@ class Device():
         self.callit = func
 
 class InternalMotor:
+    MOTOR_BIAS="bias .2"
+    MOTOR_PLIMIT="plimit .4"
+
     def __init__(self, port, porto, buildhat):
         self.porto = porto
         self.port = port
@@ -83,8 +74,8 @@ class InternalMotor:
         return self.porto.data
 
     def run_for_degrees(self, newpos, curpos, speed):
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port, MOTOR_PLIMIT, MOTOR_BIAS, curpos, 
-                                                                                                                    newpos, (newpos - curpos) / speed).encode()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, curpos,
+                                                                                                                                  newpos, (newpos - curpos) / speed).encode()
         self.buildhat.write(cmd);
         with self.buildhat.rampcond[self.port]:
             self.buildhat.rampcond[self.port].wait()
@@ -99,14 +90,14 @@ class InternalMotor:
         self.pwm(0)
 
     def run_for_time(self, time, speed, blocking): 
-        cmd = "port {} ; pwm ; {} ; {} ; set pulse {} 0.0 {} 0\r".format(self.port, MOTOR_PLIMIT, MOTOR_BIAS,speed/100.0, time/1000.0).encode();
+        cmd = "port {} ; pwm ; {} ; {} ; set pulse {} 0.0 {} 0\r".format(self.port, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS,speed/100.0, time/1000.0).encode();
         self.buildhat.write(cmd);
         if blocking:
             with self.buildhat.pulsecond[self.port]:
                 self.buildhat.pulsecond[self.port].wait()
 
     def run_at_speed(self, speed):
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, MOTOR_PLIMIT, MOTOR_BIAS, speed).encode()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, speed).encode()
         self.buildhat.write(cmd)
 
 class Port:
@@ -135,6 +126,14 @@ class HatState(Enum):
     BOOTLOADER = 3
 
 class BuildHAT:
+    CONNECTED=": connected to active ID"
+    DISCONNECTED=": disconnected"
+    NOTCONNECTED=": no device detected"
+    PULSEDONE=": pulse done"
+    RAMPDONE=": ramp done"
+    FIRMWARE="Firmware version: "
+    BOOTLOADER="BuildHAT bootloader version"
+    DONE="Done initialising ports"
 
     def __init__(self, firmware, signature, version):
         self.cond = Condition()
@@ -161,16 +160,16 @@ class BuildHAT:
                 if len(line) == 0:
                     # Didn't recieve any data
                     break
-                if line[:len(FIRMWARE)] == FIRMWARE:
+                if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
                     self.state = HatState.FIRMWARE
-                    ver =  line[len(FIRMWARE):].split(' ')
+                    ver =  line[len(BuildHAT.FIRMWARE):].split(' ')
                     if int(ver[0]) == version:
                         self.state = HatState.FIRMWARE
                         break
                     else:
                         self.state = HatState.NEEDNEWFIRMWARE
                         break
-                if line[:len(BOOTLOADER)] == BOOTLOADER:
+                if line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
                     self.state = HatState.BOOTLOADER
                     break
             except serial.SerialException:
@@ -178,7 +177,6 @@ class BuildHAT:
 
         # Use to force hat reset
         #self.state = HatState.NEEDNEWFIRMWARE
-
         if self.state == HatState.NEEDNEWFIRMWARE:
             self.resethat()
             self.loadfirmware(firmware, signature)
@@ -242,6 +240,7 @@ class BuildHAT:
 
     def getprompt(self):
         # Need to decide what we will do, when no prompt
+        PROMPT="BHBL>"
         while True:
             try:
                 line = self.ser.readline().decode('utf-8')
@@ -268,8 +267,8 @@ class BuildHAT:
             self.fin = True
             self.running = False
             self.th.join()
-            self.write(b"port 0 ; pwm ; off ; port 1 ; pwm ; off ; port 2 ; pwm ; off ; port 3 ; pwm ; pwm\r")
-            self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
+            self.write(b"port 0 ; pwm ; off ; port 1 ; pwm ; off ; port 2 ; pwm ; off ; port 3 ; pwm ; off\r")
+            #self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
         while self.running:
@@ -285,27 +284,29 @@ class BuildHAT:
                 line = self.ser.readline().decode('utf-8')
             except serial.SerialException:
                 pass
-
             if len(line) == 0:
                 continue
 
             if line[0] == "P" and line[2] == ":":
                 portid = int(line[1])
                 port = getattr(self.port,chr(ord('A')+portid))
-                if line[2:2+len(CONNECTED)] == CONNECTED:
-                    typeid = int(line[2+len(CONNECTED):],16)
+                if line[2:2+len(BuildHAT.CONNECTED)] == BuildHAT.CONNECTED:
+                    typeid = int(line[2+len(BuildHAT.CONNECTED):],16)
                     port.typeid = typeid
                     if uselist:
                         count += 1
-                if line[2:2+len(NOTCONNECTED)] == NOTCONNECTED:
+                if line[2:2+len(BuildHAT.DISCONNECTED)] == BuildHAT.DISCONNECTED:
+                    typeid = -1
+                    port.typeid = typeid
+                if line[2:2+len(BuildHAT.NOTCONNECTED)] == BuildHAT.NOTCONNECTED:
                     typeid = -1
                     port.typeid = typeid
                     if uselist:
                         count += 1
-                if line[2:2+len(RAMPDONE)] == RAMPDONE:
+                if line[2:2+len(BuildHAT.RAMPDONE)] == BuildHAT.RAMPDONE:
                     with self.rampcond[portid]:
                         self.rampcond[portid].notify()
-                if line[2:2+len(PULSEDONE)] == PULSEDONE:
+                if line[2:2+len(BuildHAT.PULSEDONE)] == BuildHAT.PULSEDONE:
                     with self.pulsecond[portid]:
                         self.pulsecond[portid].notify()
 
@@ -313,7 +314,7 @@ class BuildHAT:
                 with cond:
                     cond.notify()
 
-            if not uselist and line[:len(DONE)] == DONE:
+            if not uselist and line[:len(BuildHAT.DONE)] == BuildHAT.DONE:
                 def runit():
                     with cond:
                         cond.notify()
