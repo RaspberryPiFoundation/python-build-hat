@@ -96,8 +96,8 @@ class InternalMotor:
 
     def run_for_degrees(self, newpos, curpos, speed):
         self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port.portid, 
-        InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, curpos,newpos, (newpos - curpos) / speed).encode()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port.portid, 
+        InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, self.port.portid, curpos, newpos, (newpos - curpos) / speed).encode()
         self.buildhat.write(cmd);
         with self.buildhat.rampcond[self.port.portid]:
             self.buildhat.rampcond[self.port.portid].wait()
@@ -124,8 +124,8 @@ class InternalMotor:
 
     def run_at_speed(self, speed):
         self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, 
-        InternalMotor.MOTOR_BIAS, speed).encode()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, 
+        InternalMotor.MOTOR_BIAS, self.port.portid, speed).encode()
         self.buildhat.write(cmd)
 
 class Port:
