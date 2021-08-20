@@ -10,104 +10,136 @@ from enum import Enum
 class HatNotFound(Exception):
     pass
 
-class Device:
-    def __init__(self, port, porto, buildhat):
+class DeviceNotFound(Exception):
+    pass
+
+class DeviceChanged(Exception):
+    pass
+
+class InternalDevice:
+    def __init__(self, port, buildhat):
         self.port = port
-        self.porto = porto
         self.buildhat = buildhat
         self.callit = None
         self.FORMAT_SI = 0
         self.simplemode = -1
         self.combiindex = -1
 
+    def isconnected(self):
+        if not self.port.connected:
+            raise DeviceNotFound("No device found")
+
     def reverse(self):
-        self.buildhat.write("port {} ; plimit 1 ; set -1\r".format(self.port).encode())
+        self.isconnected()
+        self.buildhat.write("port {} ; plimit 1 ; set -1\r".format(self.port.portid).encode())
 
     def get(self, ig):
+        self.isconnected()
         if self.simplemode != -1:
-            self.buildhat.write("port {} ; selonce {}\r".format(self.port, self.simplemode).encode())
+            self.buildhat.write("port {} ; selonce {}\r".format(self.port.portid, self.simplemode).encode())
         else:
-            self.buildhat.write("port {} ; selonce {}\r".format(self.port, self.combiindex).encode())
+            self.buildhat.write("port {} ; selonce {}\r".format(self.port.portid, self.combiindex).encode())
         # wait for data
-        with self.buildhat.portcond[self.port]:
-            self.buildhat.portcond[self.port].wait()
-        return self.porto.data
+        with self.buildhat.portcond[self.port.portid]:
+            self.buildhat.portcond[self.port.portid].wait()
+        return self.port.data
 
     def mode(self, modev):
+        self.isconnected()
         if isinstance(modev, list):
             self.combiindex = 0
             modestr = ""
             for t in modev:
                 modestr += "{} {} ".format(t[0],t[1])
-            self.buildhat.write("port {} ; combi {} {}\r".format(self.port,self.combiindex, modestr).encode())
+            self.buildhat.write("port {} ; combi {} {}\r".format(self.port.portid,self.combiindex, modestr).encode())
             self.simplemode = -1
         else:
             # Remove combi mode
             if self.combiindex != -1:
-                self.buildhat.write("port {} ; combi {}\r".format(self.port,self.combiindex).encode())
+                self.buildhat.write("port {} ; combi {}\r".format(self.port.portid,self.combiindex).encode())
             self.combiindex = -1
             self.simplemode = int(modev)
     
     def callback(self, func):
+        self.isconnected()
         if func is not None:
             if self.simplemode != -1:
                 mode = "select {}".format(self.simplemode)
             elif self.combiindex != -1:
                 mode = "select {}".format(self.combiindex)
-            self.buildhat.write("port {} ; {}\r".format(self.port, mode).encode())
+            self.buildhat.write("port {} ; {}\r".format(self.port.portid, mode).encode())
         self.callit = func
 
 class InternalMotor:
     MOTOR_BIAS="bias .2"
     MOTOR_PLIMIT="plimit .4"
 
-    def __init__(self, port, porto, buildhat):
-        self.porto = porto
+    def __init__(self, port, buildhat):
         self.port = port
         self.buildhat = buildhat
 
+    def isconnected(self):
+        if not self.port.connected:
+            raise DeviceNotFound("No motor found")
+
     def get(self):
-        self.buildhat.write("port {} ; selonce 0\r".format(self.port).encode())
+        self.isconnected()
+        self.buildhat.write("port {} ; selonce 0\r".format(self.port.portid).encode())
         # wait for data
-        with self.buildhat.portcond[self.port]:
-            self.buildhat.portcond[self.port].wait()
-        return self.porto.data
+        with self.buildhat.portcond[self.port.portid]:
+            self.buildhat.portcond[self.port.portid].wait()
+        return self.port.data
 
     def run_for_degrees(self, newpos, curpos, speed):
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, curpos,
+        self.isconnected()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, curpos,
                                                                                                                                   newpos, (newpos - curpos) / speed).encode()
         self.buildhat.write(cmd);
-        with self.buildhat.rampcond[self.port]:
-            self.buildhat.rampcond[self.port].wait()
+        with self.buildhat.rampcond[self.port.portid]:
+            self.buildhat.rampcond[self.port.portid].wait()
 
     def pwm(self, pwmv):
-        self.buildhat.write("port {} ; pwm ; set {}\r".format(self.port,pwmv/100.0).encode())
+        self.isconnected()
+        self.buildhat.write("port {} ; pwm ; set {}\r".format(self.port.portid,pwmv/100.0).encode())
 
     def coast(self):
-        self.buildhat.write("port {} ; coast\r".format(self.port).encode())
+        self.isconnected()
+        self.buildhat.write("port {} ; coast\r".format(self.port.portid).encode())
 
     def float(self):
+        self.isconnected()
         self.pwm(0)
 
     def run_for_time(self, time, speed, blocking): 
-        cmd = "port {} ; pwm ; {} ; {} ; set pulse {} 0.0 {} 0\r".format(self.port, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS,speed/100.0, time/1000.0).encode();
+        self.isconnected()
+        cmd = "port {} ; pwm ; {} ; {} ; set pulse {} 0.0 {} 0\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS,speed/100.0, time/1000.0).encode();
         self.buildhat.write(cmd);
         if blocking:
-            with self.buildhat.pulsecond[self.port]:
-                self.buildhat.pulsecond[self.port].wait()
+            with self.buildhat.pulsecond[self.port.portid]:
+                self.buildhat.pulsecond[self.port.portid].wait()
 
     def run_at_speed(self, speed):
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, speed).encode()
+        self.isconnected()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, speed).encode()
         self.buildhat.write(cmd)
 
 class Port:
-    def __init__(self, port, buildhat):
+    def __init__(self, portid, buildhat):
         self.data = []
-        self.port = port
+        self.portid = portid
         self.buildhat = buildhat
         self.typeid = -1
-        self.device = Device(port, self, self.buildhat)    
-        self.motor = InternalMotor(port, self, self.buildhat)
+        self.connected = False
+        self.device = InternalDevice(self, self.buildhat)
+        self.motor = InternalMotor(self, self.buildhat)
+
+    def connect(self, typeid):
+        self.typeid = typeid
+        self.connected = True
+
+    def disconnect(self):
+        self.typeid = -1
+        self.connected = False
 
     def info(self):    
         return {'type' : self.typeid}
@@ -292,15 +324,13 @@ class BuildHAT:
                 port = getattr(self.port,chr(ord('A')+portid))
                 if line[2:2+len(BuildHAT.CONNECTED)] == BuildHAT.CONNECTED:
                     typeid = int(line[2+len(BuildHAT.CONNECTED):],16)
-                    port.typeid = typeid
+                    port.connect(typeid)
                     if uselist:
                         count += 1
                 if line[2:2+len(BuildHAT.DISCONNECTED)] == BuildHAT.DISCONNECTED:
-                    typeid = -1
-                    port.typeid = typeid
+                    port.disconnect()
                 if line[2:2+len(BuildHAT.NOTCONNECTED)] == BuildHAT.NOTCONNECTED:
-                    typeid = -1
-                    port.typeid = typeid
+                    port.disconnect()
                     if uselist:
                         count += 1
                 if line[2:2+len(BuildHAT.RAMPDONE)] == BuildHAT.RAMPDONE:
