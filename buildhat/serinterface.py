@@ -268,7 +268,7 @@ class BuildHAT:
             self.running = False
             self.th.join()
             self.write(b"port 0 ; pwm ; off ; port 1 ; pwm ; off ; port 2 ; pwm ; off ; port 3 ; pwm ; off\r")
-            #self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
+            self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
         while self.running:
