@@ -61,7 +61,27 @@ class InternalDevice:
                 self.buildhat.write("port {} ; combi {}\r".format(self.port.portid,self.combiindex).encode())
             self.combiindex = -1
             self.simplemode = int(modev)
-    
+
+    def select(self):
+        if self.simplemode != -1:
+            idx = self.simplemode
+        if self.combiindex != -1:
+            idx = self.combiindex
+        if idx != -1:
+            self.buildhat.write("port {} ; select {}\r".format(self.port.portid,idx).encode())
+
+    def on(self):
+        self.buildhat.write("port {} ; plimit 1 ; on\r".format(self.port.portid).encode())
+
+    def off(self):
+        self.buildhat.write("port {} ; off\r".format(self.port.portid).encode())
+
+    def deselect(self):
+        self.buildhat.write("port {} ; select\r".format(self.port.portid).encode())
+
+    def write(self, data):
+        self.buildhat.write("port {} ; write1 {}\r".format(self.port.portid, ' '.join('{:x}'.format(h) for h in data)).encode())
+
     def callback(self, func):
         self.isconnected()
         if func is not None:
@@ -305,7 +325,14 @@ class BuildHAT:
             self.fin = True
             self.running = False
             self.th.join()
-            self.write(b"port 0 ; pwm ; off ; port 1 ; pwm ; off ; port 2 ; pwm ; off ; port 3 ; pwm ; off\r")
+            turnoff = ""
+            for p in range(4):
+                port = getattr(self.port,chr(ord('A')+p))
+                if port.typeid != 64:
+                    turnoff += "port {} ; pwm ; off ".format(p)
+                else:
+                    port.device.write([0xc2,0,0,0,0,0,0,0,0,0])
+            self.write("{}\r".format(turnoff).encode())
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
@@ -331,6 +358,8 @@ class BuildHAT:
                 if line[2:2+len(BuildHAT.CONNECTED)] == BuildHAT.CONNECTED:
                     typeid = int(line[2+len(BuildHAT.CONNECTED):],16)
                     port.connect(typeid)
+                    if typeid == 64:
+                        port.device.on()
                     if uselist:
                         count += 1
                 if line[2:2+len(BuildHAT.DISCONNECTED)] == BuildHAT.DISCONNECTED:
