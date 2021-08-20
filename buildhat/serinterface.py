@@ -62,12 +62,10 @@ class Device():
     
     def callback(self, func):
         if func is not None:
-
             if self.simplemode != -1:
                 mode = "select {}".format(self.simplemode)
             elif self.combiindex != -1:
                 mode = "select {}".format(self.combiindex)
-
             self.buildhat.write("port {} ; {}\r".format(self.port, mode).encode())
         self.callit = func
 
