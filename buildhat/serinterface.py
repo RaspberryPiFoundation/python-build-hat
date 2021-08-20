@@ -2,6 +2,7 @@ import threading
 import gpiozero
 import serial
 import time
+import queue
 from threading import Condition, Timer
 from gpiozero import DigitalOutputDevice
 from enum import Enum
@@ -190,9 +191,14 @@ class BuildHAT:
         elif self.state == HatState.OTHER:
             raise HatNotFound()
 
+        self.cbqueue = queue.Queue()
+        self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))
+        self.cb.daemon = True
+        self.cb.start()
+
         # Drop timeout value to 1s
         self.ser.timeout = 1
-        self.th = threading.Thread(target=self.loop, args=(self.cond, self.state == HatState.FIRMWARE))
+        self.th = threading.Thread(target=self.loop, args=(self.cond, self.state == HatState.FIRMWARE, self.cbqueue))
         self.th.daemon = True
         self.th.start()
 
@@ -269,7 +275,13 @@ class BuildHAT:
             self.write(b"port 0 ; pwm ; off ; port 1 ; pwm ; off ; port 2 ; pwm ; off ; port 3 ; pwm ; pwm\r")
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
-    def loop(self, cond, uselist):
+    def callbackloop(self, q):
+        while self.running:
+            cb = q.get()
+            cb[0](cb[1])
+            q.task_done()
+
+    def loop(self, cond, uselist, q):
         count = 0
         while self.running:
             line = b""
@@ -325,7 +337,7 @@ class BuildHAT:
                             newdata.append(int(d))
                 callit = port.device.callit
                 if callit is not None:
-                    callit(newdata)
+                    q.put((callit, newdata))
                 port.data = newdata
                 with self.portcond[portid]:
                     self.portcond[portid].notify()
