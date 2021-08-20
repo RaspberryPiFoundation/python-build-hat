@@ -96,8 +96,8 @@ class InternalMotor:
 
     def run_for_degrees(self, newpos, curpos, speed):
         self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, curpos,
-                                                                                                                                  newpos, (newpos - curpos) / speed).encode()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port.portid, 
+        InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, curpos,newpos, (newpos - curpos) / speed).encode()
         self.buildhat.write(cmd);
         with self.buildhat.rampcond[self.port.portid]:
             self.buildhat.rampcond[self.port.portid].wait()
@@ -124,7 +124,8 @@ class InternalMotor:
 
     def run_at_speed(self, speed):
         self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, speed).encode()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid 0 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, 
+        InternalMotor.MOTOR_BIAS, speed).encode()
         self.buildhat.write(cmd)
 
 class Port:
@@ -193,23 +194,23 @@ class BuildHAT:
         while True:
             try:
                 line = self.ser.readline().decode('utf-8')
-                if len(line) == 0:
-                    # Didn't recieve any data
-                    break
-                if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
-                    self.state = HatState.FIRMWARE
-                    ver =  line[len(BuildHAT.FIRMWARE):].split(' ')
-                    if int(ver[0]) == version:
-                        self.state = HatState.FIRMWARE
-                        break
-                    else:
-                        self.state = HatState.NEEDNEWFIRMWARE
-                        break
-                if line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
-                    self.state = HatState.BOOTLOADER
-                    break
             except serial.SerialException:
                 pass
+            if len(line) == 0:
+                # Didn't recieve any data
+                break
+            if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
+                self.state = HatState.FIRMWARE
+                ver =  line[len(BuildHAT.FIRMWARE):].split(' ')
+                if int(ver[0]) == version:
+                    self.state = HatState.FIRMWARE
+                    break
+                else:
+                    self.state = HatState.NEEDNEWFIRMWARE
+                    break
+            if line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
+                self.state = HatState.BOOTLOADER
+                break
 
         # Use to force hat reset
         #self.state = HatState.NEEDNEWFIRMWARE
@@ -278,12 +279,13 @@ class BuildHAT:
         # Need to decide what we will do, when no prompt
         PROMPT="BHBL>"
         while True:
+            line = b""
             try:
                 line = self.ser.readline().decode('utf-8')
-                if line[:len(PROMPT)] == PROMPT:
-                    break
             except serial.SerialException:
                 pass
+            if line[:len(PROMPT)] == PROMPT:
+                break
 
     def checksum(self, data):
         u = 1
