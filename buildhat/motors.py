@@ -7,6 +7,9 @@ import statistics
 # See hub-python-module/drivers/m_sched_shortcake.h
 MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
 
+class MotorException(Exception):
+    pass
+
 class Motor(PortDevice):
     """Motor device
 
@@ -32,6 +35,8 @@ class Motor(PortDevice):
 
         :param default_speed: Speed ranging from -100 to 100
         """
+        if not (default_speed >= -100 and default_speed <= 100):
+            raise MotorException("Invalid Speed")
         self.default_speed = default_speed
 
     def _isfinishedcb(self, speed, pos, apos):
@@ -60,6 +65,8 @@ class Motor(PortDevice):
         if speed is None:
             self.run_for_degrees(int(rotations * 360), self.default_speed)
         else:
+            if not (speed >= -100 and speed <= 100):
+                raise MotorException("Invalid Speed")
             self.run_for_degrees(int(rotations * 360), speed)
 
     def run_for_degrees(self, degrees, speed=None):
@@ -73,6 +80,8 @@ class Motor(PortDevice):
         if speed is None:
             self._motor.run_for_degrees(newpos, ramp, self.default_speed)
         else:
+            if not (speed >= -100 and speed <= 100):
+                raise MotorException("Invalid Speed")
             self._motor.run_for_degrees(newpos, ramp, speed)
         if self._release:
             self._blocktillfin()
@@ -94,6 +103,8 @@ class Motor(PortDevice):
         if speed is None:
             self._motor.run_for_degrees(newpos, pos, self.default_speed)
         else:
+            if not (speed >= -100 and speed <= 100):
+                raise MotorException("Invalid Speed")
             self._motor.run_for_degrees(newpos, pos, speed)
 
         if self._release:
@@ -118,6 +129,8 @@ class Motor(PortDevice):
         :param seconds: Time in seconds
         :param speed: Speed ranging from -100 to 100
         """
+        if speed is not None and not (speed >= -100 and speed <= 100):
+            raise MotorException("Invalid Speed")
         if not blocking:
             th = threading.Thread(target=self._run_for_seconds, args=(seconds,), kwargs={'speed': speed, 'blocking': True})
             th.daemon = True
@@ -133,6 +146,8 @@ class Motor(PortDevice):
         if speed is None:
             self._motor.run_at_speed(self.default_speed)
         else:
+            if not (speed >= -100 and speed <= 100):
+                raise MotorException("Invalid Speed")
             self._motor.run_at_speed(speed)
 
     def stop(self):
@@ -250,7 +265,6 @@ class MotorPair(Device):
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-
         th1 = threading.Thread(target=self._leftmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedl, 'blocking': True})
         th1.daemon = True
         th2 = threading.Thread(target=self._rightmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedr, 'blocking': True})
