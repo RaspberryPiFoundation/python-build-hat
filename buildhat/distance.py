@@ -23,7 +23,10 @@ class DistanceSensor(PortDevice):
         :return: Distance from ultrasonic sensor
         :rtype: int
         """
-        return self._device.get(self._typeid)[0]
+        dist = self._device.get(self._typeid)[0]
+        if dist != -1:
+            dist /= 10.0
+        return dist
 
     def get_distance_inches(self):
         """
@@ -32,16 +35,10 @@ class DistanceSensor(PortDevice):
         :return: Distance from ultrasonic sensor
         :rtype: float
         """
-        return self._device.get(self._typeid)[0] * 0.393701
-
-    def get_distance_percentage(self):
-        """
-        Returns the distance from ultrasonic sensor to object in percentage
-
-        :return: Distance from ultrasonic sensor
-        :rtype: int
-        """
-        return self._device.get(self._typeid)[0]
+        dist = self._device.get(self._typeid)[0]
+        if dist != -1:
+            dist = ((dist/10.0) * 0.393701)
+        return dist
 
     @property
     def when_motion(self):
