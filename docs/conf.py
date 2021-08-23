@@ -47,7 +47,7 @@ extensions = [
     'sphinx_selective_exclude.modindex_exclude',
     'sphinx_selective_exclude.eager_only',
     'sphinx_selective_exclude.search_auto_exclude',
-    'sphinxcontrib.cmtinc-shortcake',
+    'sphinxcontrib.cmtinc-buildhat',
 ]
 
 

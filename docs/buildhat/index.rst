@@ -1,4 +1,4 @@
-.. _shortcake_lib:
+.. _buildhat_lib:
 
 Library
 =======
@@ -14,5 +14,6 @@ Library
    colorsensor.rst
    distancesensor.rst
    forcesensor.rst
+   matrix.rst
    motor.rst
    motorpair.rst
