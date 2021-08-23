@@ -1,4 +1,4 @@
-Build Hat documentation and references
+Build HAT documentation and references
 ======================================
 
 .. toctree::

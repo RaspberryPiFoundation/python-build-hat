@@ -11,8 +11,8 @@ Library
 .. toctree::
    :maxdepth: 2
   
-   wrapper/colorsensor.rst 
-   wrapper/distancesensor.rst
-   wrapper/forcesensor.rst
-   wrapper/motor.rst
-   wrapper/motorpair.rst
+   colorsensor.rst
+   distancesensor.rst
+   forcesensor.rst
+   motor.rst
+   motorpair.rst
