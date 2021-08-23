@@ -7,13 +7,14 @@
 from setuptools import setup, Extension
 from os import getenv
 
-LIB_VERSION="0.4.5"
-
 with open("README.md") as readme:
     long_description = readme.read()
 
+with open('VERSION') as versionf:
+    version = versionf.read().strip()
+
 setup(name='build_hat',
-      version=LIB_VERSION,
+      version=version,
       description='Strawberry library for accessing Shortcake',
       long_description=long_description,
       long_description_content_type="text/markdown",
