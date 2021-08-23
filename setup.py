@@ -15,11 +15,10 @@ with open('VERSION') as versionf:
 
 setup(name='build_hat',
       version=version,
-      description='Strawberry library for accessing Shortcake',
+      description='Build HAT python library',
       long_description=long_description,
       long_description_content_type="text/markdown",
-      author='Rhodri James',
-      author_email='rhodri@kynesim.co.uk',
+      author='Chris Richardson',
       packages=['buildhat'],
       package_data={
           "": ["data/firmware.bin", "data/signature.bin", "data/version"],
