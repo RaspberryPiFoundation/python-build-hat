@@ -52,7 +52,7 @@ class Motor(PortDevice):
             if len(self._bqueue) >= 5:
                 dev = statistics.stdev(self._bqueue)
                 if dev < 1:
-                    self._motor.pwm(0)
+                    self._motor.coast()
                     self._cvqueue.release()
                     return
 

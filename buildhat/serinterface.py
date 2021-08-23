@@ -349,6 +349,7 @@ class BuildHAT:
                 line = self.ser.readline().decode('utf-8')
             except serial.SerialException:
                 pass
+
             if len(line) == 0:
                 continue
 
