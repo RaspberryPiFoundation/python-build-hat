@@ -23,6 +23,8 @@ class Motor(PortDevice):
         self._motor = self._port.motor
         self.default_speed = 50
         self._device.mode([(1,0),(2,0),(3,0)])
+        self._motor.plimit(0.4)
+        self._motor.bias(0.2)
         self._release = True
         self._bqueue = deque(maxlen=5)
         self._cvqueue = Condition()

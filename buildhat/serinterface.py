@@ -98,8 +98,6 @@ class InternalDevice:
         self.callit = func
 
 class InternalMotor:
-    MOTOR_BIAS="bias .2"
-    MOTOR_PLIMIT="plimit .4"
     # See hub-python-module/drivers/m_sched_shortcake.h
     MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
 
@@ -121,15 +119,23 @@ class InternalMotor:
 
     def run_for_degrees(self, newpos, curpos, speed):
         self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port.portid, 
-        InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS, self.port.portid, curpos, newpos, (newpos - curpos) / speed).encode()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port.portid,
+        self.port.portid, curpos, newpos, (newpos - curpos) / speed).encode()
         self.buildhat.write(cmd);
         with self.buildhat.rampcond[self.port.portid]:
             self.buildhat.rampcond[self.port.portid].wait()
 
+    def plimit(self, plimit):
+        self.isconnected()
+        self.buildhat.write("port {} ; plimit {}\r".format(self.port.portid, plimit).encode())
+
+    def bias(self, bias):
+        self.isconnected()
+        self.buildhat.write("port {} ; bias {}\r".format(self.port.portid, bias).encode())
+
     def pwm(self, pwmv):
         self.isconnected()
-        self.buildhat.write("port {} ; pwm ; set {}\r".format(self.port.portid,pwmv/100.0).encode())
+        self.buildhat.write("port {} ; pwm ; set {}\r".format(self.port.portid, pwmv/100.0).encode())
 
     def coast(self):
         self.isconnected()
@@ -141,7 +147,7 @@ class InternalMotor:
 
     def run_for_time(self, time, speed, blocking): 
         self.isconnected()
-        cmd = "port {} ; pwm ; {} ; {} ; set pulse {} 0.0 {} 0\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, InternalMotor.MOTOR_BIAS,speed/100.0, time/1000.0).encode();
+        cmd = "port {} ; pwm ; set pulse {} 0.0 {} 0\r".format(self.port.portid, speed/100.0, time/1000.0).encode();
         self.buildhat.write(cmd);
         if blocking:
             with self.buildhat.pulsecond[self.port.portid]:
@@ -149,8 +155,7 @@ class InternalMotor:
 
     def run_at_speed(self, speed):
         self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; {} ; {} ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port.portid, InternalMotor.MOTOR_PLIMIT, 
-        InternalMotor.MOTOR_BIAS, self.port.portid, speed).encode()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port.portid, self.port.portid, speed).encode()
         self.buildhat.write(cmd)
 
 class Port:
