@@ -14,7 +14,7 @@ class Matrix(PortDevice):
     def __init__(self, port):
         super().__init__(port)
         if self._port.info()['type'] != 64:
-            raise RuntimeError('There is not a led matrix connected to port %s (Found %s)' % (port, self.whatami(port)))
+            raise RuntimeError('There is not a led matrix connected to port %s (Found %s)' % (port, self._whatami(port)))
         self._typeid = 64
         self._device.on()
         self._device.mode(2)

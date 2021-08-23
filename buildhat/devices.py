@@ -34,7 +34,7 @@ class Device:
             Device._instance = BuildHAT(firm, sig, v)
             weakref.finalize(self, self.close)
 
-    def whatami(self, port):
+    def _whatami(self, port):
         """Determine name of device on port
 
         :param port: Port of device

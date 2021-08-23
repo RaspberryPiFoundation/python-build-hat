@@ -19,7 +19,7 @@ class Motor(PortDevice):
     def __init__(self, port):
         super().__init__(port)
         if self._port.info()['type'] not in Motor.MOTOR_SET:
-            raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (port, self.whatami(port)))
+            raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (port, self._whatami(port)))
         self._motor = self._port.motor
         self.default_speed = 50
         self._device.mode([(1,0),(2,0),(3,0)])
