@@ -58,20 +58,25 @@ class Motor(PortDevice):
                     self._cvqueue.release()
                     return
 
-    def run_for_rotations(self, rotations, speed=None):
+    def run_for_rotations(self, rotations, speed=None, blocking=True):
         """Runs motor for N rotations
 
         :param rotations: Number of rotations
         :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            self.run_for_degrees(int(rotations * 360), self.default_speed)
+            self.run_for_degrees(int(rotations * 360), self.default_speed, blocking)
         else:
             if not (speed >= -100 and speed <= 100):
                 raise MotorException("Invalid Speed")
-            self.run_for_degrees(int(rotations * 360), speed)
+            self.run_for_degrees(int(rotations * 360), speed, blocking)
 
-    def run_for_degrees(self, degrees, speed=None):
+    def _run_for_degrees(self, newpos, ramp, speed):
+        self._motor.run_for_degrees(newpos, ramp, speed)
+        if self._release:
+            self._blocktillfin()
+
+    def run_for_degrees(self, degrees, speed=None, blocking=True):
         """Runs motor for N degrees
 
         :param degrees: Number of degrees to rotate
@@ -79,16 +84,20 @@ class Motor(PortDevice):
         """
         ramp = self.get_position() / 360
         newpos = (degrees / 360.0) + ramp
-        if speed is None:
-            self._motor.run_for_degrees(newpos, ramp, self.default_speed)
-        else:
-            if not (speed >= -100 and speed <= 100):
-                raise MotorException("Invalid Speed")
-            self._motor.run_for_degrees(newpos, ramp, speed)
-        if self._release:
-            self._blocktillfin()
 
-    def run_to_position(self, degrees, speed=None):
+        if speed is None:
+            speed = self.default_speed
+        if not (speed >= -100 and speed <= 100):
+            raise MotorException("Invalid Speed")
+
+        if not blocking:
+            th = threading.Thread(target=self._run_for_degrees, args=(newpos, ramp, speed))
+            th.daemon = True
+            th.start()
+        else:
+            self._run_for_degrees(newpos, ramp, speed)
+
+    def run_to_position(self, degrees, speed=None, blocking=True):
         """Runs motor to position (in degrees)
 
         :param degrees: Position in degrees
@@ -103,26 +112,19 @@ class Motor(PortDevice):
         apos = self.get_aposition()
         newpos = (degrees-apos+pos)/360.0
         if speed is None:
-            self._motor.run_for_degrees(newpos, pos, self.default_speed)
+            speed = self.default_speed
+        if not (speed >= -100 and speed <= 100):
+            raise MotorException("Invalid Speed")
+        if not blocking:
+            th = threading.Thread(target=self._run_for_degrees, args=(newpos, pos, speed))
+            th.daemon = True
+            th.start()
         else:
-            if not (speed >= -100 and speed <= 100):
-                raise MotorException("Invalid Speed")
-            self._motor.run_for_degrees(newpos, pos, speed)
+            self._run_for_degrees(newpos, pos, speed)
 
+    def _run_for_seconds(self, seconds, speed):
+        self._motor.run_for_time(seconds, speed, True)
         if self._release:
-            self._blocktillfin()
-
-    def _run_for_seconds(self, seconds, speed=None, blocking=True):
-        if speed is None:
-            self._motor.run_for_time(int(seconds * 1000), self.default_speed, blocking=blocking)
-        else:
-            self._motor.run_for_time(int(seconds * 1000), speed, blocking=blocking)
-
-        # If the motor is used in non-blocking mode, we can't switch the motor off to release it 
-        # straight away here. Should we spawn a thread that switches the motor 
-        # off later? That is probably a bad idea though, as the motor could be doing
-        # other operations then.
-        if blocking and self._release:
             self._motor.float()
 
     def run_for_seconds(self, seconds, speed=None, blocking=True):
@@ -131,14 +133,16 @@ class Motor(PortDevice):
         :param seconds: Time in seconds
         :param speed: Speed ranging from -100 to 100
         """
-        if speed is not None and not (speed >= -100 and speed <= 100):
+        if speed is None:
+            speed = self.default_speed
+        if not (speed >= -100 and speed <= 100):
             raise MotorException("Invalid Speed")
         if not blocking:
-            th = threading.Thread(target=self._run_for_seconds, args=(seconds,), kwargs={'speed': speed, 'blocking': True})
+            th = threading.Thread(target=self._run_for_seconds, args=(seconds, speed))
             th.daemon = True
             th.start()
         else:
-            self._run_for_seconds(seconds, speed=speed, blocking=blocking)
+            self._run_for_seconds(seconds, speed)
 
     def start(self, speed=None):
         """Start motor
