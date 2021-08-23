@@ -1,6 +1,6 @@
 .. _shortcake_lib:
 
-Wrapper
+Library
 =======
 
 .. warning::
