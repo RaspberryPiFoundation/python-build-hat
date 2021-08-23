@@ -63,6 +63,7 @@ class InternalDevice:
             self.simplemode = int(modev)
 
     def select(self):
+        self.isconnected()
         if self.simplemode != -1:
             idx = self.simplemode
         if self.combiindex != -1:
@@ -71,15 +72,19 @@ class InternalDevice:
             self.buildhat.write("port {} ; select {}\r".format(self.port.portid,idx).encode())
 
     def on(self):
+        self.isconnected()
         self.buildhat.write("port {} ; plimit 1 ; on\r".format(self.port.portid).encode())
 
     def off(self):
+        self.isconnected()
         self.buildhat.write("port {} ; off\r".format(self.port.portid).encode())
 
     def deselect(self):
+        self.isconnected()
         self.buildhat.write("port {} ; select\r".format(self.port.portid).encode())
 
     def write(self, data):
+        self.isconnected()
         self.buildhat.write("port {} ; write1 {}\r".format(self.port.portid, ' '.join('{:x}'.format(h) for h in data)).encode())
 
     def callback(self, func):
