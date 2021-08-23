@@ -20,6 +20,10 @@ class Matrix(PortDevice):
         self._device.mode(2)
     
     def write(self, pixels):
+        """Write pixel data to LED matrix
+
+        :param pixels: Array of 9 tuples, with colour (0-9) and brightness (0-10) (see example for more detail)
+        """
         self._device.select()
         pix = []
         for colour, brightness in pixels:
