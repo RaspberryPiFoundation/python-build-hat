@@ -12,6 +12,7 @@ class Device:
     _device_names = { 61: "ColorSensor",
                       62: "DistanceSensor",
                       63: "ForceSensor",
+                      64: "Matrix",
                       38: "Motor",
                       46: "Motor",
                       47: "Motor",
