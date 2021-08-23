@@ -86,8 +86,6 @@ sudo make install
 openocd -s /usr/local/share/openocd/scripts -f interface/raspberrypi-swd.cfg -f target/rp2040.cfg -c "program bootloader.elf verify reset exit"
 ```
 
-* Currently need to place firmware.bin and signature.bin in /tmp for the Python library to load them
-
 Install
 -------
 
