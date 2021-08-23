@@ -71,8 +71,8 @@ class Motor(PortDevice):
                 raise MotorException("Invalid Speed")
             self.run_for_degrees(int(rotations * 360), speed, blocking)
 
-    def _run_for_degrees(self, newpos, ramp, speed):
-        self._motor.run_for_degrees(newpos, ramp, speed)
+    def _run_for_degrees(self, newpos, origpos, speed):
+        self._motor.run_for_degrees(newpos, origpos, speed)
         if self._release:
             self._blocktillfin()
 
@@ -82,39 +82,36 @@ class Motor(PortDevice):
         :param degrees: Number of degrees to rotate
         :param speed: Speed ranging from -100 to 100
         """
-        ramp = self.get_position() / 360
-        newpos = (degrees / 360.0) + ramp
-
         if speed is None:
             speed = self.default_speed
         if not (speed >= -100 and speed <= 100):
             raise MotorException("Invalid Speed")
-
+        mul = 1
+        if speed < 0:
+            speed = abs(speed)
+            mul = -1
+        origpos = self.get_position()
+        newpos = ((degrees*mul)+origpos)/360.0
         if not blocking:
-            th = threading.Thread(target=self._run_for_degrees, args=(newpos, ramp, speed))
+            th = threading.Thread(target=self._run_for_degrees, args=(newpos, origpos, speed))
             th.daemon = True
             th.start()
         else:
-            self._run_for_degrees(newpos, ramp, speed)
+            self._run_for_degrees(newpos, origpos, speed)
 
     def run_to_position(self, degrees, speed=None, blocking=True):
         """Runs motor to position (in degrees)
 
         :param degrees: Position in degrees
-        :param speed: Speed ranging from -100 to 100
+        :param speed: Speed ranging from 0 to 100
         """
-        """if speed is None:
-            self._motor.run_to_position(degrees, self.default_speed)
-        else:
-            self._motor.run_to_position(degrees, speed)
-        """
+        if speed is None:
+            speed = self.default_speed
+        if not (speed >= 0 and speed <= 100):
+            raise MotorException("Invalid Speed")
         pos = self.get_position()
         apos = self.get_aposition()
         newpos = (degrees-apos+pos)/360.0
-        if speed is None:
-            speed = self.default_speed
-        if not (speed >= -100 and speed <= 100):
-            raise MotorException("Invalid Speed")
         if not blocking:
             th = threading.Thread(target=self._run_for_degrees, args=(newpos, pos, speed))
             th.daemon = True
