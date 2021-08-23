@@ -1,7 +1,7 @@
-Shortcake Hub documentation and references
-==========================================
+Build Hat documentation and references
+======================================
 
 .. toctree::
 
-    shortcake/index.rst
+    buildhat/index.rst
     license.rst
