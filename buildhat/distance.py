@@ -10,7 +10,9 @@ class DistanceSensor(PortDevice):
     def __init__(self, port):
         super().__init__(port)
         if self._port.info()['type'] != 62:
-            raise RuntimeError('There is not a distance sensor connected to port %s (Found %s)' % (port, self.whatami(port)))
+            raise RuntimeError('There is not a distance sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
+        self._typeid = 62
+        self._device.reverse()
         self._device.mode(0)
         self._when_motion = None
 
@@ -21,7 +23,10 @@ class DistanceSensor(PortDevice):
         :return: Distance from ultrasonic sensor
         :rtype: int
         """
-        return self._device.get(self._device.FORMAT_SI)[0]
+        dist = self._device.get(self._typeid)[0]
+        if dist != -1:
+            dist /= 10.0
+        return dist
 
     def get_distance_inches(self):
         """
@@ -30,16 +35,10 @@ class DistanceSensor(PortDevice):
         :return: Distance from ultrasonic sensor
         :rtype: float
         """
-        return self._device.get(self._device.FORMAT_SI)[0] * 0.393701
-
-    def get_distance_percentage(self):
-        """
-        Returns the distance from ultrasonic sensor to object in percentage
-
-        :return: Distance from ultrasonic sensor
-        :rtype: int
-        """
-        return self._device.get(self._device.FORMAT_PCT)[0]
+        dist = self._device.get(self._typeid)[0]
+        if dist != -1:
+            dist = ((dist/10.0) * 0.393701)
+        return dist
 
     @property
     def when_motion(self):
@@ -68,7 +67,8 @@ class DistanceSensor(PortDevice):
         def both(lst):
             if lst[0] > distance:
                 lock.release()
-            oldcall(lst)
+            if oldcall is not None:
+                oldcall(lst)
 
         self._device.callback(both)
         lock.acquire()
@@ -87,7 +87,8 @@ class DistanceSensor(PortDevice):
         def both(lst):
             if lst[0] != 0 and lst[0] < distance:
                 lock.release()
-            oldcall(lst)
+            if oldcall is not None:
+                oldcall(lst)
 
         self._device.callback(both)
         lock.acquire()

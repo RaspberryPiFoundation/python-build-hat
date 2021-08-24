@@ -47,7 +47,7 @@ extensions = [
     'sphinx_selective_exclude.modindex_exclude',
     'sphinx_selective_exclude.eager_only',
     'sphinx_selective_exclude.search_auto_exclude',
-    'sphinxcontrib.cmtinc-shortcake',
+    'sphinxcontrib.cmtinc-buildhat',
 ]
 
 
@@ -62,17 +62,14 @@ project = 'Raspberry Pi Build HAT'
 copyright = '''2020 - Raspberry Pi (Trading) Limited;
 2017-2020 - LEGO System A/S - Aastvej 1, 7190 Billund, DK.'''
 
-def get_firmware_version (file_path, search_string):
-    # XXX: Fix this when versioning is handled properly
-    return '0.0.1'
-
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # We don't follow "The short X.Y version" vs "The full version, including alpha/beta/rc tags"
 # breakdown, so use the same version identifier for both to avoid confusion.
-version = release = get_firmware_version('../version.h', 'FLIPPER_VERSION_STRING')
+with open(os.path.join(os.path.dirname(__file__),'../VERSION')) as versionf:
+    version = versionf.read().strip()
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

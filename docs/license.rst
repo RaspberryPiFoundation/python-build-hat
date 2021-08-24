@@ -1,5 +1,5 @@
-Hub license information
-=======================
+License information
+===================
 
 The MIT License (MIT)
 

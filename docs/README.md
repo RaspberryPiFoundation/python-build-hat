@@ -1,7 +1,7 @@
 Build HAT Module Documentation
 ==============================
 
-This directory contains the documentation for the "build_hat" module
+This directory contains the documentation for the "buildhat" module
 that communicates with the Raspberry Pi Build HAT.  The documentation
 is here as ReStructured Text source files, together with a Makefile
 for building it into HTML.  Other builds can be added as required.
