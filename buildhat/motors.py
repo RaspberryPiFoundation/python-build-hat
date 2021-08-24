@@ -21,10 +21,10 @@ class Motor(PortDevice):
         if self._port.info()['type'] not in Motor.MOTOR_SET:
             raise RuntimeError('There is not a motor connected to port %s (Found %s)' % (port, self._whatami(port)))
         self._motor = self._port.motor
-        self.default_speed = 50
+        self.default_speed = 20
         self._device.mode([(1,0),(2,0),(3,0)])
-        self._motor.plimit(0.4)
-        self._motor.bias(0.2)
+        self._motor.plimit(0.7)
+        self._motor.bias(0.3)
         self._release = True
         self._bqueue = deque(maxlen=5)
         self._cvqueue = Condition()
@@ -122,7 +122,7 @@ class Motor(PortDevice):
     def _run_for_seconds(self, seconds, speed):
         self._motor.run_for_time(seconds, speed, True)
         if self._release:
-            self._motor.float()
+            self._motor.coast()
 
     def run_for_seconds(self, seconds, speed=None, blocking=True):
         """Runs motor for N seconds
@@ -155,7 +155,7 @@ class Motor(PortDevice):
 
     def stop(self):
         """Stops motor"""
-        self._motor.float()
+        self._motor.coast()
 
     def get_position(self):
         """Gets position of motor with relation to preset position (can be negative or positive).

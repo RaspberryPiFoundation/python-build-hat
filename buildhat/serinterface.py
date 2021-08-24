@@ -339,7 +339,7 @@ class BuildHAT:
             for p in range(4):
                 port = getattr(self.port,chr(ord('A')+p))
                 if port.typeid != 64:
-                    turnoff += "port {} ; pwm ; off ".format(p)
+                    turnoff += "port {} ; pwm ; coast ; off ".format(p)
                 else:
                     port.device.write([0xc2,0,0,0,0,0,0,0,0,0])
             self.write("{}\r".format(turnoff).encode())
