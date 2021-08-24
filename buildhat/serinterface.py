@@ -147,7 +147,7 @@ class InternalMotor:
 
     def run_for_time(self, time, speed, blocking): 
         self.isconnected()
-        cmd = "port {} ; pwm ; set pulse {} 0.0 {} 0\r".format(self.port.portid, speed/100.0, time).encode();
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port.portid, self.port.portid, speed, time).encode();
         self.buildhat.write(cmd);
         if blocking:
             with self.buildhat.pulsecond[self.port.portid]:

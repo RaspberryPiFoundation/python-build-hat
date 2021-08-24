@@ -92,6 +92,7 @@ class Motor(PortDevice):
             mul = -1
         origpos = self.get_position()
         newpos = ((degrees*mul)+origpos)/360.0
+        origpos /= 360.0
         if not blocking:
             th = threading.Thread(target=self._run_for_degrees, args=(newpos, origpos, speed))
             th.daemon = True
