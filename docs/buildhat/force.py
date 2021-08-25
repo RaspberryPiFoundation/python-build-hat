@@ -1,8 +1,8 @@
 from signal import pause
 from buildhat import Motor, ForceSensor
 
-motor = Motor('C')
-button = ForceSensor('A')
+motor = Motor('A')
+button = ForceSensor('D')
 
 print("Waiting for button to be pressed and released")
 
