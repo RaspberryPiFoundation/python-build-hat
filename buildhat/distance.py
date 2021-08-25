@@ -16,28 +16,14 @@ class DistanceSensor(PortDevice):
         self._device.mode(0)
         self._when_motion = None
 
-    def get_distance_cm(self):
+    def get_distance(self):
         """
-        Returns the distance from ultrasonic sensor to object in cm
+        Returns the distance from ultrasonic sensor to object
 
         :return: Distance from ultrasonic sensor
         :rtype: int
         """
         dist = self._device.get(self._typeid)[0]
-        if dist != -1:
-            dist /= 10.0
-        return dist
-
-    def get_distance_inches(self):
-        """
-        Returns the distance from ultrasonic sensor to object in inches
-
-        :return: Distance from ultrasonic sensor
-        :rtype: float
-        """
-        dist = self._device.get(self._typeid)[0]
-        if dist != -1:
-            dist = ((dist/10.0) * 0.393701)
         return dist
 
     @property
@@ -56,10 +42,10 @@ class DistanceSensor(PortDevice):
         self._when_motion = lambda lst: value(lst[0])
         self._device.callback(self._when_motion)
 
-    def wait_until_distance_farther_cm(self, distance):
+    def wait_for_out_of_range(self, distance):
         """Waits until distance is farther than specified distance
 
-        :param distance: Distance in cm
+        :param distance: Distance
         """
         oldcall = self._when_motion
         lock = threading.Lock()
@@ -76,16 +62,16 @@ class DistanceSensor(PortDevice):
 
         self._device.callback(oldcall)
 
-    def wait_until_distance_closer_cm(self, distance):
+    def wait_for_in_range(self, distance):
         """Waits until distance is closer than specified distance
 
-        :param distance: Distance in cm
+        :param distance: Distance
         """
         oldcall = self._when_motion
         lock = threading.Lock()
         
         def both(lst):
-            if lst[0] != 0 and lst[0] < distance:
+            if lst[0] != -1 and lst[0] < distance:
                 lock.release()
             if oldcall is not None:
                 oldcall(lst)
