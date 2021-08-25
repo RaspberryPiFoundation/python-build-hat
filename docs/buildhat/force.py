@@ -19,5 +19,13 @@ motor.run_for_rotations(2)
 def handle_force(force, pressed):
     print("Force", force, pressed)
 
+def handle_pressed():
+    print("pressed")
+
+def handle_released():
+    print("released")
+
 button.when_force = handle_force
+button.when_pressed = handle_pressed
+button.when_released = handle_released
 pause()
