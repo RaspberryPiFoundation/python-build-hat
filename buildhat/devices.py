@@ -41,7 +41,9 @@ class Device:
         :param port: Port of device
         """
         port = getattr(self._instance.port, port)
-        if port.info()['type'] in self._device_names:
+        if port.info()['type'] == -1:
+            return "No device"
+        elif port.info()['type'] in self._device_names:
             return self._device_names[port.info()['type']]
         else:
             return "Unknown"
