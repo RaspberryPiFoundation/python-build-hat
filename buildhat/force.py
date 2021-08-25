@@ -15,15 +15,7 @@ class ForceSensor(PortDevice):
         self._device.mode([(0,0),(1,0)])
         self._when_force = None
 
-    def get_force_percentage(self):
-        """Returns the force in percentage
-
-        :return: The force exherted on the button
-        :rtype: int
-        """
-        return self._device.get(self._typeid)[0]
-
-    def get_force_newton(self):
+    def get_force(self):
         """Returns the force in newtons
 
         :return: The force exherted on the button

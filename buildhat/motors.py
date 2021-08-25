@@ -1,11 +1,17 @@
 from .devices import PortDevice, Device
-import threading
 from threading import Condition
 from collections import deque
+from enum import Enum
+import threading
 import statistics
 
 class MotorException(Exception):
     pass
+
+class Direction(Enum):
+    CLOCKWISE = 0,
+    ANTICLOCKWISE = 1,
+    SHORTEST = 2
 
 class Motor(PortDevice):
     """Motor device
@@ -113,6 +119,8 @@ class Motor(PortDevice):
         pos = self.get_position()
         apos = self.get_aposition()
         newpos = (degrees-apos+pos)/360.0
+        newpos = (pos + (degrees-apos+180) % 360 - 180)/360
+
         if not blocking:
             th = threading.Thread(target=self._run_for_degrees, args=(newpos, pos, speed))
             th.daemon = True
