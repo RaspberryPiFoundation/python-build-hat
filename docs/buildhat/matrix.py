@@ -4,9 +4,17 @@ import random
 
 matrix = Matrix('C')
 
+matrix.clear(("red",10))
+time.sleep(1)
+
+matrix.clear()
+time.sleep(1)
+
+matrix.set_pixel((0,0), ("blue", 10))
+matrix.set_pixel((2,2), ("red", 10))
+time.sleep(1)
+
 while True:
-    pixels = []
-    for pixel in range(9): 
-        pixels += [(int(random.uniform(0,9)),10)]
-    matrix.write(pixels)
+    out = [[(int(random.uniform(0,9)),10) for x in range(3)] for y in range(3)]
+    matrix.set_pixels(out)
     time.sleep(0.1)
