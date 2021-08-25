@@ -1,13 +1,13 @@
 from signal import pause
 from buildhat import Motor, DistanceSensor
 
-motor = Motor('C')
-dist = DistanceSensor('B')
+motor = Motor('A')
+dist = DistanceSensor('D')
 
-dist.wait_until_distance_closer_cm(10)
+dist.wait_for_in_range(50)
 motor.run_for_rotations(1) 
 
-dist.wait_until_distance_farther_cm(20)
+dist.wait_for_out_of_range(100)
 motor.run_for_rotations(2)
 
 def handle_dist(dist):
