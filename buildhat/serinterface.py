@@ -7,15 +7,6 @@ from threading import Condition, Timer
 from gpiozero import DigitalOutputDevice
 from enum import Enum
 
-class HatNotFound(Exception):
-    pass
-
-class DeviceNotFound(Exception):
-    pass
-
-class DeviceChanged(Exception):
-    pass
-
 class InternalDevice:
     def __init__(self, port, buildhat):
         self.port = port

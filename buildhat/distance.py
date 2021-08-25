@@ -1,4 +1,5 @@
 from .devices import PortDevice
+from .exc import DeviceInvalid
 from threading import Condition
 import threading
 
@@ -6,12 +7,12 @@ class DistanceSensor(PortDevice):
     """Distance sensor
 
     :param port: Port of device
-    :raises RuntimeError: Occurs if there is no distance sensor attached to port
+    :raises DeviceInvalid: Occurs if there is no distance sensor attached to port
     """
     def __init__(self, port, threshold_distance=100):
         super().__init__(port)
         if self._port.info()['type'] != 62:
-            raise RuntimeError('There is not a distance sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
+            raise DeviceInvalid('There is not a distance sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
         self._typeid = 62
         self._device.reverse()
         self._device.mode(0)

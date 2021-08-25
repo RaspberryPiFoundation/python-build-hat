@@ -1,4 +1,5 @@
 from .devices import PortDevice
+from .exc import DeviceInvalid
 from threading import Condition
 import threading
 
@@ -6,12 +7,12 @@ class ForceSensor(PortDevice):
     """Force sensor
 
     :param port: Port of device
-    :raises RuntimeError: Occurs if there is no force sensor attached to port
+    :raises DeviceInvalid: Occurs if there is no force sensor attached to port
     """
     def __init__(self, port):
         super().__init__(port)
         if self._port.info()['type'] != 63:
-            raise RuntimeError('There is not a force sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
+            raise DeviceInvalid('There is not a force sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
         self._typeid = 63
         self._device.mode([(0,0),(1,0)])
         self._callback = self.callback

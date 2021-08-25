@@ -1,4 +1,5 @@
 from .devices import PortDevice
+from .exc import DeviceInvalid
 from threading import Condition
 import math
 
@@ -6,12 +7,12 @@ class ColorSensor(PortDevice):
     """Color sensor
 
     :param port: Port of device
-    :raises RuntimeError: Occurs if there is no color sensor attached to port
+    :raises DeviceInvalid: Occurs if there is no color sensor attached to port
     """
     def __init__(self, port):
         super().__init__(port)
         if self._port.info()['type'] != 61:
-            raise RuntimeError('There is not a color sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
+            raise DeviceInvalid('There is not a color sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
         self._typeid = 61
         self._device.reverse()
         self._device.mode(6)
