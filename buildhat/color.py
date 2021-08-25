@@ -1,6 +1,6 @@
 from .devices import PortDevice
+from threading import Condition
 import math
-import threading
 
 class ColorSensor(PortDevice):
     """Color sensor
@@ -155,18 +155,18 @@ class ColorSensor(PortDevice):
         :param color: Color to look for 
         """
         self._device.mode(5)
-        lock = threading.Lock()
+        cond = Condition()
         
-        def both(lst):
+        def cb(lst):
             r, g, b = lst[:3]
             r, g, b = int((r/1024)*255), int((g/1024)*255), int((b/1024)*255)
             seg = self.segment_color(r, g, b)
             if seg == color:
-                lock.release()
-
-        self._device.callback(both)
-        lock.acquire()
-        lock.acquire()
+                with cond:
+                    cond.notify()
+        self._device.callback(cb)
+        with cond:
+            cond.wait()
         self._device.callback(None)
 
     def wait_for_new_color(self):
@@ -178,18 +178,18 @@ class ColorSensor(PortDevice):
             self._old_color = self.get_color()
             return self._old_color
 
-        lock = threading.Lock()
+        cond = Condition()
         
-        def both(lst):
-            r, g, b = lst[2:]
+        def cb(lst):
+            r, g, b = lst[:3]
             r, g, b = int((r/1024)*255), int((g/1024)*255), int((b/1024)*255)
             seg = self.segment_color(r, g, b)
             if seg != self._old_color:
                 self._old_color = seg
-                lock.release()
-        
-        self._device.callback(both)
-        lock.acquire()
-        lock.acquire()
+                with cond:
+                    cond.notify()
+        self._device.callback(cb)
+        with cond:
+            cond.wait()
         self._device.callback(None)
         return self._old_color

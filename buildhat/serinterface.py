@@ -95,6 +95,7 @@ class InternalDevice:
             elif self.combiindex != -1:
                 mode = "select {}".format(self.combiindex)
             self.buildhat.write("port {} ; {}\r".format(self.port.portid, mode).encode())
+        # should unselect if func is none I think
         self.callit = func
 
 class InternalMotor:
