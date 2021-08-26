@@ -199,8 +199,8 @@ class BuildHAT:
                 if line[2:2+len(BuildHAT.CONNECTED)] == BuildHAT.CONNECTED:
                     typeid = int(line[2+len(BuildHAT.CONNECTED):],16)
                     self.connections[portid].update(typeid, True)
-                    #if typeid == 64:
-                    #    devices[portid].on()
+                    if typeid == 64:
+                        self.write("port {} ; on\r".format(portid).encode())
                     if uselist:
                         count += 1
                 if line[2:2+len(BuildHAT.DISCONNECTED)] == BuildHAT.DISCONNECTED:
