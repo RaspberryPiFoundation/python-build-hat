@@ -9,10 +9,20 @@ def handle_motor(speed, pos, apos):
     print("Motor", speed, pos, apos)
 
 motor.when_rotated = handle_motor
+motor.set_default_speed(1)
 
 print("Run for degrees - 360")
 motor.run_for_degrees(360)
 time.sleep(3)
+
+print("Start motor")
+motor.start()
+time.sleep(3)
+print("Stop motor")
+motor.stop()
+time.sleep(1)
+
+motor.set_default_speed(20)
 
 print("Run for degrees - 180")
 motor.run_for_degrees(180)
@@ -34,13 +44,6 @@ print("Run both")
 motor.run_for_seconds(5, blocking=False)
 motorb.run_for_seconds(5, blocking=False)
 time.sleep(10)
-
-print("Start motor")
-motor.start()
-time.sleep(3)
-print("Stop motor")
-motor.stop()
-time.sleep(1)
 
 print("Run to position -90")
 motor.run_to_position(-90)

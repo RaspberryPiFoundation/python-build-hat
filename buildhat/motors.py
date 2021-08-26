@@ -87,6 +87,8 @@ class Motor(Device):
     def run_for_degrees(self, degrees, speed=None, blocking=True):
         """Runs motor for N degrees
 
+        Speed of 1 means 1 revolution / second
+
         :param degrees: Number of degrees to rotate
         :param speed: Speed ranging from -100 to 100
         """
