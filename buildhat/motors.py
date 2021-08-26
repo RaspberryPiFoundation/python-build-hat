@@ -128,7 +128,6 @@ class Motor(Device):
         apos = self.get_aposition()
         diff = (degrees-apos+180) % 360 - 180
         newpos = (pos + diff)/360
-
         if direction == "shortest":
             pass
         elif direction == "clockwise":
@@ -137,8 +136,8 @@ class Motor(Device):
                 newpos = (pos + op)/360
         elif direction == "anticlockwise":
             if diff > 0:
-                op = 1 - ((apos-degrees) % 360)
-                newpos = (pos + op)/360
+                op = ((apos-degrees) % 360)
+                newpos = (pos - op)/360
         else:
             raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
         pos /= 360.0
