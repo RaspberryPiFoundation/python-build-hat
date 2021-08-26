@@ -1,9 +1,9 @@
-from .devices import PortDevice
+from .devices import Device
 from .exc import DeviceInvalid
 import threading
 import time
 
-class Matrix(PortDevice):
+class Matrix(Device):
     """LED Matrix
 
     :param port: Port of device
@@ -11,11 +11,10 @@ class Matrix(PortDevice):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self._port.info()['type'] != 64:
-            raise DeviceInvalid('There is not a led matrix connected to port %s (Found %s)' % (port, self._whatami(port)))
-        self._typeid = 64
-        self._device.on()
-        self._device.mode(2)
+        if self.typeid != 64:
+            raise DeviceInvalid('There is not a led matrix connected to port %s (Found %s)' % (port, self.name))
+        self.on()
+        self.mode(2)
         self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
 
     def set_pixels(self, matrix):
@@ -38,9 +37,9 @@ class Matrix(PortDevice):
         for x in range(3):
             for y in range(3):
                 out.append((self._matrix[x][y][1] << 4) | self._matrix[x][y][0])
-        self._device.select()
-        self._device.write(out)
-        self._device.deselect()
+        self.select()
+        self.write1(out)
+        self.deselect()
 
     def strtocolor(self, colorstr):
         if colorstr == "pink":

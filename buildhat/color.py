@@ -1,9 +1,9 @@
-from .devices import PortDevice
+from .devices import Device
 from .exc import DeviceInvalid
 from threading import Condition
 import math
 
-class ColorSensor(PortDevice):
+class ColorSensor(Device):
     """Color sensor
 
     :param port: Port of device
@@ -11,11 +11,10 @@ class ColorSensor(PortDevice):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self._port.info()['type'] != 61:
-            raise DeviceInvalid('There is not a color sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
-        self._typeid = 61
-        self._device.reverse()
-        self._device.mode(6)
+        if self.typeid != 61:
+            raise DeviceInvalid('There is not a color sensor connected to port %s (Found %s)' % (port, self.name))
+        self.reverse()
+        self.mode(6)
         self.avg_reads = 5
         self._old_color = None
 
@@ -92,10 +91,10 @@ class ColorSensor(PortDevice):
         :return: Ambient light
         :rtype: int
         """
-        self._device.mode(2)
+        self.mode(2)
         readings = []
         for i in range(self.avg_reads):
-            readings.append(self._device.get(self._typeid)[0])
+            readings.append(self.get()[0])
         return int(sum(readings)/len(readings))
     
     def get_reflected_light(self):
@@ -104,10 +103,10 @@ class ColorSensor(PortDevice):
         :return: Reflected light
         :rtype: int
         """
-        self._device.mode(1)
+        self.mode(1)
         readings = []
         for i in range(self.avg_reads):
-            readings.append(self._device.get(self._typeid)[0])
+            readings.append(self.get()[0])
         return int(sum(readings)/len(readings))
 
     def get_color_rgbi(self):
@@ -116,10 +115,10 @@ class ColorSensor(PortDevice):
         :return: RGBI representation 
         :rtype: tuple
         """
-        self._device.mode(5)
+        self.mode(5)
         readings = []
         for i in range(self.avg_reads):
-            read = self._device.get(self._typeid)
+            read = self.get()
             read = [int((read[0]/1024)*255), int((read[1]/1024)*255), int((read[2]/1024)*255), int((read[3]/1024)*255)]
             readings.append(read)
         rgbi = []
@@ -133,10 +132,10 @@ class ColorSensor(PortDevice):
         :return: HSV representation 
         :rtype: tuple
         """
-        self._device.mode(6)
+        self.mode(6)
         readings = []
         for i in range(self.avg_reads):
-            read = self._device.get(self._typeid)
+            read = self.get()
             read = [read[0], int((read[1]/1024)*100), int((read[2]/1024)*100)]
             readings.append(read)
         s = c = 0
@@ -155,7 +154,7 @@ class ColorSensor(PortDevice):
 
         :param color: Color to look for 
         """
-        self._device.mode(5)
+        self.mode(5)
         cond = Condition()
         
         def cb(lst):
@@ -165,15 +164,15 @@ class ColorSensor(PortDevice):
             if seg == color:
                 with cond:
                     cond.notify()
-        self._device.callback(cb)
+        self.callback(cb)
         with cond:
             cond.wait()
-        self._device.callback(None)
+        self.callback(None)
 
     def wait_for_new_color(self):
         """Waits for new color or returns immediately if first call
         """
-        self._device.mode(5)
+        self.mode(5)
 
         if self._old_color is None:
             self._old_color = self.get_color()
@@ -189,8 +188,8 @@ class ColorSensor(PortDevice):
                 self._old_color = seg
                 with cond:
                     cond.notify()
-        self._device.callback(cb)
+        self.callback(cb)
         with cond:
             cond.wait()
-        self._device.callback(None)
+        self.callback(None)
         return self._old_color

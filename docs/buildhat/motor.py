@@ -1,15 +1,55 @@
 from signal import pause
 from buildhat import Motor
+import time
 
-motor = Motor('C')
-motor.run_for_rotations(1)
+motor = Motor('A')
+motorb = Motor('B')
 
-motor.run_to_position(0)
-
-def handle_motor(speed, pos):
-    print("Motor", speed, pos)
+def handle_motor(speed, pos, apos):
+    print("Motor", speed, pos, apos)
 
 motor.when_rotated = handle_motor
-motor.run_for_rotations(1)
 
-pause()
+print("Run for degrees - 360")
+motor.run_for_degrees(360)
+time.sleep(3)
+
+print("Run for degrees - 180")
+motor.run_for_degrees(180)
+time.sleep(3)
+
+print("Run for degrees - 90")
+motor.run_for_degrees(90)
+time.sleep(3)
+
+print("Run for rotations - 2")
+motor.run_for_rotations(2)
+time.sleep(3)
+
+print("Run for seconds - 5")
+motor.run_for_seconds(5)
+time.sleep(3)
+
+print("Run both")
+motor.run_for_seconds(5, blocking=False)
+motorb.run_for_seconds(5, blocking=False)
+time.sleep(10)
+
+print("Start motor")
+motor.start()
+time.sleep(3)
+print("Stop motor")
+motor.stop()
+time.sleep(1)
+
+print("Run to position -90")
+motor.run_to_position(-90)
+time.sleep(3)
+
+print("Run to position 90")
+motor.run_to_position(90)
+time.sleep(3)
+
+print("Run to position 180")
+motor.run_to_position(180)
+time.sleep(3)

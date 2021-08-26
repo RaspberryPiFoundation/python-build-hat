@@ -1,9 +1,9 @@
-from .devices import PortDevice
+from .devices import Device
 from .exc import DeviceInvalid
 from threading import Condition
 import threading
 
-class DistanceSensor(PortDevice):
+class DistanceSensor(Device):
     """Distance sensor
 
     :param port: Port of device
@@ -11,12 +11,10 @@ class DistanceSensor(PortDevice):
     """
     def __init__(self, port, threshold_distance=100):
         super().__init__(port)
-        if self._port.info()['type'] != 62:
-            raise DeviceInvalid('There is not a distance sensor connected to port %s (Found %s)' % (port, self._whatami(port)))
-        self._typeid = 62
-        self._device.reverse()
-        self._device.mode(0)
-        self._callback = self.callback
+        if self.typeid != 62:
+            raise DeviceInvalid('There is not a distance sensor connected to port %s (Found %s)' % (port, self.name))
+        self.reverse()
+        self.mode(0)
         self._cond_data = Condition()
         self._when_in_range = None
         self._when_out_of_range = None
@@ -25,7 +23,7 @@ class DistanceSensor(PortDevice):
         self.threshold_distance = threshold_distance
         self._distance = -1
 
-    def callback(self, data):
+    def intermediate(self, data):
         self._distance = data[0]
         if self._when_in_range is not None:
             if self._distance != -1 and self._distance < self.threshold_distance and not self._fired_in:
@@ -67,7 +65,7 @@ class DistanceSensor(PortDevice):
         :return: Distance from ultrasonic sensor
         :rtype: int
         """
-        dist = self._device.get(self._typeid)[0]
+        dist = self.get()[0]
         return dist
 
     @property
@@ -84,7 +82,7 @@ class DistanceSensor(PortDevice):
     def when_in_range(self, value):
         """Calls back, when distance in range"""
         self._when_in_range = value
-        self._device.callback(self._callback)
+        self.callback(self.intermediate)
 
     @property
     def when_out_of_range(self):
@@ -100,14 +98,14 @@ class DistanceSensor(PortDevice):
     def when_out_of_range(self, value):
         """Calls back, when distance out of range"""
         self._when_out_of_range = value
-        self._device.callback(self._callback)
+        self.callback(self.intermediate)
 
     def wait_for_out_of_range(self, distance):
         """Waits until distance is farther than specified distance
 
         :param distance: Distance
         """
-        self._device.callback(self._callback)
+        self.callback(self.intermediate)
         with self._cond_data:
             self._cond_data.wait()
             while self._data < distance:
@@ -118,7 +116,7 @@ class DistanceSensor(PortDevice):
 
         :param distance: Distance
         """
-        self._device.callback(self._callback)
+        self.callback(self.intermediate)
         with self._cond_data:
             self._cond_data.wait()
             while self._data > distance:

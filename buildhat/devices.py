@@ -8,7 +8,7 @@ import gc
 class Device:
     """Creates a single instance of the buildhat for all devices to use"""
     _instance = None
-
+    _started = 0
     _device_names = { 61: "ColorSensor",
                       62: "DistanceSensor",
                       63: "ForceSensor",
@@ -23,7 +23,8 @@ class Device:
                       76: "Motor"
                     }
     
-    def __init__(self):
+    def __init__(self, port):
+        self.port = ord(port) - ord('A')
         if not Device._instance:
             data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
             firm = os.path.join(data,"firmware.bin")
@@ -34,26 +35,116 @@ class Device:
             vfile.close()
             Device._instance = BuildHAT(firm, sig, v)
             weakref.finalize(self, self.close)
+        self.simplemode = -1
+        self.combiindex = -1
+        self._typeid = self._conn.typeid
 
-    def _whatami(self, port):
-        """Determine name of device on port
+    @property
+    def _conn(self):
+        return Device._instance.connections[self.port]
 
-        :param port: Port of device
-        """
-        port = getattr(self._instance.port, port)
-        if port.info()['type'] == -1:
+    @property
+    def connected(self):
+        return self._conn.connected
+
+    @property
+    def typeid(self):
+        return self._typeid
+
+    @property
+    def typeidcur(self):
+        return self._conn.typeid
+
+    @property
+    def _hat(self):
+        return Device._instance
+
+    @property
+    def name(self):
+        """Determine name of device on port"""
+        if self.connected == False:
             return "No device"
-        elif port.info()['type'] in self._device_names:
-            return self._device_names[port.info()['type']]
+        elif self.typeidcur in self._device_names:
+            return self._device_names[self.typeidcur]
         else:
             return "Unknown"
 
     def close(self):
         Device._instance.shutdown()
 
-class PortDevice(Device):
-    """Device which uses port"""
-    def __init__(self, port):
-        super().__init__()
-        self._port = getattr(self._instance.port, port)
-        self._device = self._port.device
+    def isconnected(self):
+        if not self.connected:
+            raise DeviceNotFound("No device found")
+        if self.typeid != self.typeidcur:
+            raise DeviceChanged("Device has changed")
+
+    def reverse(self):
+        self.isconnected()
+        Device._instance.write("port {} ; plimit 1 ; set -1\r".format(self.port).encode())
+
+    def get(self):
+        self.isconnected()
+        if self.simplemode != -1:
+            Device._instance.write("port {} ; selonce {}\r".format(self.port, self.simplemode).encode())
+        else:
+            Device._instance.write("port {} ; selonce {}\r".format(self.port, self.combiindex).encode())
+        # wait for data
+        with Device._instance.portcond[self.port]:
+            Device._instance.portcond[self.port].wait()
+        return self._conn.data
+
+    def mode(self, modev):
+        self.isconnected()
+        if isinstance(modev, list):
+            self.combiindex = 0
+            modestr = ""
+            for t in modev:
+                modestr += "{} {} ".format(t[0],t[1])
+            Device._instance.write("port {} ; combi {} {}\r".format(self.port,self.combiindex, modestr).encode())
+            self.simplemode = -1
+        else:
+            # Remove combi mode
+            if self.combiindex != -1:
+                Device._instance.write("port {} ; combi {}\r".format(self.port,self.combiindex).encode())
+            self.combiindex = -1
+            self.simplemode = int(modev)
+
+    def select(self):
+        self.isconnected()
+        if self.simplemode != -1:
+            idx = self.simplemode
+        if self.combiindex != -1:
+            idx = self.combiindex
+        if idx != -1:
+            Device._instance.write("port {} ; select {}\r".format(self.port,idx).encode())
+
+    def on(self):
+        self.isconnected()
+        Device._instance.write("port {} ; plimit 1 ; on\r".format(self.port).encode())
+
+    def off(self):
+        self.isconnected()
+        Device._instance.write("port {} ; off\r".format(self.port).encode())
+
+    def deselect(self):
+        self.isconnected()
+        Device._instance.write("port {} ; select\r".format(self.port).encode())
+
+    def write(self, cmd):
+        self.isconnected()
+        Device._instance.write(cmd)
+
+    def write1(self, data):
+        self.isconnected()
+        Device._instance.write("port {} ; write1 {}\r".format(self.port, ' '.join('{:x}'.format(h) for h in data)).encode())
+
+    def callback(self, func):
+        self.isconnected()
+        if func is not None:
+            if self.simplemode != -1:
+                mode = "select {}".format(self.simplemode)
+            elif self.combiindex != -1:
+                mode = "select {}".format(self.combiindex)
+            Device._instance.write("port {} ; {}\r".format(self.port, mode).encode())
+        # should unselect if func is none I think
+        self._conn.callit = func

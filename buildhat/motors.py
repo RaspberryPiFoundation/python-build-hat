@@ -1,4 +1,4 @@
-from .devices import PortDevice, Device
+from .devices import Device
 from .exc import DeviceInvalid
 from threading import Condition
 from collections import deque
@@ -11,7 +11,7 @@ class Direction(Enum):
     ANTICLOCKWISE = 1,
     SHORTEST = 2
 
-class Motor(PortDevice):
+class Motor(Device):
     """Motor device
 
     :param port: Port of device
@@ -22,19 +22,18 @@ class Motor(PortDevice):
 
     def __init__(self, port):
         super().__init__(port)
-        if self._port.info()['type'] not in Motor.MOTOR_SET:
-            raise DeviceInvalid('There is not a motor connected to port %s (Found %s)' % (port, self._whatami(port)))
-        self._motor = self._port.motor
+        if self.typeid not in Motor.MOTOR_SET:
+            raise DeviceInvalid('There is not a motor connected to port %s (Found %s)' % (port, self.name))
         self.default_speed = 20
-        self._device.mode([(1,0),(2,0),(3,0)])
-        self._motor.plimit(0.7)
-        self._motor.bias(0.3)
+        self.mode([(1,0),(2,0),(3,0)])
+        self.plimit(0.7)
+        self.bias(0.3)
         self._release = True
         self._bqueue = deque(maxlen=5)
         self._cvqueue = Condition()
         self.when_rotated = None
         self._oldpos = None
-        #self._motor.coast()
+        #self.coast()
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
@@ -58,7 +57,7 @@ class Motor(PortDevice):
             if len(self._bqueue) >= 5:
                 dev = statistics.stdev(self._bqueue)
                 if dev < 1:
-                    self._motor.coast()
+                    self.coast()
                     self._cvqueue.release()
                     return
 
@@ -76,7 +75,12 @@ class Motor(PortDevice):
             self.run_for_degrees(int(rotations * 360), speed, blocking)
 
     def _run_for_degrees(self, newpos, origpos, speed):
-        self._motor.run_for_degrees(newpos, origpos, speed)
+        self.isconnected()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
+        self.port, origpos, newpos, (newpos - origpos) / speed).encode()
+        self.write(cmd)
+        with self._hat.rampcond[self.port]:
+            self._hat.rampcond[self.port].wait()
         if self._release:
             self._blocktillfin()
 
@@ -127,9 +131,9 @@ class Motor(PortDevice):
             self._run_for_degrees(newpos, pos, speed)
 
     def _run_for_seconds(self, seconds, speed):
-        self._motor.run_for_time(seconds, speed, True)
+        self.run_for_time(seconds, speed, True)
         if self._release:
-            self._motor.coast()
+            self.coast()
 
     def run_for_seconds(self, seconds, speed=None, blocking=True):
         """Runs motor for N seconds
@@ -154,15 +158,15 @@ class Motor(PortDevice):
         :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            self._motor.run_at_speed(self.default_speed)
+            self.run_at_speed(self.default_speed)
         else:
             if not (speed >= -100 and speed <= 100):
                 raise MotorException("Invalid Speed")
-            self._motor.run_at_speed(speed)
+            self.run_at_speed(speed)
 
     def stop(self):
         """Stops motor"""
-        self._motor.coast()
+        self.coast()
 
     def get_position(self):
         """Gets position of motor with relation to preset position (can be negative or positive).
@@ -170,7 +174,7 @@ class Motor(PortDevice):
         :return: Position of motor
         :rtype: int
         """
-        return self._motor.get()[1]
+        return self.get()[1]
 
     def get_aposition(self):
         """Gets absolute position of motor
@@ -178,7 +182,7 @@ class Motor(PortDevice):
         :return: Absolute position of motor
         :rtype: int
         """
-        return self._motor.get()[2]
+        return self.get()[2]
 
     def get_speed(self):
         """Gets speed of motor
@@ -186,7 +190,7 @@ class Motor(PortDevice):
         :return: Speed of motor
         :rtype: int
         """
-        return self._motor.get()[0]
+        return self.get()[0]
 
     @property
     def when_rotated(self):
@@ -213,10 +217,50 @@ class Motor(PortDevice):
             self._when_rotated = lambda lst: [self._intermediate(value, lst[0], lst[1], lst[2]),self._isfinishedcb(lst[0], lst[1], lst[2])]
         else:
             self._when_rotated = lambda lst: self._isfinishedcb(lst[0], lst[1], lst[2])
-        self._device.callback(self._when_rotated)
+        self.callback(self._when_rotated)
 
+    def get(self):
+        self.isconnected()
+        self.write("port {} ; selonce 0\r".format(self.port).encode())
+        # wait for data
+        with self._hat.portcond[self.port]:
+            self._hat.portcond[self.port].wait()
+        return self._conn.data
 
-class MotorPair(Device):
+    def plimit(self, plimit):
+        self.isconnected()
+        self.write("port {} ; plimit {}\r".format(self.port, plimit).encode())
+
+    def bias(self, bias):
+        self.isconnected()
+        self.write("port {} ; bias {}\r".format(self.port, bias).encode())
+
+    def pwm(self, pwmv):
+        self.isconnected()
+        self.write("port {} ; pwm ; set {}\r".format(self.port, pwmv/100.0).encode())
+
+    def coast(self):
+        self.isconnected()
+        self.write("port {} ; coast\r".format(self.port).encode())
+
+    def float(self):
+        self.isconnected()
+        self.pwm(0)
+
+    def run_for_time(self, time, speed, blocking):
+        self.isconnected()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, time).encode();
+        self.write(cmd);
+        if blocking:
+            with self._hat.pulsecond[self.port]:
+                self._hat.pulsecond[self.port].wait()
+
+    def run_at_speed(self, speed):
+        self.isconnected()
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, self.port, speed).encode()
+        self.write(cmd)
+
+class MotorPair:
     """Pair of motors
 
     :param motora: One of the motors to drive
