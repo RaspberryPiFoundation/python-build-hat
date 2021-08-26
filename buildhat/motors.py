@@ -1,5 +1,5 @@
 from .devices import Device
-from .exc import DeviceInvalid
+from .exc import DeviceInvalid, DirectionInvalid
 from threading import Condition
 from collections import deque
 from enum import Enum
@@ -112,7 +112,7 @@ class Motor(Device):
         else:
             self._run_for_degrees(newpos, origpos, speed)
 
-    def run_to_position(self, degrees, speed=None, blocking=True):
+    def run_to_position(self, degrees, speed=None, blocking=True, direction="shortest"):
         """Runs motor to position (in degrees)
 
         :param degrees: Position in degrees
@@ -122,10 +122,25 @@ class Motor(Device):
             speed = self.default_speed
         if not (speed >= 0 and speed <= 100):
             raise MotorException("Invalid Speed")
+        if degrees < -180 or degrees > 180:
+            raise MotorException("Invalid angle")
         pos = self.get_position()
         apos = self.get_aposition()
-        #newpos = (degrees-apos+pos)/360.0
-        newpos = (pos + (degrees-apos+180) % 360 - 180)/360
+        diff = (degrees-apos+180) % 360 - 180
+        newpos = (pos + diff)/360
+
+        if direction == "shortest":
+            pass
+        elif direction == "clockwise":
+            if diff < 0:
+                op = ((degrees-apos) % 360)
+                newpos = (pos + op)/360
+        elif direction == "anticlockwise":
+            if diff > 0:
+                op = 1 - ((apos-degrees) % 360)
+                newpos = (pos + op)/360
+        else:
+            raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
         pos /= 360.0
         speed *= 0.02
         if not blocking:
