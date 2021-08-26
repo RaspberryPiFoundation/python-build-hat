@@ -76,8 +76,9 @@ class Motor(Device):
 
     def _run_for_degrees(self, newpos, origpos, speed):
         self.isconnected()
+        dur = abs((newpos - origpos) / speed)
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
-        self.port, origpos, newpos, (newpos - origpos) / speed).encode()
+        self.port, origpos, newpos, dur).encode()
         self.write(cmd)
         with self._hat.rampcond[self.port]:
             self._hat.rampcond[self.port].wait()
@@ -103,6 +104,7 @@ class Motor(Device):
         origpos = self.get_position()
         newpos = ((degrees*mul)+origpos)/360.0
         origpos /= 360.0
+        speed *= 0.02
         if not blocking:
             th = threading.Thread(target=self._run_for_degrees, args=(newpos, origpos, speed))
             th.daemon = True
@@ -122,9 +124,10 @@ class Motor(Device):
             raise MotorException("Invalid Speed")
         pos = self.get_position()
         apos = self.get_aposition()
-        newpos = (degrees-apos+pos)/360.0
+        #newpos = (degrees-apos+pos)/360.0
         newpos = (pos + (degrees-apos+180) % 360 - 180)/360
-
+        pos /= 360.0
+        speed *= 0.02
         if not blocking:
             th = threading.Thread(target=self._run_for_degrees, args=(newpos, pos, speed))
             th.daemon = True
