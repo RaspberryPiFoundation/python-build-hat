@@ -224,14 +224,6 @@ class Motor(Device):
             self._when_rotated = lambda lst: self._isfinishedcb(lst[0], lst[1], lst[2])
         self.callback(self._when_rotated)
 
-    def get(self):
-        self.isconnected()
-        self.write("port {} ; selonce 0\r".format(self.port).encode())
-        # wait for data
-        with self._hat.portcond[self.port]:
-            self._hat.portcond[self.port].wait()
-        return self._conn.data
-
     def plimit(self, plimit):
         self.isconnected()
         self.write("port {} ; plimit {}\r".format(self.port, plimit).encode())
