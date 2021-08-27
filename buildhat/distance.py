@@ -23,7 +23,7 @@ class DistanceSensor(Device):
         self.threshold_distance = threshold_distance
         self._distance = -1
 
-    def intermediate(self, data):
+    def _intermediate(self, data):
         self._distance = data[0]
         if self._when_in_range is not None:
             if self._distance != -1 and self._distance < self.threshold_distance and not self._fired_in:
@@ -82,7 +82,7 @@ class DistanceSensor(Device):
     def when_in_range(self, value):
         """Calls back, when distance in range"""
         self._when_in_range = value
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
 
     @property
     def when_out_of_range(self):
@@ -98,14 +98,14 @@ class DistanceSensor(Device):
     def when_out_of_range(self, value):
         """Calls back, when distance out of range"""
         self._when_out_of_range = value
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
 
     def wait_for_out_of_range(self, distance):
         """Waits until distance is farther than specified distance
 
         :param distance: Distance
         """
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
         with self._cond_data:
             self._cond_data.wait()
             while self._data < distance:
@@ -116,7 +116,7 @@ class DistanceSensor(Device):
 
         :param distance: Distance
         """
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
         with self._cond_data:
             self._cond_data.wait()
             while self._data > distance:

@@ -22,7 +22,7 @@ class ForceSensor(Device):
         self._cond_pressed = Condition()
         self._cond_released = Condition()
 
-    def intermediate(self, data):
+    def _intermediate(self, data):
         if self._when_force is not None:
             self._when_force(data[0], data[1])
         if data[1] == 1:
@@ -71,7 +71,7 @@ class ForceSensor(Device):
     def when_force(self, value):
         """Calls back, when force has changed"""
         self._when_force = value
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
 
     @property
     def when_pressed(self):
@@ -86,7 +86,7 @@ class ForceSensor(Device):
     def when_pressed(self, value):
         """Calls back, when button is has pressed"""
         self._when_pressed = value
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
 
     @property
     def when_released(self):
@@ -101,18 +101,18 @@ class ForceSensor(Device):
     def when_released(self, value):
         """Calls back, when button is has released"""
         self._when_released = value
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
 
     def wait_until_pressed(self):
         """Waits until the button is pressed
         """
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
         with self._cond_pressed:
             self._cond_pressed.wait()
 
     def wait_until_released(self):
         """Waits until the button is released
         """
-        self.callback(self.intermediate)
+        self.callback(self._intermediate)
         with self._cond_released:
             self._cond_released.wait()

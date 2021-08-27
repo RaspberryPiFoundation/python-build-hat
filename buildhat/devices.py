@@ -34,7 +34,7 @@ class Device:
             v = int(vfile.read())
             vfile.close()
             Device._instance = BuildHAT(firm, sig, v)
-            weakref.finalize(self, self.close)
+            weakref.finalize(self, self._close)
         self.simplemode = -1
         self.combiindex = -1
         self._typeid = self._conn.typeid
@@ -69,7 +69,7 @@ class Device:
         else:
             return "Unknown"
 
-    def close(self):
+    def _close(self):
         Device._instance.shutdown()
 
     def isconnected(self):
