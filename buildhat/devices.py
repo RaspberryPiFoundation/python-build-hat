@@ -145,15 +145,8 @@ class Device:
         self._write("port {} ; write1 {}\r".format(self.port, ' '.join('{:x}'.format(h) for h in data)))
 
     def callback(self, func):
-        self.isconnected()
         if func is not None:
-            idx = -1
-            if self._simplemode != -1:
-                idx = self._simplemode
-            elif self._combimode != -1:
-                idx = self._combimode
-            else:
-                raise DeviceInvalidMode("Not in simple or combimode")
-            self._write("port {} ; select {}\r".format(self.port, idx))
-        # should unselect if func is none I think
+            self.select()
+        else:
+            self.deselect()
         self._conn.callit = func
