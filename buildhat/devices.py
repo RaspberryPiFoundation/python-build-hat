@@ -1,5 +1,5 @@
 from .serinterface import BuildHAT
-from .exc import DeviceNotFound, DeviceChanged
+from .exc import DeviceNotFound, DeviceChanged, DeviceInvalidMode
 import weakref
 import time
 import os
@@ -36,8 +36,8 @@ class Device:
             vfile.close()
             Device._instance = BuildHAT(firm, sig, v)
             weakref.finalize(self, self._close)
-        self.simplemode = -1
-        self.combiindex = -1
+        self._simplemode = -1
+        self._combimode = -1
         self._typeid = self._conn.typeid
 
     @property
@@ -84,10 +84,14 @@ class Device:
 
     def get(self):
         self.isconnected()
-        if self.simplemode != -1:
-            self._write("port {} ; selonce {}\r".format(self.port, self.simplemode))
+        idx = -1
+        if self._simplemode != -1:
+            idx = self._simplemode
+        elif self._combimode != -1:
+            idx = self._combimode
         else:
-            self._write("port {} ; selonce {}\r".format(self.port, self.combiindex))
+            raise DeviceInvalidMode("Not in simple or combimode")
+        self._write("port {} ; selonce {}\r".format(self.port, idx))
         # wait for data
         with Device._instance.portcond[self.port]:
             Device._instance.portcond[self.port].wait()
@@ -96,27 +100,28 @@ class Device:
     def mode(self, modev):
         self.isconnected()
         if isinstance(modev, list):
-            self.combiindex = 0
+            self._combimode = 0
             modestr = ""
             for t in modev:
                 modestr += "{} {} ".format(t[0],t[1])
-            self._write("port {} ; combi {} {}\r".format(self.port,self.combiindex, modestr))
-            self.simplemode = -1
+            self._write("port {} ; combi {} {}\r".format(self.port,self._combimode, modestr))
+            self._simplemode = -1
         else:
             # Remove combi mode
-            if self.combiindex != -1:
-                self._write("port {} ; combi {}\r".format(self.port,self.combiindex))
-            self.combiindex = -1
-            self.simplemode = int(modev)
+            if self._combimode != -1:
+                self._write("port {} ; combi {}\r".format(self.port,self._combimode))
+            self._combimode = -1
+            self._simplemode = int(modev)
 
     def select(self):
         self.isconnected()
-        if self.simplemode != -1:
-            idx = self.simplemode
-        if self.combiindex != -1:
-            idx = self.combiindex
-        if idx != -1:
-            self._write("port {} ; select {}\r".format(self.port,idx))
+        if self._simplemode != -1:
+            idx = self._simplemode
+        elif self._combimode != -1:
+            idx = self._combimode
+        else:
+            raise DeviceInvalidMode("Not in simple or combimode")
+        self._write("port {} ; select {}\r".format(self.port,idx))
 
     def on(self):
         self._write("port {} ; plimit 1 ; on\r".format(self.port))
@@ -137,10 +142,13 @@ class Device:
     def callback(self, func):
         self.isconnected()
         if func is not None:
-            if self.simplemode != -1:
-                mode = "select {}".format(self.simplemode)
-            elif self.combiindex != -1:
-                mode = "select {}".format(self.combiindex)
-            self._write("port {} ; {}\r".format(self.port, mode))
+            idx = -1
+            if self._simplemode != -1:
+                idx = self._simplemode
+            elif self._combimode != -1:
+                idx = self._combimode
+            else:
+                raise DeviceInvalidMode("Not in simple or combimode")
+            self._write("port {} ; select {}\r".format(self.port, idx))
         # should unselect if func is none I think
         self._conn.callit = func

@@ -7,6 +7,9 @@ class MotorException(Exception):
 class HatNotFound(Exception):
     pass
 
+class DeviceInvalidMode(Exception):
+    pass
+
 class DeviceInvalid(Exception):
     pass
 
