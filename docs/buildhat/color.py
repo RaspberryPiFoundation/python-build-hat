@@ -1,6 +1,6 @@
 from buildhat import ColorSensor
 
-color = ColorSensor('D')
+color = ColorSensor('C')
 
 print("HSV", color.get_color_hsv())
 print("RGBI", color.get_color_rgbi())

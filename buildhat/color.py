@@ -1,6 +1,7 @@
 from .devices import Device
 from .exc import DeviceInvalid
 from threading import Condition
+from collections import deque
 import math
 
 class ColorSensor(Device):
@@ -15,7 +16,7 @@ class ColorSensor(Device):
             raise DeviceInvalid('There is not a color sensor connected to port %s (Found %s)' % (port, self.name))
         self.reverse()
         self.mode(6)
-        self.avg_reads = 5
+        self.avg_reads = 4
         self._old_color = None
 
     def segment_color(self, r, g, b):
@@ -109,6 +110,16 @@ class ColorSensor(Device):
             readings.append(self.get()[0])
         return int(sum(readings)/len(readings))
 
+    def _avgrgbi(self, reads):
+        readings = []
+        for read in reads:
+            read = [int((read[0]/1024)*255), int((read[1]/1024)*255), int((read[2]/1024)*255), int((read[3]/1024)*255)]
+            readings.append(read)
+        rgbi = []
+        for i in range(4):
+            rgbi.append(int(sum([rgbi[i] for rgbi in readings]) / len(readings)))
+        return rgbi
+
     def get_color_rgbi(self):
         """Returns the color 
 
@@ -116,15 +127,10 @@ class ColorSensor(Device):
         :rtype: tuple
         """
         self.mode(5)
-        readings = []
+        reads = []
         for i in range(self.avg_reads):
-            read = self.get()
-            read = [int((read[0]/1024)*255), int((read[1]/1024)*255), int((read[2]/1024)*255), int((read[3]/1024)*255)]
-            readings.append(read)
-        rgbi = []
-        for i in range(4):
-            rgbi.append(int(sum([rgbi[i] for rgbi in readings]) / len(readings)))
-        return rgbi
+            reads.append(self.get())
+        return self._avgrgbi(reads)
 
     def get_color_hsv(self):
         """Returns the color 
@@ -156,14 +162,15 @@ class ColorSensor(Device):
         """
         self.mode(5)
         cond = Condition()
-        
+        data = deque(maxlen=self.avg_reads)
         def cb(lst):
-            r, g, b = lst[:3]
-            r, g, b = int((r/1024)*255), int((g/1024)*255), int((b/1024)*255)
-            seg = self.segment_color(r, g, b)
-            if seg == color:
-                with cond:
-                    cond.notify()
+            data.append(lst[:4])
+            if len(data) == self.avg_reads:
+                r, g, b, _ = self._avgrgbi(data)
+                seg = self.segment_color(r, g, b)
+                if seg == color:
+                    with cond:
+                        cond.notify()
         self.callback(cb)
         with cond:
             cond.wait()
@@ -173,21 +180,20 @@ class ColorSensor(Device):
         """Waits for new color or returns immediately if first call
         """
         self.mode(5)
-
         if self._old_color is None:
             self._old_color = self.get_color()
             return self._old_color
-
         cond = Condition()
-        
+        data = deque(maxlen=self.avg_reads)
         def cb(lst):
-            r, g, b = lst[:3]
-            r, g, b = int((r/1024)*255), int((g/1024)*255), int((b/1024)*255)
-            seg = self.segment_color(r, g, b)
-            if seg != self._old_color:
-                self._old_color = seg
-                with cond:
-                    cond.notify()
+            data.append(lst[:4])
+            if len(data) ==  self.avg_reads:
+                r, g, b, _ = self._avgrgbi(data)
+                seg = self.segment_color(r, g, b)
+                if seg != self._old_color:
+                    self._old_color = seg
+                    with cond:
+                        cond.notify()
         self.callback(cb)
         with cond:
             cond.wait()
