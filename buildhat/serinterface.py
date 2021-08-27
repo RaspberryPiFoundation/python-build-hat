@@ -17,7 +17,9 @@ class HatState(Enum):
 
 class Connection:
     def __init__(self):
-        pass
+        self.typeid = -1
+        self.connected = False
+        self.callit = None
 
     def update(self, typeid, connected, callit=None):
         self.typeid = typeid
