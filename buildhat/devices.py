@@ -25,7 +25,12 @@ class Device:
                     }
     
     def __init__(self, port):
-        self.port = ord(port) - ord('A')
+        if not isinstance(port, str) or len(port) != 1:
+            raise DeviceNotFound("Invalid port")
+        p = ord(port) - ord('A')
+        if not (p >= 0 and p <= 3):
+            raise DeviceNotFound("Invalid port")
+        self.port = p
         if not Device._instance:
             data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
             firm = os.path.join(data,"firmware.bin")
