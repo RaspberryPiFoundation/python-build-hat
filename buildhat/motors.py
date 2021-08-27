@@ -75,7 +75,6 @@ class Motor(Device):
             self.run_for_degrees(int(rotations * 360), speed, blocking)
 
     def _run_for_degrees(self, newpos, origpos, speed):
-        self.isconnected()
         dur = abs((newpos - origpos) / speed)
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
         self.port, origpos, newpos, dur)
@@ -245,27 +244,22 @@ class Motor(Device):
     def plimit(self, plimit):
         if not (plimit >= 0 and plimit <= 1):
             raise MotorException("plimit should be 0 to 1")
-        self.isconnected()
         self._write("port {} ; plimit {}\r".format(self.port, plimit))
 
     def bias(self, bias):
         if not (bias >= 0 and bias <= 1):
             raise MotorException("bias should be 0 to 1")
-        self.isconnected()
         self._write("port {} ; bias {}\r".format(self.port, bias))
 
     def pwm(self, pwmv):
         if not (pwmv >= -1 and pwmv <= 1):
             raise MotorException("pwm should be -1 to 1")
-        self.isconnected()
         self._write("port {} ; pwm ; set {}\r".format(self.port, pwmv))
 
     def coast(self):
-        self.isconnected()
         self._write("port {} ; coast\r".format(self.port))
 
     def float(self):
-        self.isconnected()
         self.pwm(0)
 
 class MotorPair:
