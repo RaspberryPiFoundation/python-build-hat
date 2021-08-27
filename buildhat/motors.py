@@ -103,7 +103,7 @@ class Motor(Device):
         origpos = self.get_position()
         newpos = ((degrees*mul)+origpos)/360.0
         origpos /= 360.0
-        speed *= 0.02
+        speed *= 0.05
         if not blocking:
             th = threading.Thread(target=self._run_for_degrees, args=(newpos, origpos, speed))
             th.daemon = True
@@ -127,6 +127,7 @@ class Motor(Device):
         apos = self.get_aposition()
         diff = (degrees-apos+180) % 360 - 180
         newpos = (pos + diff)/360
+
         if direction == "shortest":
             pass
         elif direction == "clockwise":
@@ -140,7 +141,7 @@ class Motor(Device):
         else:
             raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
         pos /= 360.0
-        speed *= 0.02
+        speed *= 0.05
         if not blocking:
             th = threading.Thread(target=self._run_for_degrees, args=(newpos, pos, speed))
             th.daemon = True

@@ -29,6 +29,7 @@ class Connection:
 class BuildHAT:
     CONNECTED=": connected to active ID"
     DISCONNECTED=": disconnected"
+    DEVTIMEOUT=": timeout during data phase: disconnecting"
     NOTCONNECTED=": no device detected"
     PULSEDONE=": pulse done"
     RAMPDONE=": ramp done"
@@ -206,6 +207,8 @@ class BuildHAT:
                     if uselist:
                         count += 1
                 if line[2:2+len(BuildHAT.DISCONNECTED)] == BuildHAT.DISCONNECTED:
+                    self.connections[portid].update(-1, False)
+                if line[2:2+len(BuildHAT.DEVTIMEOUT)] == BuildHAT.DEVTIMEOUT:
                     self.connections[portid].update(-1, False)
                 if line[2:2+len(BuildHAT.NOTCONNECTED)] == BuildHAT.NOTCONNECTED:
                     self.connections[portid].update(-1, False)

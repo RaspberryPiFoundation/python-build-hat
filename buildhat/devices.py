@@ -1,4 +1,5 @@
 from .serinterface import BuildHAT
+from .exc import DeviceNotFound, DeviceChanged
 import weakref
 import time
 import os
