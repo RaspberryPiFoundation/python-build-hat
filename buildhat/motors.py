@@ -1,5 +1,5 @@
 from .devices import Device
-from .exc import DeviceInvalid, DirectionInvalid
+from .exc import DeviceInvalid, DirectionInvalid, MotorException
 from threading import Condition
 from collections import deque
 from enum import Enum
@@ -239,16 +239,22 @@ class Motor(Device):
         self.callback(self._when_rotated)
 
     def plimit(self, plimit):
+        if not (plimit >= 0 and plimit <= 1):
+            raise MotorException("plimit should be 0 to 1")
         self.isconnected()
         self._write("port {} ; plimit {}\r".format(self.port, plimit))
 
     def bias(self, bias):
+        if not (bias >= 0 and bias <= 1):
+            raise MotorException("bias should be 0 to 1")
         self.isconnected()
         self._write("port {} ; bias {}\r".format(self.port, bias))
 
     def pwm(self, pwmv):
+        if not (pwmv >= -1 and pwmv <= 1):
+            raise MotorException("pwm should be -1 to 1")
         self.isconnected()
-        self._write("port {} ; pwm ; set {}\r".format(self.port, pwmv/100.0))
+        self._write("port {} ; pwm ; set {}\r".format(self.port, pwmv))
 
     def coast(self):
         self.isconnected()
