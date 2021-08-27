@@ -150,7 +150,10 @@ class Motor(Device):
             self._run_for_degrees(newpos, pos, speed)
 
     def _run_for_seconds(self, seconds, speed):
-        self.run_for_time(seconds, speed, True)
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, seconds);
+        self._write(cmd);
+        with self._hat.pulsecond[self.port]:
+            self._hat.pulsecond[self.port].wait()
         if self._release:
             self.coast()
 
@@ -263,14 +266,6 @@ class Motor(Device):
     def float(self):
         self.isconnected()
         self.pwm(0)
-
-    def run_for_time(self, time, speed, blocking):
-        self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, time);
-        self._write(cmd);
-        if blocking:
-            with self._hat.pulsecond[self.port]:
-                self._hat.pulsecond[self.port].wait()
 
     def run_at_speed(self, speed):
         self.isconnected()
