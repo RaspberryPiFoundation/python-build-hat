@@ -193,3 +193,6 @@ class ColorSensor(Device):
             cond.wait()
         self.callback(None)
         return self._old_color
+
+    def on(self):
+        self._write("port {} ; plimit 1 ; set -1\r".format(self.port))
