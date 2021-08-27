@@ -180,11 +180,12 @@ class Motor(Device):
         :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            self.run_at_speed(self.default_speed)
+            speed = self.default_speed
         else:
             if not (speed >= -100 and speed <= 100):
                 raise MotorException("Invalid Speed")
-            self.run_at_speed(speed)
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, self.port, speed)
+        self._write(cmd)
 
     def stop(self):
         """Stops motor"""
@@ -266,11 +267,6 @@ class Motor(Device):
     def float(self):
         self.isconnected()
         self.pwm(0)
-
-    def run_at_speed(self, speed):
-        self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, self.port, speed)
-        self._write(cmd)
 
 class MotorPair:
     """Pair of motors
