@@ -78,8 +78,8 @@ class Motor(Device):
         self.isconnected()
         dur = abs((newpos - origpos) / speed)
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
-        self.port, origpos, newpos, dur).encode()
-        self.write(cmd)
+        self.port, origpos, newpos, dur)
+        self._write(cmd)
         with self._hat.rampcond[self.port]:
             self._hat.rampcond[self.port].wait()
         if self._release:
@@ -240,19 +240,19 @@ class Motor(Device):
 
     def plimit(self, plimit):
         self.isconnected()
-        self.write("port {} ; plimit {}\r".format(self.port, plimit).encode())
+        self._write("port {} ; plimit {}\r".format(self.port, plimit))
 
     def bias(self, bias):
         self.isconnected()
-        self.write("port {} ; bias {}\r".format(self.port, bias).encode())
+        self._write("port {} ; bias {}\r".format(self.port, bias))
 
     def pwm(self, pwmv):
         self.isconnected()
-        self.write("port {} ; pwm ; set {}\r".format(self.port, pwmv/100.0).encode())
+        self._write("port {} ; pwm ; set {}\r".format(self.port, pwmv/100.0))
 
     def coast(self):
         self.isconnected()
-        self.write("port {} ; coast\r".format(self.port).encode())
+        self._write("port {} ; coast\r".format(self.port))
 
     def float(self):
         self.isconnected()
@@ -260,16 +260,16 @@ class Motor(Device):
 
     def run_for_time(self, time, speed, blocking):
         self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, time).encode();
-        self.write(cmd);
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, time);
+        self._write(cmd);
         if blocking:
             with self._hat.pulsecond[self.port]:
                 self._hat.pulsecond[self.port].wait()
 
     def run_at_speed(self, speed):
         self.isconnected()
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, self.port, speed).encode()
-        self.write(cmd)
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, self.port, speed)
+        self._write(cmd)
 
 class MotorPair:
     """Pair of motors

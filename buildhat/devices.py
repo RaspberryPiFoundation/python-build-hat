@@ -79,15 +79,14 @@ class Device:
             raise DeviceChanged("Device has changed")
 
     def reverse(self):
-        self.isconnected()
-        Device._instance.write("port {} ; plimit 1 ; set -1\r".format(self.port).encode())
+        self._write("port {} ; plimit 1 ; set -1\r".format(self.port))
 
     def get(self):
         self.isconnected()
         if self.simplemode != -1:
-            Device._instance.write("port {} ; selonce {}\r".format(self.port, self.simplemode).encode())
+            self._write("port {} ; selonce {}\r".format(self.port, self.simplemode))
         else:
-            Device._instance.write("port {} ; selonce {}\r".format(self.port, self.combiindex).encode())
+            self._write("port {} ; selonce {}\r".format(self.port, self.combiindex))
         # wait for data
         with Device._instance.portcond[self.port]:
             Device._instance.portcond[self.port].wait()
@@ -100,12 +99,12 @@ class Device:
             modestr = ""
             for t in modev:
                 modestr += "{} {} ".format(t[0],t[1])
-            Device._instance.write("port {} ; combi {} {}\r".format(self.port,self.combiindex, modestr).encode())
+            self._write("port {} ; combi {} {}\r".format(self.port,self.combiindex, modestr))
             self.simplemode = -1
         else:
             # Remove combi mode
             if self.combiindex != -1:
-                Device._instance.write("port {} ; combi {}\r".format(self.port,self.combiindex).encode())
+                self._write("port {} ; combi {}\r".format(self.port,self.combiindex))
             self.combiindex = -1
             self.simplemode = int(modev)
 
@@ -116,27 +115,23 @@ class Device:
         if self.combiindex != -1:
             idx = self.combiindex
         if idx != -1:
-            Device._instance.write("port {} ; select {}\r".format(self.port,idx).encode())
+            self._write("port {} ; select {}\r".format(self.port,idx))
 
     def on(self):
-        self.isconnected()
-        Device._instance.write("port {} ; plimit 1 ; on\r".format(self.port).encode())
+        self._write("port {} ; plimit 1 ; on\r".format(self.port))
 
     def off(self):
-        self.isconnected()
-        Device._instance.write("port {} ; off\r".format(self.port).encode())
+        self._write("port {} ; off\r".format(self.port))
 
     def deselect(self):
-        self.isconnected()
-        Device._instance.write("port {} ; select\r".format(self.port).encode())
+        self._write("port {} ; select\r".format(self.port))
 
-    def write(self, cmd):
+    def _write(self, cmd):
         self.isconnected()
-        Device._instance.write(cmd)
+        Device._instance.write(cmd.encode())
 
-    def write1(self, data):
-        self.isconnected()
-        Device._instance.write("port {} ; write1 {}\r".format(self.port, ' '.join('{:x}'.format(h) for h in data)).encode())
+    def _write1(self, data):
+        self._write("port {} ; write1 {}\r".format(self.port, ' '.join('{:x}'.format(h) for h in data)))
 
     def callback(self, func):
         self.isconnected()
@@ -145,6 +140,6 @@ class Device:
                 mode = "select {}".format(self.simplemode)
             elif self.combiindex != -1:
                 mode = "select {}".format(self.combiindex)
-            Device._instance.write("port {} ; {}\r".format(self.port, mode).encode())
+            self._write("port {} ; {}\r".format(self.port, mode))
         # should unselect if func is none I think
         self._conn.callit = func

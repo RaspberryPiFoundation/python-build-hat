@@ -38,7 +38,7 @@ class Matrix(Device):
             for y in range(3):
                 out.append((self._matrix[x][y][1] << 4) | self._matrix[x][y][0])
         self.select()
-        self.write1(out)
+        self._write1(out)
         self.deselect()
 
     def strtocolor(self, colorstr):
