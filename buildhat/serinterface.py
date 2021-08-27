@@ -74,7 +74,7 @@ class BuildHAT:
                 else:
                     self.state = HatState.NEEDNEWFIRMWARE
                     break
-            if line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
+            elif line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
                 self.state = HatState.BOOTLOADER
                 break
 
@@ -206,18 +206,18 @@ class BuildHAT:
                         self.write("port {} ; on\r".format(portid).encode())
                     if uselist:
                         count += 1
-                if line[2:2+len(BuildHAT.DISCONNECTED)] == BuildHAT.DISCONNECTED:
+                elif line[2:2+len(BuildHAT.DISCONNECTED)] == BuildHAT.DISCONNECTED:
                     self.connections[portid].update(-1, False)
-                if line[2:2+len(BuildHAT.DEVTIMEOUT)] == BuildHAT.DEVTIMEOUT:
+                elif line[2:2+len(BuildHAT.DEVTIMEOUT)] == BuildHAT.DEVTIMEOUT:
                     self.connections[portid].update(-1, False)
-                if line[2:2+len(BuildHAT.NOTCONNECTED)] == BuildHAT.NOTCONNECTED:
+                elif line[2:2+len(BuildHAT.NOTCONNECTED)] == BuildHAT.NOTCONNECTED:
                     self.connections[portid].update(-1, False)
                     if uselist:
                         count += 1
-                if line[2:2+len(BuildHAT.RAMPDONE)] == BuildHAT.RAMPDONE:
+                elif line[2:2+len(BuildHAT.RAMPDONE)] == BuildHAT.RAMPDONE:
                     with self.rampcond[portid]:
                         self.rampcond[portid].notify()
-                if line[2:2+len(BuildHAT.PULSEDONE)] == BuildHAT.PULSEDONE:
+                elif line[2:2+len(BuildHAT.PULSEDONE)] == BuildHAT.PULSEDONE:
                     with self.pulsecond[portid]:
                         self.pulsecond[portid].notify()
 
