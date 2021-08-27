@@ -1,5 +1,5 @@
 from .devices import Device
-from .exc import DeviceInvalid
+from .exc import DeviceInvalid, DistanceSensorException
 from threading import Condition
 import threading
 
@@ -121,3 +121,13 @@ class DistanceSensor(Device):
             self._cond_data.wait()
             while self._data > distance:
                 self._cond_data.wait()
+
+    def eyes(self, *args):
+        out = [0xc5]
+        if len(args) != 4:
+            raise DistanceSensorException("Need 4 brightness args, of 0 to 100")
+        for v in args:
+            if not (v >= 0 and v <= 100):
+                raise DistanceSensorException("Need 4 brightness args, of 0 to 100")
+            out += [v]
+        self._write1(out)

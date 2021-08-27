@@ -19,5 +19,8 @@ class DeviceNotFound(Exception):
 class DeviceChanged(Exception):
     pass
 
+class DistanceSensorException(Exception):
+    pass
+
 class DirectionInvalid(Exception):
     pass
