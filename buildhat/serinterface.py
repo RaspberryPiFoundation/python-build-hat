@@ -26,6 +26,9 @@ class Connection:
         self.connected = connected
         self.callit = callit
 
+def cmp(str1, str2):
+    return str1[:len(str2)] == str2
+
 class BuildHAT:
     CONNECTED=": connected to active ID"
     DISCONNECTED=": disconnected"
@@ -199,25 +202,26 @@ class BuildHAT:
                 continue
             if line[0] == "P" and line[2] == ":":
                 portid = int(line[1])
-                if line[2:2+len(BuildHAT.CONNECTED)] == BuildHAT.CONNECTED:
+                msg = line[2:]
+                if cmp(msg, BuildHAT.CONNECTED):
                     typeid = int(line[2+len(BuildHAT.CONNECTED):],16)
                     self.connections[portid].update(typeid, True)
                     if typeid == 64:
                         self.write("port {} ; on\r".format(portid).encode())
                     if uselist:
                         count += 1
-                elif line[2:2+len(BuildHAT.DISCONNECTED)] == BuildHAT.DISCONNECTED:
+                elif cmp(msg, BuildHAT.DISCONNECTED):
                     self.connections[portid].update(-1, False)
-                elif line[2:2+len(BuildHAT.DEVTIMEOUT)] == BuildHAT.DEVTIMEOUT:
+                elif cmp(msg, BuildHAT.DEVTIMEOUT):
                     self.connections[portid].update(-1, False)
-                elif line[2:2+len(BuildHAT.NOTCONNECTED)] == BuildHAT.NOTCONNECTED:
+                elif cmp(msg, BuildHAT.NOTCONNECTED):
                     self.connections[portid].update(-1, False)
                     if uselist:
                         count += 1
-                elif line[2:2+len(BuildHAT.RAMPDONE)] == BuildHAT.RAMPDONE:
+                elif cmp(msg, BuildHAT.RAMPDONE):
                     with self.rampcond[portid]:
                         self.rampcond[portid].notify()
-                elif line[2:2+len(BuildHAT.PULSEDONE)] == BuildHAT.PULSEDONE:
+                elif cmp(msg, BuildHAT.PULSEDONE):
                     with self.pulsecond[portid]:
                         self.pulsecond[portid].notify()
 
@@ -225,7 +229,7 @@ class BuildHAT:
                 with cond:
                     cond.notify()
 
-            if not uselist and line[:len(BuildHAT.DONE)] == BuildHAT.DONE:
+            if not uselist and cmp(line, BuildHAT.DONE):
                 def runit():
                     with cond:
                         cond.notify()
