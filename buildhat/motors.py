@@ -128,18 +128,22 @@ class Motor(Device):
         diff = (degrees-apos+180) % 360 - 180
         newpos = (pos + diff)/360
 
+        v1 = (degrees - apos)%360
+        v2 = (apos - degrees)%360
+        mul = 1
+        if diff > 0:
+            mul = -1
+        diff = sorted([diff, mul * (v2 if abs(diff) == v1 else v1)])
+
         if direction == "shortest":
             pass
         elif direction == "clockwise":
-            if diff < 0:
-                op = ((degrees-apos) % 360)
-                newpos = (pos + op)/360
+            newpos = (pos + diff[1])/360
         elif direction == "anticlockwise":
-            if diff > 0:
-                op = ((apos-degrees) % 360)
-                newpos = (pos - op)/360
+            newpos = (pos + diff[0])/360
         else:
             raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
+
         pos /= 360.0
         speed *= 0.05
         if not blocking:

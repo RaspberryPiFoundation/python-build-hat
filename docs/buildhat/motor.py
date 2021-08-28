@@ -9,7 +9,7 @@ def handle_motor(speed, pos, apos):
     print("Motor", speed, pos, apos)
 
 motor.when_rotated = handle_motor
-motor.set_default_speed(20)
+motor.set_default_speed(50)
 
 print("Run for degrees 360")
 motor.run_for_degrees(360)
