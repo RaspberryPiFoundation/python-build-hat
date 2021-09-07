@@ -59,7 +59,7 @@ source_suffix = '.rst'
 
 # General information about the project.
 project = 'Raspberry Pi Build HAT'
-copyright = '''2020 - Raspberry Pi (Trading) Limited;
+copyright = '''2020-2021 - Raspberry Pi Foundation;
 2017-2020 - LEGO System A/S - Aastvej 1, 7190 Billund, DK.'''
 
 # The version info for the project you're documenting, acts as replacement for
