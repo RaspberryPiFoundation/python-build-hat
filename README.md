@@ -90,6 +90,5 @@ Install
 -------
 
 ```
-sudo apt install python3-pip
-pip3 install build_hat-*.whl
+pip3 install buildhat-*.whl
 ```
