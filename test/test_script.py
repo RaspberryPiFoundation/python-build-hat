@@ -7,8 +7,8 @@ import time
 fake_hat_binary = './test/resources/FakeHat'
 if __name__ == "__main__":
         import argparse
-        parser = argparse.ArgumentParser(description="Manually test the Python Shortcake Hat library")
-        parser.add_argument('fake_hat', default="./test/resources/FakeHat", help="the binary emulating a Shortcake Hat for test purposes")
+        parser = argparse.ArgumentParser(description="Manually test the Python Build Hat library")
+        parser.add_argument('fake_hat', default="./test/resources/FakeHat", help="the binary emulating a Build Hat for test purposes")
         args = parser.parse_args()
         fake_hat_binary = args.fake_hat
 
