@@ -8,7 +8,13 @@ read it.
 Install
 -------
 
-To install:
+If using asdf:
+
+```
+asdf install
+```
+
+Then:
 
 ```
 pip3 install . --user
