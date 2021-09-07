@@ -13,9 +13,19 @@ Getting the documentation converted from ReStructured Text to your
 preferred format requires the sphinx package, and optionally (for
 RTD-styling) sphinx\_rtd\_theme package.  To install them:
 
-    pip install sphinx
-    pip install sphinx_rtd_theme
+```
+pip install sphinx
+pip install sphinx_rtd_theme
+```
 
-then to build the documentation as HTML:
+If using asdf:
 
-    make html
+```
+asdf reshim python
+```
+
+Then to build the documentation as HTML:
+
+```
+make html
+```

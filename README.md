@@ -8,10 +8,23 @@ read it.
 Install
 -------
 
-To install:
+If using asdf:
+
+```
+asdf install
+```
+
+Then:
 
 ```
 pip3 install . --user
+```
+
+Build
+-----
+
+```
+./build.sh
 ```
 
 Documentation
@@ -90,6 +103,5 @@ Install
 -------
 
 ```
-sudo apt install python3-pip
-pip3 install build_hat-*.whl
+pip3 install buildhat-*.whl
 ```
