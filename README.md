@@ -20,6 +20,13 @@ Then:
 pip3 install . --user
 ```
 
+Build
+-----
+
+```
+./build.sh
+```
+
 Documentation
 -------------
 
