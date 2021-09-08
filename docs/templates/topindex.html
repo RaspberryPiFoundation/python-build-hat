@@ -1,12 +1,25 @@
 {% extends "layout.html" %}
 {% block body %}
 
-  <h1>Build HAT Documentation</h1>
+  <h1>{{ _('Build HAT Documentation') }}</h1>
 
   <p>
-    {{ _('Welcome! This is the documentation for the Raspberry Pi Build HAT') }}
-    {{ release|e }}{% if last_updated %}, {{ _('last updated') }} {{ last_updated|e }}{% endif %}.
+    {{ _('Welcome! This is the documentation for the Raspberry Pi Build HAT') }}{{ release|e }}{% if last_updated %}, {{ _('last updated') }} {{ last_updated|e }}{% endif %}.
   </p>
+
+  <div class="section">
+    <h2>{{ _('Features') }}</h2>
+
+    <p>{{ _('The Build HAT allows the following hardware to be connected:') }}</p>
+    <ul>
+      <li>{{ _('Motors') }}</li>
+      <li>{{ _('Color sensor') }}</li>
+      <li>{{ _('Distance sensor') }}</li>
+      <li>{{ _('Force sensor') }}</li>
+    </ul>
+
+    <p>{{ _('Additional Build HAT info...') }}</p>
+  </div>
 
   <table class="contentstable"><tr>
     <td width="40%" style="padding-left:2em;">
