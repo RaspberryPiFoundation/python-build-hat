@@ -126,4 +126,4 @@ html_last_updated_fmt = '%d %b %Y'
 html_additional_pages = {"index": "topindex.html"}
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Hubdoc'
+htmlhelp_basename = 'BuildHATdoc'
