@@ -60,6 +60,7 @@ class BuildHAT:
         # Check if we're in the bootloader or the firmware
         self.write(b"version\r")
 
+        incdata = 0
         while True:
             try:
                 line = self.ser.readline().decode('utf-8')
@@ -80,7 +81,13 @@ class BuildHAT:
             elif line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
                 self.state = HatState.BOOTLOADER
                 break
-
+            else:
+                # got other data we didn't understand - send version again
+                incdata += 1
+                if incdata > 5:
+                    break
+                else:
+                    self.write(b"version\r")
         # Use to force hat reset
         #self.state = HatState.NEEDNEWFIRMWARE
         if self.state == HatState.NEEDNEWFIRMWARE:

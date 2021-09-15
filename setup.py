@@ -28,5 +28,5 @@ setup(name='buildhat',
       package_data={
           "": ["data/firmware.bin", "data/signature.bin", "data/version"],
       },
-      python_requires = '>=3.8',
+      python_requires = '>=3.7',
       install_requires=['gpiozero','pyserial']),
