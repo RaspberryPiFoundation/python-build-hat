@@ -123,6 +123,11 @@ class DistanceSensor(Device):
                 self._cond_data.wait()
 
     def eyes(self, *args):
+        """
+        Brightness of LEDs on sensor
+
+        :param \*args: Four Brightness arguments of 0 to 100
+        """
         out = [0xc5]
         if len(args) != 4:
             raise DistanceSensorException("Need 4 brightness args, of 0 to 100")

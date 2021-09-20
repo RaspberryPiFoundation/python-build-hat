@@ -129,9 +129,15 @@ class Device:
         self._write("port {} ; select {}\r".format(self.port,idx))
 
     def on(self):
+        """
+        Turns on sensor
+        """
         self._write("port {} ; plimit 1 ; on\r".format(self.port))
 
     def off(self):
+        """
+        Turns off sensor
+        """
         self._write("port {} ; off\r".format(self.port))
 
     def deselect(self):

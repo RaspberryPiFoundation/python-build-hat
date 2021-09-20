@@ -201,4 +201,7 @@ class ColorSensor(Device):
         return self._old_color
 
     def on(self):
+        """
+        Turns on the sensor and LED
+        """
         self._write("port {} ; plimit 1 ; set -1\r".format(self.port))
