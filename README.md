@@ -31,15 +31,14 @@ Documentation
 -------------
 
 Instructions for regenerating the documentation can be found in
-docs/README.md.  Briefly, assuming you have the appropriate python
+`docs/README.md`. Briefly, assuming you have the appropriate python
 modules installed:
 
 ```
 $ (cd docs; make html)
 ```
 
-will rebuild the documentation.  The doc tree starts at
-``docs/build/html/index.html``
+will rebuild the documentation. The doc tree starts at `docs/build/html/index.html`
 
 
 Usage
