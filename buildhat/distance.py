@@ -27,12 +27,12 @@ class DistanceSensor(Device):
         self._distance = data[0]
         if self._when_in_range is not None:
             if self._distance != -1 and self._distance < self.threshold_distance and not self._fired_in:
-                self._when_in_range()
+                self._when_in_range(data[0])
                 self._fired_in = True
                 self._fired_out = False
         if self._when_out_of_range is not None:
             if self._distance != -1 and self._distance > self.threshold_distance and not self._fired_out:
-                self._when_out_of_range()
+                self._when_out_of_range(data[0])
                 self._fired_in = False
                 self._fired_out = True
         with self._cond_data:

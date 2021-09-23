@@ -12,11 +12,11 @@ print("Wait for out of range")
 dist.wait_for_out_of_range(100)
 motor.run_for_rotations(2)
 
-def handle_in():
-    print("in range", dist.distance)
+def handle_in(distance):
+    print("in range", distance)
 
-def handle_out():
-    print("out of range", dist.distance)
+def handle_out(distance):
+    print("out of range", distance)
 
 dist.when_in_range = handle_in
 dist.when_out_of_range = handle_out
