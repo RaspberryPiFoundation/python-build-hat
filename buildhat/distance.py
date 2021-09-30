@@ -119,7 +119,7 @@ class DistanceSensor(Device):
         self.callback(self._intermediate)
         with self._cond_data:
             self._cond_data.wait()
-            while self._data > distance:
+            while self._data == -1 or self._data > distance:
                 self._cond_data.wait()
 
     def eyes(self, *args):
