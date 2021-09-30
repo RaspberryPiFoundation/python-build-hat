@@ -25,16 +25,16 @@ class DistanceSensor(Device):
 
     def _intermediate(self, data):
         self._distance = data[0]
-        if self._when_in_range is not None:
-            if self._distance != -1 and self._distance < self.threshold_distance and not self._fired_in:
+        if self._distance != -1 and self._distance < self.threshold_distance and not self._fired_in:
+            if self._when_in_range is not None:
                 self._when_in_range(data[0])
-                self._fired_in = True
-                self._fired_out = False
-        if self._when_out_of_range is not None:
-            if self._distance != -1 and self._distance > self.threshold_distance and not self._fired_out:
+            self._fired_in = True
+            self._fired_out = False
+        if self._distance != -1 and self._distance > self.threshold_distance and not self._fired_out:
+            if self._when_out_of_range is not None:
                 self._when_out_of_range(data[0])
-                self._fired_in = False
-                self._fired_out = True
+            self._fired_in = False
+            self._fired_out = True
         with self._cond_data:
             self._data = data[0]
             self._cond_data.notify()
