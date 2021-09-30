@@ -278,7 +278,7 @@ class MotorPair:
         super().__init__()
         self._leftmotor = Motor(leftport)
         self._rightmotor = Motor(rightport)
-        self.default_speed = 50
+        self.default_speed = 20
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
@@ -298,8 +298,7 @@ class MotorPair:
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        self._leftmotor.run_for_degrees(int(rotations * 360), speedl)
-        self._rightmotor.run_for_degrees(int(rotations * 360), speedr)
+        self.run_for_degrees(int(rotations * 360), speedl, speedr)
 
     def run_for_degrees(self, degrees, speedl=None, speedr=None):
         """Runs pair of motors for degrees
@@ -312,8 +311,14 @@ class MotorPair:
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        self._leftmotor.run_for_degrees(degrees, speedl)
-        self._rightmotor.run_for_degrees(degrees, speedr)
+        th1 = threading.Thread(target=self._leftmotor.run_for_degrees, args=(degrees,), kwargs={'speed': speedl, 'blocking': True})
+        th1.daemon = True
+        th2 = threading.Thread(target=self._rightmotor.run_for_degrees, args=(degrees,), kwargs={'speed': speedr, 'blocking': True})
+        th2.daemon = True
+        th1.start()
+        th2.start()
+        th1.join()
+        th2.join()
 
     def run_for_seconds(self, seconds, speedl=None, speedr=None):
         """Runs pair for N seconds
@@ -326,9 +331,9 @@ class MotorPair:
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        th1 = threading.Thread(target=self._leftmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedl, 'blocking': True})
+        th1 = threading.Thread(target=self._leftmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedl})
         th1.daemon = True
-        th2 = threading.Thread(target=self._rightmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedr, 'blocking': True})
+        th2 = threading.Thread(target=self._rightmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedr})
         th2.daemon = True
         th1.start()
         th2.start()
