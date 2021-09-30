@@ -31,16 +31,16 @@ class ForceSensor(Device):
         else:
             with self._cond_released:
                 self._cond_released.notify()
-        if self._when_pressed is not None:
-            if data[1] == 1 and not self._fired_pressed:
+        if data[1] == 1 and not self._fired_pressed:
+            if self._when_pressed is not None:
                 self._when_pressed()
-                self._fired_pressed = True
-                self._fired_released = False
-        if self._when_released is not None:
-            if data[1] == 0 and not self._fired_released:
+            self._fired_pressed = True
+            self._fired_released = False
+        if data[1] == 0 and not self._fired_released:
+            if self._when_released is not None:
                 self._when_released()
-                self._fired_pressed = False
-                self._fired_released = True
+            self._fired_pressed = False
+            self._fired_released = True
 
     def get_force(self):
         """Returns the force in newtons
