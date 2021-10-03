@@ -5,6 +5,7 @@ from collections import deque
 from enum import Enum
 import threading
 import statistics
+import time
 
 class Direction(Enum):
     CLOCKWISE = 0,
@@ -33,7 +34,6 @@ class Motor(Device):
         self._cvqueue = Condition()
         self.when_rotated = None
         self._oldpos = None
-        #self.coast()
 
     def set_default_speed(self, default_speed):
         """Sets the default speed of the motor
@@ -45,21 +45,7 @@ class Motor(Device):
         self.default_speed = default_speed
 
     def _isfinishedcb(self, speed, pos, apos):
-        self._cvqueue.acquire()
         self._bqueue.append(pos)
-        self._cvqueue.notify()
-        self._cvqueue.release()
-
-    def _blocktillfin(self):
-        self._cvqueue.acquire()
-        while True:
-            self._cvqueue.wait()
-            if len(self._bqueue) >= 5:
-                dev = statistics.stdev(self._bqueue)
-                if dev < 1:
-                    self.coast()
-                    self._cvqueue.release()
-                    return
 
     def run_for_rotations(self, rotations, speed=None, blocking=True):
         """Runs motor for N rotations
@@ -82,7 +68,8 @@ class Motor(Device):
         with self._hat.rampcond[self.port]:
             self._hat.rampcond[self.port].wait()
         if self._release:
-            self._blocktillfin()
+            time.sleep(0.2)
+            self.coast()
 
     def run_for_degrees(self, degrees, speed=None, blocking=True):
         """Runs motor for N degrees
