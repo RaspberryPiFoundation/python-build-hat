@@ -29,6 +29,7 @@ power supply. For best results, use the official Raspberry Pi Build HAT power su
    :maxdepth: 2
   
    colorsensor.rst
+   colordistancesensor.rst
    distancesensor.rst
    forcesensor.rst
    matrix.rst
