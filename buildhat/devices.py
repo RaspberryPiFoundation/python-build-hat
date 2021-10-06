@@ -10,7 +10,8 @@ class Device:
     """Creates a single instance of the buildhat for all devices to use"""
     _instance = None
     _started = 0
-    _device_names = { 61: "ColorSensor",
+    _device_names = { 37: "ColorDistanceSensor",
+                      61: "ColorSensor",
                       62: "DistanceSensor",
                       63: "ForceSensor",
                       64: "Matrix",
