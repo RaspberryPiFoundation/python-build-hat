@@ -25,26 +25,18 @@ class ColorSensor(Device):
         :return: Name of the color as a string
         :rtype: str
         """
-        table = [("white",(100,100,100)),
-                 ("silver",(75,75,75)),
-                 ("gray",(50,50,50)),
-                 ("black",(0,0,0)),
-                 ("red",(100,0,0)),
-                 ("maroon",(50,0,0)),
-                 ("yellow",(100,100,0)),
-                 ("olive",(50,50,0)),
-                 ("lime",(0,100,0)),
-                 ("green",(0,50,0)),
-                 ("aqua",(0,100,100)),
-                 ("teal",(0,50,50)),
-                 ("blue",(0,0,100)),
-                 ("navy",(100,0,100)),
-                 ("fuschia",(100,0,100)),
-                 ("purple",(50,0,50))]
+        table = [("black",(0,0,0)),
+                 ("violet",(127,0,255)),
+                 ("blue",(0,0,255)),
+                 ("cyan",(0,183,235)),
+                 ("green",(0,128,0)),
+                 ("yellow",(255,255,0)),
+                 ("red",(255,0,0)),
+                 ("white",(255,255,255))]
         near = ""
         euc = math.inf
         for itm in table:
-            cur = math.sqrt((r - int(itm[1][0]*2.55))**2 + (g - int(itm[1][1]*2.55))**2 + (b - int(itm[1][2]*2.55))**2)
+            cur = math.sqrt((r - itm[1][0])**2 + (g - itm[1][1])**2 + (b - itm[1][2])**2)
             if cur < euc:
                 near = itm[0]
                 euc = cur
