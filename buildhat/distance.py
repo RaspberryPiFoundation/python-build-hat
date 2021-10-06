@@ -20,7 +20,7 @@ class DistanceSensor(Device):
         self._when_out_of_range = None
         self._fired_in = False
         self._fired_out = False
-        self.threshold_distance = threshold_distance
+        self._threshold_distance = threshold_distance
         self._distance = -1
 
     def _intermediate(self, data):

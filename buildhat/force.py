@@ -9,38 +9,44 @@ class ForceSensor(Device):
     :param port: Port of device
     :raises DeviceInvalid: Occurs if there is no force sensor attached to port
     """
-    def __init__(self, port):
+    def __init__(self, port, threshold_force=1):
         super().__init__(port)
         if self.typeid != 63:
             raise DeviceInvalid('There is not a force sensor connected to port %s (Found %s)' % (port, self.name))
         self.mode([(0,0),(1,0)])
-        self._when_force = None
         self._when_pressed = None
         self._when_released = None
         self._fired_pressed = False
         self._fired_released = False
-        self._cond_pressed = Condition()
-        self._cond_released = Condition()
+        self._cond_force = Condition()
+        self._threshold_force = threshold_force
 
     def _intermediate(self, data):
-        if self._when_force is not None:
-            self._when_force(data[0], data[1])
-        if data[1] == 1:
-            with self._cond_pressed:
-                self._cond_pressed.notify()
-        else:
-            with self._cond_released:
-                self._cond_released.notify()
-        if data[1] == 1 and not self._fired_pressed:
+        with self._cond_force:
+            self._data = data[0]
+            self._cond_force.notify()
+        if data[0] >= self.threshold_force and not self._fired_pressed:
             if self._when_pressed is not None:
                 self._when_pressed()
             self._fired_pressed = True
             self._fired_released = False
-        if data[1] == 0 and not self._fired_released:
+        if data[0] < self.threshold_force and not self._fired_released:
             if self._when_released is not None:
                 self._when_released()
             self._fired_pressed = False
             self._fired_released = True
+
+    @property
+    def threshold_force(self):
+        """
+        :getter: Returns threshold force
+        :setter: Sets threshold force
+        """
+        return self._threshold_force
+
+    @threshold_force.setter
+    def threshold_force(self, value):
+        self._threshold_force = value
 
     def get_force(self):
         """Returns the force in newtons
@@ -57,21 +63,6 @@ class ForceSensor(Device):
         :rtype: bool
         """
         return self.get()[1] == 1
-
-    @property
-    def when_force(self):
-        """Handles force events
-
-        :getter: Returns function to be called when force
-        :setter: Sets function to be called when force
-        """
-        return self._when_force
-
-    @when_force.setter
-    def when_force(self, value):
-        """Calls back, when force has changed"""
-        self._when_force = value
-        self.callback(self._intermediate)
 
     @property
     def when_pressed(self):
@@ -103,16 +94,20 @@ class ForceSensor(Device):
         self._when_released = value
         self.callback(self._intermediate)
 
-    def wait_until_pressed(self):
+    def wait_until_pressed(self, force=1):
         """Waits until the button is pressed
         """
         self.callback(self._intermediate)
-        with self._cond_pressed:
-            self._cond_pressed.wait()
+        with self._cond_force:
+            self._cond_force.wait()
+            while self._data < force:
+                self._cond_force.wait()
 
-    def wait_until_released(self):
+    def wait_until_released(self, force=0):
         """Waits until the button is released
         """
         self.callback(self._intermediate)
-        with self._cond_released:
-            self._cond_released.wait()
+        with self._cond_force:
+            self._cond_force.wait()
+            while self._data > force:
+                self._cond_force.wait()

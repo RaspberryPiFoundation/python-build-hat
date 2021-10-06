@@ -14,7 +14,7 @@ class ColorDistanceSensor(Device):
         super().__init__(port)
         if self.typeid != 37:
             raise DeviceInvalid('There is not a colordistance sensor connected to port %s (Found %s)' % (port, self.name))
-        self.reverse()
+        self.on()
         self.mode(6)
         self.avg_reads = 4
         self._old_color = None
@@ -137,7 +137,6 @@ class ColorDistanceSensor(Device):
             if len(data) == self.avg_reads:
                 r, g, b = self._avgrgb(data)
                 seg = self.segment_color(r, g, b)
-                print(seg)
                 if seg == color:
                     with cond:
                         cond.notify()
