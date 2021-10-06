@@ -27,12 +27,12 @@ class ForceSensor(Device):
             self._cond_force.notify()
         if data[0] >= self.threshold_force and not self._fired_pressed:
             if self._when_pressed is not None:
-                self._when_pressed()
+                self._when_pressed(data[0])
             self._fired_pressed = True
             self._fired_released = False
         if data[0] < self.threshold_force and not self._fired_released:
             if self._when_released is not None:
-                self._when_released()
+                self._when_released(data[0])
             self._fired_pressed = False
             self._fired_released = True
 
