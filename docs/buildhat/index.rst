@@ -4,7 +4,7 @@ Library
 =======
 
 The Build HAT library has been created to support the Raspberry Pi Build HAT, 
-an add-on board for the Raspberry Pi computer which allows control of up to 4 LEGO® Technic™ motors and sensors included in the SPIKE™ Portfolio.
+an add-on board for the Raspberry Pi computer, which allows control of up to four LEGO® Technic™ motors and sensors included in the SPIKE™ Portfolio.
 
 .. image:: images/BuildHAT_closeup.jpg
    :width: 300
@@ -17,7 +17,7 @@ Other LEGO® devices may be supported if they use the LPF2 connector:
    :width: 100
    :alt: The LEGO LPF2 connector
 
-In order to drive motors, your Raspberry Pi and Build HAT will need an external 7.5v
+In order to drive motors, your Raspberry Pi and Build HAT will need an external 7.5V
 power supply. For best results, use the official Raspberry Pi Build HAT power supply. 
 
 .. warning::

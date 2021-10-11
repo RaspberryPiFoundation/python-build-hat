@@ -49,9 +49,9 @@ class ForceSensor(Device):
         self._threshold_force = value
 
     def get_force(self):
-        """Returns the force in newtons
+        """Returns the force in (N)
 
-        :return: The force exherted on the button
+        :return: The force exerted on the button
         :rtype: int
         """
         return self.get()[0]

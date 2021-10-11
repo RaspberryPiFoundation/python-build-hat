@@ -68,7 +68,7 @@ class Device:
 
     @property
     def name(self):
-        """Determine name of device on port"""
+        """Determines name of device on port"""
         if self.connected == False:
             return "No device"
         elif self.typeidcur in self._device_names:

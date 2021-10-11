@@ -101,7 +101,7 @@ class DistanceSensor(Device):
         self.callback(self._intermediate)
 
     def wait_for_out_of_range(self, distance):
-        """Waits until distance is farther than specified distance
+        """Waits until object is farther than specified distance
 
         :param distance: Distance
         """
@@ -112,7 +112,7 @@ class DistanceSensor(Device):
                 self._cond_data.wait()
         
     def wait_for_in_range(self, distance):
-        """Waits until distance is closer than specified distance
+        """Waits until object is closer than specified distance
 
         :param distance: Distance
         """
@@ -126,7 +126,7 @@ class DistanceSensor(Device):
         """
         Brightness of LEDs on sensor
 
-        :param \*args: Four Brightness arguments of 0 to 100
+        :param \*args: Four brightness arguments of 0 to 100
         """
         out = [0xc5]
         if len(args) != 4:

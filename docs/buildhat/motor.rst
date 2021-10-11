@@ -1,9 +1,8 @@
 Motor
 =====
 
-Motors from he LEGO® Education SPIKE™ portfolio have an integrated rotation sensor (encoder) and can be positioned 1-degree accuracy. The encoders which can be queried to find the current 
-position of the motor with respect to a 'zero' mark shown on the motor itself. Other motors 
-without encodes will report a 0 value if queried.
+LEGO® Technic™ motors from the LEGO® Education SPIKE™ portfolio have an integrated rotation sensor (encoder) and can be positioned with 1-degree accuracy. The encoders can be queried to find the current 
+position of the motor with respect to a 'zero' mark shown on the motor itself. Other motors without encoders will report a 0 value if queried.
 
 |location_link1|
 

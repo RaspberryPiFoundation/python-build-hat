@@ -20,7 +20,7 @@ class ColorSensor(Device):
         self._old_color = None
 
     def segment_color(self, r, g, b):
-        """Returns the color name from HSV
+        """Returns the color name from RGB
 
         :return: Name of the color as a string
         :rtype: str

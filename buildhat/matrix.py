@@ -7,12 +7,12 @@ class Matrix(Device):
     """LED Matrix
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no led matrix attached to port
+    :raises DeviceInvalid: Occurs if there is no LED matrix attached to port
     """
     def __init__(self, port):
         super().__init__(port)
         if self.typeid != 64:
-            raise DeviceInvalid('There is not a led matrix connected to port %s (Found %s)' % (port, self.name))
+            raise DeviceInvalid('There is no LED matrix connected to port %s (Found %s)' % (port, self.name))
         self.on()
         self.mode(2)
         self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
@@ -20,7 +20,7 @@ class Matrix(Device):
     def set_pixels(self, matrix):
         """Write pixel data to LED matrix
 
-        :param pixels: 3x3 list of tuples, with color (0-9) and brightness (0-10) (see example for more detail)
+        :param pixels: 3x3 list of tuples, with colour (0–9) and brightness (0–10) (see example for more detail)
         """
         for x in range(3):
             for y in range(3):
@@ -65,7 +65,7 @@ class Matrix(Device):
     def clear(self, pixel=None):
         """Clear matrix or set all as the same pixel
 
-        :param pixel: tuple of color (0-9) or string and brightness (0-10)
+        :param pixel: tuple of colour (0–9) or string and brightness (0–10)
         """
         if pixel is None:
             self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
@@ -89,7 +89,7 @@ class Matrix(Device):
         """Write pixel to coordinate
 
         :param coord: (0,0) to (2,2)
-        :param pixel: tuple of color (0-9) or string and brightness (0-10)
+        :param pixel: tuple of colour (0–9) or string and brightness (0–10)
         :param display: Whether to update matrix or not
         """
         if isinstance(pixel, tuple):

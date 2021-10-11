@@ -183,7 +183,7 @@ class Motor(Device):
         self.coast()
 
     def get_position(self):
-        """Gets position of motor with relation to preset position (can be negative or positive).
+        """Gets position of motor with relation to preset position (can be negative or positive)
 
         :return: Position of motor
         :rtype: int
@@ -209,7 +209,7 @@ class Motor(Device):
     @property
     def when_rotated(self):
         """
-        Handles rotatation events
+        Handles rotation events
 
         :getter: Returns function to be called when rotated
         :setter: Sets function to be called when rotated
