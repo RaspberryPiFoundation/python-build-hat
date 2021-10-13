@@ -1,4 +1,5 @@
 import unittest
+import time
 from buildhat import Motor
 
 class TestMotorMethods(unittest.TestCase):
@@ -22,6 +23,13 @@ class TestMotorMethods(unittest.TestCase):
         pos1 = m.get_aposition()
         diff = abs((180-pos1+180) % 360 - 180)
         self.assertLess(diff, 10)
+
+    def test_time(self):
+        m = Motor('A')
+        t1 = time.time()
+        m.run_for_seconds(5)
+        t2 = time.time()
+        self.assertEqual(int(t2 - t1), 5)
 
 if __name__ == '__main__':
     unittest.main()
