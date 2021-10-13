@@ -35,3 +35,4 @@ power supply. For best results, use the official Raspberry Pi Build HAT power su
    matrix.rst
    motor.rst
    motorpair.rst
+   hat.rst
