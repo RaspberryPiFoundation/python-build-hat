@@ -116,7 +116,7 @@ class ColorSensor(Device):
         """Returns the color 
 
         :return: RGBI representation 
-        :rtype: tuple
+        :rtype: list
         """
         self.mode(5)
         reads = []
