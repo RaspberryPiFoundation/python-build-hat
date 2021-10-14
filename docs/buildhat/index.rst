@@ -4,7 +4,7 @@ Library
 =======
 
 The Build HAT library has been created to support the Raspberry Pi Build HAT, 
-an add-on board for the Raspberry Pi computer, which allows control of up to four LEGO® Technic™ motors and sensors included in the SPIKE™ Portfolio.
+an add-on board for the Raspberry Pi computer, which allows control of up to four LEGO® TECHNIC™ motors and sensors included in the SPIKE™ Portfolio.
 
 .. image:: images/BuildHAT_closeup.jpg
    :width: 300
