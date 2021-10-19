@@ -116,7 +116,7 @@ class ColorDistanceSensor(Device):
         """Returns the color 
 
         :return: RGBI representation 
-        :rtype: tuple
+        :rtype: list
         """
         self.mode(6)
         reads = []

@@ -60,10 +60,50 @@ class Motor(Device):
                 raise MotorException("Invalid Speed")
             self.run_for_degrees(int(rotations * 360), speed, blocking)
 
-    def _run_for_degrees(self, newpos, origpos, speed):
-        dur = abs((newpos - origpos) / speed)
+    def _run_for_degrees(self, degrees, speed):
+        mul = 1
+        if speed < 0:
+            speed = abs(speed)
+            mul = -1
+        pos = self.get_position()
+        newpos = ((degrees*mul)+pos)/360.0
+        pos /= 360.0
+        speed *= 0.05
+        dur = abs((newpos - pos) / speed)
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
-        self.port, origpos, newpos, dur)
+        self.port, pos, newpos, dur)
+        self._write(cmd)
+        with self._hat.rampcond[self.port]:
+            self._hat.rampcond[self.port].wait()
+        if self._release:
+            time.sleep(0.2)
+            self.coast()
+
+    def _run_to_position(self, degrees, speed, direction):
+        data = self.get()
+        pos = data[1]
+        apos = data[2]
+        diff = (degrees-apos+180) % 360 - 180
+        newpos = (pos + diff)/360
+        v1 = (degrees - apos)%360
+        v2 = (apos - degrees)%360
+        mul = 1
+        if diff > 0:
+            mul = -1
+        diff = sorted([diff, mul * (v2 if abs(diff) == v1 else v1)])
+        if direction == "shortest":
+            pass
+        elif direction == "clockwise":
+            newpos = (pos + diff[1])/360
+        elif direction == "anticlockwise":
+            newpos = (pos + diff[0])/360
+        else:
+            raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
+        pos /= 360.0
+        speed *= 0.05
+        dur = abs((newpos - pos) / speed)
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
+        self.port, pos, newpos, dur)
         self._write(cmd)
         with self._hat.rampcond[self.port]:
             self._hat.rampcond[self.port].wait()
@@ -83,20 +123,12 @@ class Motor(Device):
             speed = self.default_speed
         if not (speed >= -100 and speed <= 100):
             raise MotorException("Invalid Speed")
-        mul = 1
-        if speed < 0:
-            speed = abs(speed)
-            mul = -1
-        origpos = self.get_position()
-        newpos = ((degrees*mul)+origpos)/360.0
-        origpos /= 360.0
-        speed *= 0.05
         if not blocking:
-            th = threading.Thread(target=self._run_for_degrees, args=(newpos, origpos, speed))
+            th = threading.Thread(target=self._run_for_degrees, args=(degrees, speed))
             th.daemon = True
             th.start()
         else:
-            self._run_for_degrees(newpos, origpos, speed)
+            self._run_for_degrees(degrees, speed)
 
     def run_to_position(self, degrees, speed=None, blocking=True, direction="shortest"):
         """Runs motor to position (in degrees)
@@ -110,35 +142,12 @@ class Motor(Device):
             raise MotorException("Invalid Speed")
         if degrees < -180 or degrees > 180:
             raise MotorException("Invalid angle")
-        pos = self.get_position()
-        apos = self.get_aposition()
-        diff = (degrees-apos+180) % 360 - 180
-        newpos = (pos + diff)/360
-
-        v1 = (degrees - apos)%360
-        v2 = (apos - degrees)%360
-        mul = 1
-        if diff > 0:
-            mul = -1
-        diff = sorted([diff, mul * (v2 if abs(diff) == v1 else v1)])
-
-        if direction == "shortest":
-            pass
-        elif direction == "clockwise":
-            newpos = (pos + diff[1])/360
-        elif direction == "anticlockwise":
-            newpos = (pos + diff[0])/360
-        else:
-            raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
-
-        pos /= 360.0
-        speed *= 0.05
         if not blocking:
-            th = threading.Thread(target=self._run_for_degrees, args=(newpos, pos, speed))
+            th = threading.Thread(target=self._run_to_position, args=(degrees, speed, direction))
             th.daemon = True
             th.start()
         else:
-            self._run_for_degrees(newpos, pos, speed)
+            self._run_to_position(degrees, speed, direction)
 
     def _run_for_seconds(self, seconds, speed):
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, seconds);
@@ -298,9 +307,9 @@ class MotorPair:
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        th1 = threading.Thread(target=self._leftmotor.run_for_degrees, args=(degrees,), kwargs={'speed': speedl, 'blocking': True})
+        th1 = threading.Thread(target=self._leftmotor._run_for_degrees, args=(degrees, speedl))
+        th2 = threading.Thread(target=self._rightmotor._run_for_degrees, args=(degrees, speedr))
         th1.daemon = True
-        th2 = threading.Thread(target=self._rightmotor.run_for_degrees, args=(degrees,), kwargs={'speed': speedr, 'blocking': True})
         th2.daemon = True
         th1.start()
         th2.start()
@@ -318,9 +327,9 @@ class MotorPair:
             speedl = self.default_speed
         if speedr is None:
             speedr = self.default_speed
-        th1 = threading.Thread(target=self._leftmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedl})
+        th1 = threading.Thread(target=self._leftmotor._run_for_seconds, args=(seconds, speedl))
+        th2 = threading.Thread(target=self._rightmotor._run_for_seconds, args=(seconds, speedr))
         th1.daemon = True
-        th2 = threading.Thread(target=self._rightmotor._run_for_seconds, args=(seconds,), kwargs={'speed': speedr})
         th2.daemon = True
         th1.start()
         th2.start()
@@ -344,7 +353,7 @@ class MotorPair:
         self._leftmotor.stop()
         self._rightmotor.stop()
 
-    def run_to_position(self, degreesl, degreesr, speed=None):
+    def run_to_position(self, degreesl, degreesr, speed=None, direction="shortest"):
         """Runs pair to position (in degrees)
 
            :param degreesl: Position in degrees for left motor
@@ -352,8 +361,14 @@ class MotorPair:
            :param speed: Speed ranging from -100 to 100
         """
         if speed is None:
-            self._leftmotor.run_to_position(degreesl, self.default_speed)
-            self._rightmotor.run_to_position(degreesr, self.default_speed)
+            th1 = threading.Thread(target=self._leftmotor._run_to_position, args=(degreesl, self.default_speed, direction))
+            th2 = threading.Thread(target=self._rightmotor._run_to_position, args=(degreesr, self.default_speed, direction))
         else:
-            self._leftmotor.run_to_position(degreesl, speed)
-            self._rightmotor.run_to_position(degreesr, speed)
+            th1 = threading.Thread(target=self._leftmotor._run_to_position, args=(degreesl, speed, direction))
+            th2 = threading.Thread(target=self._rightmotor._run_to_position, args=(degreesr, speed, direction))
+        th1.daemon = True
+        th2.daemon = True
+        th1.start()
+        th2.start()
+        th1.join()
+        th2.join()
