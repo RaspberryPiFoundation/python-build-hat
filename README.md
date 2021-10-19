@@ -30,6 +30,8 @@ Build
 Documentation
 -------------
 
+Documentation can be viewed at: https://buildhat.readthedocs.io
+
 Instructions for regenerating the documentation can be found in
 `docs/README.md`. Briefly, assuming you have the appropriate python
 modules installed:
