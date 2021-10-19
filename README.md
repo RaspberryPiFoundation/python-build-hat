@@ -20,13 +20,6 @@ Then:
 pip3 install . --user
 ```
 
-Build
------
-
-```
-./build.sh
-```
-
 Documentation
 -------------
 
@@ -79,30 +72,4 @@ print("Stop motor")
 motor.stop()
 
 pause()
-```
-
-Programming Bootloader
-----------------------
-
-```
-sudo apt install automake autoconf build-essential texinfo libtool libftdi-dev libusb-1.0-0-dev
-git clone https://github.com/raspberrypi/openocd.git --recursive --branch rp2040 --depth=1
-cd openocd
-./bootstrap
-./configure --enable-ftdi --enable-sysfsgpio --enable-bcm2835gpio
-make -j4
-sudo make install
-```
-
-* Use the following command to program the bootloader:
-
-```
-openocd -s /usr/local/share/openocd/scripts -f interface/raspberrypi-swd.cfg -f target/rp2040.cfg -c "program bootloader.elf verify reset exit"
-```
-
-Install
--------
-
-```
-pip3 install buildhat-*.whl
 ```
