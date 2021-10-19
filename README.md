@@ -1,45 +1,31 @@
-Welcome
--------
+# Build HAT
 
-This Python module allows you to utilise the Raspberry Pi Build HAT.  It
-includes detailed documentation -- see below for how to generate and
-read it.
+The Python Build HAT library supports the Raspberry Pi Build HAT, an add-on board for the Raspberry Pi computer, which allows control of up to four LEGO® TECHNIC™ motors and sensors included in the SPIKE™ Portfolio.
 
-Install
--------
+## Hardware
 
-If using asdf:
+The Build HAT provides four connectors for LEGO® Technic™ motors and sensors from the SPIKE™ Portfolio. The available sensors include a distance sensor, a colour sensor, and a versatile force sensor. The angular motors come in a range of sizes and include integrated encoders that can be queried to find their position.
 
-```
-asdf install
-```
+The Build HAT fits all Raspberry Pi computers with a 40-pin GPIO header, including — with the addition of a ribbon cable or other extension device — Raspberry Pi 400. Connected LEGO® Technic™ devices can easily be controlled in Python, alongside standard Raspberry Pi accessories such as a camera module.
 
-Then:
+## Documentation
 
-```
-pip3 install . --user
-```
+Library documentation: https://buildhat.readthedocs.io
 
-Documentation
--------------
+Hardware documentation: https://www.raspberrypi.com/documentation/accessories/build-hat.html
 
-Documentation can be viewed at: https://buildhat.readthedocs.io
+Projects and inspiration: https://projects.raspberrypi.org/en/pathways/lego-intro
 
-Instructions for regenerating the documentation can be found in
-`docs/README.md`. Briefly, assuming you have the appropriate python
-modules installed:
+## Installation
 
-```
-$ (cd docs; make html)
-```
+To install the Build HAT library, enter the following commands in a terminal:
 
-will rebuild the documentation. The doc tree starts at `docs/build/html/index.html`
+    sudo apt-get update
+    sudo apt-get install buildhat
 
+## Usage
 
-Usage
------
-
-See the detailed documentation for the Python objects available.
+See the [detailed documentation](https://buildhat.readthedocs.io/en/latest/buildhat/index.html) for the Python objects available.
 
 ```python
 import time
@@ -73,3 +59,29 @@ motor.stop()
 
 pause()
 ```
+
+## Building locally
+
+Using [asdf](https://github.com/asdf-vm/asdf):
+
+```
+asdf install
+```
+
+Then:
+
+```
+pip3 install . --user
+```
+
+### Building the documentation
+
+Instructions for regenerating the documentation can be found in
+`docs/README.md`. Briefly, assuming you have the appropriate python
+modules installed:
+
+```
+$ (cd docs; make html)
+```
+
+will rebuild the documentation. The doc tree starts at `docs/build/html/index.html`
