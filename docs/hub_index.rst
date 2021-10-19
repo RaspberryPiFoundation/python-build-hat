@@ -1,3 +1,7 @@
+================
+ Build HAT
+================
+
 Build HAT documentation and references
 ======================================
 

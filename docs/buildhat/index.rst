@@ -1,3 +1,7 @@
+================
+ Build HAT
+================
+
 .. _buildhat_lib:
 
 Library
