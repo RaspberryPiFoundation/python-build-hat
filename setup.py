@@ -20,9 +20,9 @@ setup(name='buildhat',
       long_description_content_type="text/markdown",
       author='Raspberry Pi Foundation',
       author_email = 'web@raspberrypi.org',
-      url = 'https://github.com/RaspberryPiFoundation/buildhat',
+      url = 'https://github.com/RaspberryPiFoundation/python-build-hat',
       project_urls = {
-        'Bug Tracker': "https://github.com/RaspberryPiFoundation/buildhat/issues",
+        'Bug Tracker': "https://github.com/RaspberryPiFoundation/python-build-hat/issues",
       },
       packages=['buildhat'],
       package_data={
