@@ -17,7 +17,7 @@ an add-on board for the Raspberry Pi computer, which allows control of up to fou
    :alt: The Raspberry Pi Build HAT
 
 
-Other LEGO® devices may be supported if they use the LPF2 connector:
+Other LEGO® devices may be supported if they use the PoweredUp connector:
 
 .. image:: images/lpf2.jpg
    :width: 100
