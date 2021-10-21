@@ -1,6 +1,10 @@
 ForceSensor
 ===========
 
+.. image:: images/45606_prod_TECHNIC_Force_Sensor_01_200.png
+   :width: 200
+   :alt: The LEGO Force Sensor
+
 |location_link|
 
 .. |location_link| raw:: html

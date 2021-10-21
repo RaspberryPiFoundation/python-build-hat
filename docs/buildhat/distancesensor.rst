@@ -1,6 +1,10 @@
 DistanceSensor
 ==============
 
+.. image:: images/45604_prod_TECHNIC_Distance_Sensor_01_200.png
+   :width: 200
+   :alt: The LEGO Distance Sensor
+
 |location_link|
 
 .. |location_link| raw:: html

@@ -1,6 +1,10 @@
 ColorSensor
 ===========
 
+.. image:: images/45605_prod_TECHNIC_Color_Sensor_01_200.png
+   :width: 200
+   :alt: The LEGO Color Sensor
+
 |location_link|
 
 .. |location_link| raw:: html
