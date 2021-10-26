@@ -58,5 +58,14 @@ class TestMotorMethods(unittest.TestCase):
         self.assertRaises(MotorException, m.pwm, -2)
         self.assertRaises(MotorException, m.pwm, 2)
 
+    def test_callback(self):
+        m = Motor('A')
+        def handle_motor(speed, pos, apos):
+            handle_motor.evt += 1
+        handle_motor.evt = 0
+        m.when_rotated = handle_motor
+        m.run_for_seconds(1)
+        self.assertGreater(handle_motor.evt, 0)
+
 if __name__ == '__main__':
     unittest.main()
