@@ -50,5 +50,13 @@ class TestMotorMethods(unittest.TestCase):
         self.assertRaises(MotorException, m.bias, -1)
         self.assertRaises(MotorException, m.bias, 2)
 
+    def test_pwm(self):
+        m = Motor('A')
+        m.pwm(0.3)
+        time.sleep(0.5)
+        m.pwm(0)
+        self.assertRaises(MotorException, m.pwm, -2)
+        self.assertRaises(MotorException, m.pwm, 2)
+
 if __name__ == '__main__':
     unittest.main()
