@@ -102,10 +102,15 @@ class ColorDistanceSensor(Device):
             readings.append(self.get()[0])
         return int(sum(readings)/len(readings))
 
+    def _clamp(self, val, small, large):
+        return max(small, min(val, large))
+
     def _avgrgb(self, reads):
         readings = []
         for read in reads:
-            read = [int((read[0]/1024)*255), int((read[1]/1024)*255), int((read[2]/1024)*255)]
+            read = [int((self._clamp(read[0], 0, 400)/400)*255),
+                    int((self._clamp(read[1], 0, 400)/400)*255),
+                    int((self._clamp(read[2], 0, 400)/400)*255)]
             readings.append(read)
         rgb = []
         for i in range(3):
@@ -157,7 +162,7 @@ class ColorDistanceSensor(Device):
         def cb(lst):
             data.append(lst)
             if len(data) ==  self.avg_reads:
-                r, g, b, _ = self._avgrgb(data)
+                r, g, b = self._avgrgb(data)
                 seg = self.segment_color(r, g, b)
                 if seg != self._old_color:
                     self._old_color = seg
