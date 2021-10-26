@@ -21,7 +21,7 @@ Other LEGO® devices may be supported if they use the PoweredUp connector:
 
 .. image:: images/lpf2.jpg
    :width: 100
-   :alt: The LEGO LPF2 connector
+   :alt: The LEGO PoweredUp connector
 
 In order to drive motors, your Raspberry Pi and Build HAT will need an external 7.5V
 power supply. For best results, use the `official Raspberry Pi Build HAT power supply`_. 

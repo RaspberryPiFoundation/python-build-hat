@@ -1,6 +1,10 @@
 Matrix
 ======
 
+.. image:: images/45608_Prod_01_200.png
+   :width: 200
+   :alt: The LEGO 3x3 LED matrix
+
 The LEGO® SPIKE™ 3x3 LED matrix has individual elements that can be set individually or as a whole.
 
 Colours may be passed as string or integer parameters. 
