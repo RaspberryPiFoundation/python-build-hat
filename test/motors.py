@@ -1,5 +1,6 @@
 import unittest
 import time
+from buildhat.exc import DeviceInvalid, DirectionInvalid, MotorException
 from buildhat import Motor
 
 class TestMotorMethods(unittest.TestCase):
@@ -30,6 +31,12 @@ class TestMotorMethods(unittest.TestCase):
         m.run_for_seconds(5)
         t2 = time.time()
         self.assertEqual(int(t2 - t1), 5)
+
+    def test_speed(self):
+        m = Motor('A')
+        m.set_default_speed(50)
+        self.assertRaises(MotorException, m.set_default_speed, -101)
+        self.assertRaises(MotorException, m.set_default_speed, 101)
 
 if __name__ == '__main__':
     unittest.main()
