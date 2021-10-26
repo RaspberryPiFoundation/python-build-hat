@@ -38,5 +38,17 @@ class TestMotorMethods(unittest.TestCase):
         self.assertRaises(MotorException, m.set_default_speed, -101)
         self.assertRaises(MotorException, m.set_default_speed, 101)
 
+    def test_plimit(self):
+        m = Motor('A')
+        m.plimit(0.5)
+        self.assertRaises(MotorException, m.plimit, -1)
+        self.assertRaises(MotorException, m.plimit, 2)
+
+    def test_bias(self):
+        m = Motor('A')
+        m.bias(0.5)
+        self.assertRaises(MotorException, m.bias, -1)
+        self.assertRaises(MotorException, m.bias, 2)
+
 if __name__ == '__main__':
     unittest.main()
