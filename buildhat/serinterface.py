@@ -134,8 +134,10 @@ class BuildHAT:
         time.sleep(0.5)
 
     def loadfirmware(self, firmware, signature):
-        firm = open(firmware, "rb").read()
-        sig = open(signature, "rb").read()
+        with open(firmware, "rb") as f:
+            firm = f.read()
+        with open(signature, "rb") as f:
+            sig = f.read()
         self.write(b"clear\r")
         self.getprompt()
         self.write("load {} {}\r".format(len(firm), self.checksum(firm)).encode())
