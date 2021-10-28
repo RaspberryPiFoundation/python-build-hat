@@ -1,5 +1,6 @@
 import unittest
 import time
+from buildhat.exc import DeviceInvalid, DirectionInvalid, MotorException
 from buildhat import Motor
 
 class TestMotorMethods(unittest.TestCase):
@@ -30,6 +31,41 @@ class TestMotorMethods(unittest.TestCase):
         m.run_for_seconds(5)
         t2 = time.time()
         self.assertEqual(int(t2 - t1), 5)
+
+    def test_speed(self):
+        m = Motor('A')
+        m.set_default_speed(50)
+        self.assertRaises(MotorException, m.set_default_speed, -101)
+        self.assertRaises(MotorException, m.set_default_speed, 101)
+
+    def test_plimit(self):
+        m = Motor('A')
+        m.plimit(0.5)
+        self.assertRaises(MotorException, m.plimit, -1)
+        self.assertRaises(MotorException, m.plimit, 2)
+
+    def test_bias(self):
+        m = Motor('A')
+        m.bias(0.5)
+        self.assertRaises(MotorException, m.bias, -1)
+        self.assertRaises(MotorException, m.bias, 2)
+
+    def test_pwm(self):
+        m = Motor('A')
+        m.pwm(0.3)
+        time.sleep(0.5)
+        m.pwm(0)
+        self.assertRaises(MotorException, m.pwm, -2)
+        self.assertRaises(MotorException, m.pwm, 2)
+
+    def test_callback(self):
+        m = Motor('A')
+        def handle_motor(speed, pos, apos):
+            handle_motor.evt += 1
+        handle_motor.evt = 0
+        m.when_rotated = handle_motor
+        m.run_for_seconds(1)
+        self.assertGreater(handle_motor.evt, 0)
 
 if __name__ == '__main__':
     unittest.main()
