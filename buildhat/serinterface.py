@@ -63,7 +63,7 @@ class BuildHAT:
         incdata = 0
         while True:
             try:
-                line = self.ser.readline().decode('utf-8')
+                line = self.ser.readline().decode('utf-8', 'ignore')
             except serial.SerialException:
                 pass
             if len(line) == 0:
@@ -157,7 +157,7 @@ class BuildHAT:
         while True:
             line = b""
             try:
-                line = self.ser.readline().decode('utf-8')
+                line = self.ser.readline().decode('utf-8', 'ignore')
             except serial.SerialException:
                 pass
             if line[:len(PROMPT)] == PROMPT:
@@ -202,7 +202,7 @@ class BuildHAT:
         while self.running:
             line = b""
             try:
-                line = self.ser.readline().decode('utf-8')
+                line = self.ser.readline().decode('utf-8', 'ignore')
             except serial.SerialException:
                 pass
             if len(line) == 0:
