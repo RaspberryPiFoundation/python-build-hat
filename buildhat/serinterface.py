@@ -31,6 +31,7 @@ def cmp(str1, str2):
 
 class BuildHAT:
     CONNECTED=": connected to active ID"
+    CONNECTEDPASSIVE=": connected to passive ID"
     DISCONNECTED=": disconnected"
     DEVTIMEOUT=": timeout during data phase: disconnecting"
     NOTCONNECTED=": no device detected"
@@ -89,7 +90,7 @@ class BuildHAT:
                 else:
                     self.write(b"version\r")
         # Use to force hat reset
-        #self.state = HatState.NEEDNEWFIRMWARE
+        self.state = HatState.NEEDNEWFIRMWARE
         if self.state == HatState.NEEDNEWFIRMWARE:
             self.resethat()
             self.loadfirmware(firmware, signature)
@@ -200,11 +201,14 @@ class BuildHAT:
             q.task_done()
 
     def loop(self, cond, uselist, q):
+        tmp = open("/tmp/serial.txt", "a")
         count = 0
         while self.running:
             line = b""
             try:
                 line = self.ser.readline().decode('utf-8', 'ignore')
+                print(line, file=tmp, end='')
+                tmp.flush()
             except serial.SerialException:
                 pass
             if len(line) == 0:
@@ -217,6 +221,11 @@ class BuildHAT:
                     self.connections[portid].update(typeid, True)
                     if typeid == 64:
                         self.write("port {} ; on\r".format(portid).encode())
+                    if uselist:
+                        count += 1
+                elif cmp(msg, BuildHAT.CONNECTEDPASSIVE):
+                    typeid = int(line[2+len(BuildHAT.CONNECTEDPASSIVE):],16)
+                    self.connections[portid].update(typeid, True)
                     if uselist:
                         count += 1
                 elif cmp(msg, BuildHAT.DISCONNECTED):
