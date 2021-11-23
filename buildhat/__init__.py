@@ -1,4 +1,4 @@
-from .motors import Motor, MotorPair
+from .motors import Motor, MotorPair, PassiveMotor
 from .distance import DistanceSensor
 from .force import ForceSensor
 from .color import ColorSensor

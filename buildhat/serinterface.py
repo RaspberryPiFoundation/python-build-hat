@@ -31,6 +31,7 @@ def cmp(str1, str2):
 
 class BuildHAT:
     CONNECTED=": connected to active ID"
+    CONNECTEDPASSIVE=": connected to passive ID"
     DISCONNECTED=": disconnected"
     DEVTIMEOUT=": timeout during data phase: disconnecting"
     NOTCONNECTED=": no device detected"
@@ -217,6 +218,11 @@ class BuildHAT:
                     self.connections[portid].update(typeid, True)
                     if typeid == 64:
                         self.write("port {} ; on\r".format(portid).encode())
+                    if uselist:
+                        count += 1
+                elif cmp(msg, BuildHAT.CONNECTEDPASSIVE):
+                    typeid = int(line[2+len(BuildHAT.CONNECTEDPASSIVE):],16)
+                    self.connections[portid].update(typeid, True)
                     if uselist:
                         count += 1
                 elif cmp(msg, BuildHAT.DISCONNECTED):
