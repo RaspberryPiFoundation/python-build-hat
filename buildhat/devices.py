@@ -11,6 +11,8 @@ class Device:
     _instance = None
     _started = 0
     _device_names = {  2: "PassiveMotor",
+                      34: "TiltSensor",
+                      35: "MotionSensor",
                       37: "ColorDistanceSensor",
                       61: "ColorSensor",
                       62: "DistanceSensor",
