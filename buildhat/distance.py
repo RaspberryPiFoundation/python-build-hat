@@ -13,7 +13,6 @@ class DistanceSensor(Device):
         super().__init__(port)
         if self.typeid != 62:
             raise DeviceInvalid('There is not a distance sensor connected to port %s (Found %s)' % (port, self.name))
-        self.reverse()
         self.mode(0)
         self._cond_data = Condition()
         self._when_in_range = None
@@ -38,6 +37,10 @@ class DistanceSensor(Device):
         with self._cond_data:
             self._data = data[0]
             self._cond_data.notify()
+    def on(self):
+        super().on()
+        # LEDs do not function unless "set -1" is sent first and "set -1" doesn't register unless the port is turned on first
+        self.reverse()
 
     @property
     def distance(self):
@@ -125,6 +128,7 @@ class DistanceSensor(Device):
     def eyes(self, *args):
         """
         Brightness of LEDs on sensor
+        (Sensor Right Upper, Sensor Left Upper, Sensor Right Lower, Sensor Left Lower)
 
         :param \*args: Four brightness arguments of 0 to 100
         """
