@@ -41,7 +41,7 @@ class BuildHAT:
     BOOTLOADER="BuildHAT bootloader version"
     DONE="Done initialising ports"
 
-    def __init__(self, firmware, signature, version):
+    def __init__(self, firmware, signature, version, device="/dev/serial0"):
         self.cond = Condition()
         self.state = HatState.OTHER
         self.connections = []
@@ -57,7 +57,7 @@ class BuildHAT:
             self.pulsecond.append(Condition())
             self.rampcond.append(Condition())
 
-        self.ser = serial.Serial('/dev/serial0',115200, timeout=5)
+        self.ser = serial.Serial(device, 115200, timeout=5)
         # Check if we're in the bootloader or the firmware
         self.write(b"version\r")
 
