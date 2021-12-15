@@ -7,7 +7,7 @@ import weakref
 class Hat:
     """Allows enumeration of devices which are connected to the hat
     """
-    def __init__(self):
+    def __init__(self, device="/dev/serial0"):
         if not Device._instance:
             data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
             firm = os.path.join(data,"firmware.bin")
@@ -16,7 +16,7 @@ class Hat:
             vfile = open(ver)
             v = int(vfile.read())
             vfile.close()
-            Device._instance = BuildHAT(firm, sig, v)
+            Device._instance = BuildHAT(firm, sig, v, device=device)
             weakref.finalize(self, self._close)
 
     def get(self):

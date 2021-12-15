@@ -13,7 +13,7 @@ class DistanceSensor(Device):
         super().__init__(port)
         if self.typeid != 62:
             raise DeviceInvalid('There is not a distance sensor connected to port %s (Found %s)' % (port, self.name))
-        self.reverse()
+        self.on()
         self.mode(0)
         self._cond_data = Condition()
         self._when_in_range = None
@@ -137,3 +137,9 @@ class DistanceSensor(Device):
                 raise DistanceSensorException("Need 4 brightness args, of 0 to 100")
             out += [v]
         self._write1(out)
+
+    def on(self):
+        """
+        Turns on the sensor
+        """
+        self._write("port {} ; set -1\r".format(self.port))
