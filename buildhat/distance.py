@@ -37,10 +37,6 @@ class DistanceSensor(Device):
         with self._cond_data:
             self._data = data[0]
             self._cond_data.notify()
-    def on(self):
-        super().on()
-        # LEDs do not function unless "set -1" is sent first and "set -1" doesn't register unless the port is turned on first
-        self.reverse()
 
     @property
     def distance(self):
