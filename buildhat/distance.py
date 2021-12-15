@@ -13,6 +13,7 @@ class DistanceSensor(Device):
         super().__init__(port)
         if self.typeid != 62:
             raise DeviceInvalid('There is not a distance sensor connected to port %s (Found %s)' % (port, self.name))
+        self.reverse()
         self.mode(0)
         self._cond_data = Condition()
         self._when_in_range = None
