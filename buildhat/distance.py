@@ -125,6 +125,7 @@ class DistanceSensor(Device):
     def eyes(self, *args):
         """
         Brightness of LEDs on sensor
+        (Sensor Right Upper, Sensor Left Upper, Sensor Right Lower, Sensor Left Lower)
 
         :param \*args: Four brightness arguments of 0 to 100
         """
