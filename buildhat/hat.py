@@ -37,5 +37,17 @@ class Hat:
                                         "name" : name}
         return devices
 
+    def get_vin(self):
+        """Gets the voltage present on the input power jack
+
+        :return: Voltage on the input power jack
+        :rtype: float
+        """
+        Device._instance.write(b"vin\r")
+        with Device._instance.vincond:
+            Device._instance.vincond.wait()
+
+        return Device._instance.vin
+
     def _close(self):
         Device._instance.shutdown()
