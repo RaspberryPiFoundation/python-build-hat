@@ -1,5 +1,6 @@
 from .serinterface import BuildHAT
 from .devices import Device
+from .devicetypes import DeviceTypes
 import os
 import sys
 import weakref
@@ -27,14 +28,13 @@ class Hat:
         """
         devices = {}
         for i in range(4):
-            name = "Other"
-            if Device._instance.connections[i].typeid in Device._device_names:
-                name = Device._device_names[Device._instance.connections[i].typeid]
-            elif Device._instance.connections[i].typeid == -1:
-                name = "Disconnected"
+            name = DeviceTypes.name_for_id(Device._instance.connections[i].typeid)
+            if Device._instance.connections[i].typeid == -1:
+                name = DeviceTypes._disconnected_device_name
             devices[chr(ord('A')+i)] = {"typeid" : Device._instance.connections[i].typeid,
                                         "connected" : Device._instance.connections[i].connected,
-                                        "name" : name}
+                                        "name" : name,
+                                        "description": DeviceTypes.desc_for_id(Device._instance.connections[i].typeid)}
         return devices
 
     def _close(self):
