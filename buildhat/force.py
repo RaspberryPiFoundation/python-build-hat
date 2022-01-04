@@ -1,4 +1,5 @@
 from .devices import Device
+from .devicetypes import DeviceTypes
 from .exc import DeviceInvalid
 from threading import Condition
 import threading
@@ -11,7 +12,7 @@ class ForceSensor(Device):
     """
     def __init__(self, port, threshold_force=1):
         super().__init__(port)
-        if self.typeid != 63:
+        if DeviceTypes.name_for_id(self.typeid) != "ForceSensor":
             raise DeviceInvalid('There is not a force sensor connected to port %s (Found %s)' % (port, self.name))
         self.mode([(0,0),(1,0)])
         self._when_pressed = None
