@@ -47,7 +47,7 @@ class DeviceTypes:
                     }
 
     _unknown_device_name = "Unknown"
-    _disconnected_device_name = "No device"
+    _disconnected_device_name = "Disconnected"
 
     def __init__(self):
         pass
