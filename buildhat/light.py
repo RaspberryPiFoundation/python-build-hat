@@ -1,4 +1,5 @@
 from .devices import Device
+from .devicetypes import DeviceTypes
 from .exc import DeviceInvalid
 
 class Light(Device):
@@ -11,5 +12,5 @@ class Light(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 8:
+        if DeviceTypes.name_for_id(self.typeid) != "Light":
             raise DeviceInvalid('There is not a light connected to port %s (Found %s)' % (port, self.name))
