@@ -1,4 +1,5 @@
 from .exc import DeviceNotFound, DeviceChanged, DeviceInvalid, HatNotFound
+from .devicetypes import DeviceTypes
 import importlib
 import threading
 import gpiozero
@@ -187,7 +188,7 @@ class BuildHAT:
             turnoff = ""
             for p in range(4):
                 conn = self.connections[p]
-                if conn.typeid != 64:
+                if DeviceTypes.name_for_id(conn.typeid) != "Matrix":
                     turnoff += "port {} ; pwm ; coast ; off ".format(p)
                 else:
                     self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h) for h in [0xc2,0,0,0,0,0,0,0,0,0])).encode())
@@ -216,7 +217,7 @@ class BuildHAT:
                 if cmp(msg, BuildHAT.CONNECTED):
                     typeid = int(line[2+len(BuildHAT.CONNECTED):],16)
                     self.connections[portid].update(typeid, True)
-                    if typeid == 64:
+                    if DeviceTypes.name_for_id(typeid) == "Matrix":
                         self.write("port {} ; on\r".format(portid).encode())
                     if uselist:
                         count += 1
