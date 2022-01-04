@@ -1,4 +1,5 @@
 from .devices import Device
+from .devicetypes import DeviceTypes
 from .exc import DeviceInvalid
 from threading import Condition
 from collections import deque
@@ -12,7 +13,7 @@ class ColorSensor(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 61:
+        if DeviceTypes.name_for_id(self.typeid) != "ColorSensor":
             raise DeviceInvalid('There is not a color sensor connected to port %s (Found %s)' % (port, self.name))
         self.reverse()
         self.mode(6)
