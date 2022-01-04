@@ -1,4 +1,5 @@
 from .devices import Device
+from .devicetypes import DeviceTypes
 from .exc import DeviceInvalid
 import threading
 import time
@@ -11,7 +12,7 @@ class Matrix(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 64:
+        if DeviceTypes.name_for_id(self.typeid) != "Matrix":
             raise DeviceInvalid('There is no LED matrix connected to port %s (Found %s)' % (port, self.name))
         self.on()
         self.mode(2)
