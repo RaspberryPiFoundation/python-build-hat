@@ -1,4 +1,5 @@
 from .devices import Device
+from .devicetypes import DeviceTypes
 from .exc import DeviceInvalid
 
 class TiltSensor(Device):
@@ -9,7 +10,7 @@ class TiltSensor(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 34:
+        if DeviceTypes.name_for_id(self.typeid) != "TiltSensor":
             raise DeviceInvalid('There is not a tilt sensor connected to port %s (Found %s)' % (port, self.name))
         self.mode(0)
 
@@ -30,7 +31,7 @@ class MotionSensor(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 35:
+        if DeviceTypes.name_for_id(self.typeid) != "MotionSensor":
             raise DeviceInvalid('There is not a motion sensor connected to port %s (Found %s)' % (port, self.name))
         self.mode(0)
 
