@@ -1,4 +1,5 @@
 from .devices import Device
+from .devicetypes import DeviceTypes
 from .exc import DeviceInvalid, DistanceSensorException
 from threading import Condition
 import threading
@@ -11,7 +12,7 @@ class DistanceSensor(Device):
     """
     def __init__(self, port, threshold_distance=100):
         super().__init__(port)
-        if self.typeid != 62:
+        if DeviceTypes.name_for_id(self.typeid) != "DistanceSensor":
             raise DeviceInvalid('There is not a distance sensor connected to port %s (Found %s)' % (port, self.name))
         self.on()
         self.mode(0)
