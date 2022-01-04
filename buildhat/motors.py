@@ -1,4 +1,5 @@
 from .devices import Device
+from .devicetypes import DeviceTypes
 from .exc import DeviceInvalid, DirectionInvalid, MotorException
 from threading import Condition
 from collections import deque
@@ -13,7 +14,7 @@ class PassiveMotor(Device):
     :param port: Port of device
     :raises DeviceInvalid: Occurs if there is no passive motor attached to port
     """
-    MOTOR_SET = set([2])
+    MOTOR_SET = set(DeviceTypes.all_ids_for_name("PassiveMotor"))
 
     def __init__(self, port):
         super().__init__(port)
@@ -67,7 +68,7 @@ class Motor(Device):
     :raises DeviceInvalid: Occurs if there is no motor attached to port
     """
     # See hub-python-module/drivers/m_sched_shortcake.h
-    MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
+    MOTOR_SET = set(DeviceTypes.all_ids_for_name("Motor"))
 
     def __init__(self, port):
         super().__init__(port)
