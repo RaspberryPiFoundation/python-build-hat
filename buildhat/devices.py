@@ -1,4 +1,5 @@
 from .serinterface import BuildHAT
+from .devicetypes import DeviceTypes
 from .exc import DeviceNotFound, DeviceChanged, DeviceInvalidMode
 import weakref
 import time
@@ -10,25 +11,7 @@ class Device:
     """Creates a single instance of the buildhat for all devices to use"""
     _instance = None
     _started = 0
-    _device_names = {  2: "PassiveMotor",
-                       8: "Light",
-                      34: "TiltSensor",
-                      35: "MotionSensor",
-                      37: "ColorDistanceSensor",
-                      61: "ColorSensor",
-                      62: "DistanceSensor",
-                      63: "ForceSensor",
-                      64: "Matrix",
-                      38: "Motor",
-                      46: "Motor",
-                      47: "Motor",
-                      48: "Motor",
-                      49: "Motor",
-                      65: "Motor",
-                      75: "Motor",
-                      76: "Motor"
-                    }
-    
+
     def __init__(self, port):
         if not isinstance(port, str) or len(port) != 1:
             raise DeviceNotFound("Invalid port")
@@ -74,11 +57,9 @@ class Device:
     def name(self):
         """Determines name of device on port"""
         if self.connected == False:
-            return "No device"
-        elif self.typeidcur in self._device_names:
-            return self._device_names[self.typeidcur]
+            return DeviceTypes._disconnected_device_name
         else:
-            return "Unknown"
+            return DeviceTypes.name_for_id(self.typeidcur)
 
     def _close(self):
         Device._instance.shutdown()
