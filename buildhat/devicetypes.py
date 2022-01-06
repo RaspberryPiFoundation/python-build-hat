@@ -29,20 +29,20 @@ class DeviceTypes:
     # With corresponding part numbers
     _device_descriptions = {  2: "PassiveMotor",
                        8: "Light", #88005
-                      34: "WeDo 2.0 Tilt Sensor", #45305
-                      35: "MotionSensor",
+                      34: "WeDo 2.0 Tilt Sensor", #45305, not mentioned in docs anywhere
+                      35: "MotionSensor", # Maybe 45304
                       37: "Color & Distance Sensor", #88007
                       61: "Color Sensor", #45605
                       62: "Distance Sensor", #45604
                       63: "Force Sensor", #45606
                       64: "3x3 Color Light Matrix", #45608
-                      38: "Medium Linear Motor", # Either 45303 or 88008, not sure
+                      38: "Medium Linear Motor", # 88008
                       46: "Large Motor", #88013
                       47: "XL Motor", #88014
-                      48: "Medium Motor", # Maybe 45303
-                      49: "Large Angular Motor", #88017
+                      48: "Motor", # RaspberryPi docs says this is the "Large Angular" (Cyan)
+                      49: "Motor", # BuildHAT serial protocol PDF says this is the "SPIKE Prime large motor" (which is Cyan).  RPi docs call id 31 "Medium Angular Motor"
                       65: "Small Angular Motor", #45607
-                      75: "Medium Angular Motor", # Maybe 88018, came with 51515
+                      75: "Medium Angular Motor", # Maybe 88018, came with 51515, which lists as 6299646, not 6359216
                       76: "Motor"
                     }
 
