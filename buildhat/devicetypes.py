@@ -1,9 +1,3 @@
-import weakref
-import time
-import os
-import sys
-import gc
-
 class DeviceTypes:
     """Translate BuildHAT device types"""
 
