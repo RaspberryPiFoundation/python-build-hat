@@ -62,6 +62,8 @@ class Matrix(Device):
             return 9
         elif colorstr == "white":
             return 10
+        elif colorstr == "":
+            return 0
         raise MatrixInvalidPixel("Invalid color specified")
 
     def clear(self, pixel=None):
