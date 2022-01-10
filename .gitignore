@@ -68,3 +68,7 @@ venv.bak/
 
 # pytype static type analyzer
 .pytype/
+
+# ide
+.idea/
+*.iml
