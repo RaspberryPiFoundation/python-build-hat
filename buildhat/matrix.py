@@ -103,6 +103,40 @@ class Matrix(Device):
         self.mode(2)  # The rest of the Matrix code seems to expect this to be always set
         self.deselect()
 
+    def set_transition(self, transition):
+        """Set the transition mode between pixels
+
+        Use display=False on set_pixel() or use set_pixels() to achieve desired
+        results with transitions.
+
+        Setting a new transition mode will wipe the screen and interrupt any
+        running transition.
+
+        Mode 0: No transition, immediate pixel drawing
+
+        Mode 1: Right-to-left wipe in/out
+
+        If the timing between writing new matrix pixels is less than one second
+        the transition will clip columns of pixels from the right.
+
+        Mode 2: Fade-in/Fade-out
+
+        The fade in and fade out take about 2.2 seconds for full fade effect.
+        Waiting less time between setting new pixels will result in a faster
+        fade which will cause the fade to "pop" in brightness.
+
+        :param transition: Transition mode (0-2)
+        """
+        if not isinstance(transition, int):
+            raise MatrixInvalidPixel("Invalid transition, not integer")
+        if not (transition >= 0 and transition <= 2):
+            raise MatrixInvalidPixel("Invalid transition specified")
+        self.mode(3)
+        self.select()
+        self._write1([0xc3, transition])
+        self.mode(2)  # The rest of the Matrix code seems to expect this to be always set
+        self.deselect()
+
     def set_pixel(self, coord, pixel, display=True):
         """Write pixel to coordinate
 
