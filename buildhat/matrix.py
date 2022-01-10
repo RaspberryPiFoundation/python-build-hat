@@ -1,5 +1,5 @@
 from .devices import Device
-from .exc import DeviceInvalid
+from .exc import DeviceInvalid, MatrixInvalidPixel
 import threading
 import time
 
@@ -86,6 +86,22 @@ class Matrix(Device):
                 raise MatrixInvalidPixel("Invalid pixel specified")
             self._matrix = [[color for x in range(3)] for y in range(3)]
         self._output()
+
+    def level(self, level):
+        """Use the matrix as a "level" meter from 0-9
+        (The level meter is expressed in green which seems to be unchangeable)
+
+        :param level: The height of the bar graph, 0-9
+        """
+        if not isinstance(level, int):
+            raise MatrixInvalidPixel("Invalid level, not integer")
+        if not (level >= 0 and level <= 9):
+            raise MatrixInvalidPixel("Invalid level specified")
+        self.mode(0)
+        self.select()
+        self._write1([0xc0, level])
+        self.mode(2)  # The rest of the Matrix code seems to expect this to be always set
+        self.deselect()
 
     def set_pixel(self, coord, pixel, display=True):
         """Write pixel to coordinate
