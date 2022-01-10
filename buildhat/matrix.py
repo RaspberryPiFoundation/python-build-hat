@@ -1,5 +1,5 @@
 from .devices import Device
-from .exc import DeviceInvalid
+from .exc import DeviceInvalid, MatrixInvalidPixel
 import threading
 import time
 
@@ -60,12 +60,14 @@ class Matrix(Device):
             return 8
         elif colorstr == "red":
             return 9
+        elif colorstr == "white":
+            return 10
         raise MatrixInvalidPixel("Invalid color specified")
 
     def clear(self, pixel=None):
         """Clear matrix or set all as the same pixel
 
-        :param pixel: tuple of colour (0–9) or string and brightness (0–10)
+        :param pixel: tuple of colour (0–10) or string and brightness (0–10)
         """
         if pixel is None:
             self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
@@ -77,7 +79,7 @@ class Matrix(Device):
                     c = self.strtocolor(c)
                 if not (brightness >= 0 and brightness <= 10):
                     raise MatrixInvalidPixel("Invalid brightness specified")
-                if not (c >= 0 and c <= 9):
+                if not (c >= 0 and c <= 10):
                     raise MatrixInvalidPixel("Invalid pixel specified")
                 color = (c, brightness)
             else:
@@ -85,11 +87,27 @@ class Matrix(Device):
             self._matrix = [[color for x in range(3)] for y in range(3)]
         self._output()
 
+    def level(self, level):
+        """Use the matrix as a "level" meter from 0-9
+        (The level meter is expressed in green which seems to be unchangeable)
+
+        :param level: The height of the bar graph, 0-9
+        """
+        if not isinstance(level, int):
+            raise MatrixInvalidPixel("Invalid level, not integer")
+        if not (level >= 0 and level <= 9):
+            raise MatrixInvalidPixel("Invalid level specified")
+        self.mode(0)
+        self.select()
+        self._write1([0xc0, level])
+        self.mode(2)  # The rest of the Matrix code seems to expect this to be always set
+        self.deselect()
+
     def set_pixel(self, coord, pixel, display=True):
         """Write pixel to coordinate
 
         :param coord: (0,0) to (2,2)
-        :param pixel: tuple of colour (0–9) or string and brightness (0–10)
+        :param pixel: tuple of colour (0–10) or string and brightness (0–10)
         :param display: Whether to update matrix or not
         """
         if isinstance(pixel, tuple):
@@ -98,7 +116,7 @@ class Matrix(Device):
                 c = self.strtocolor(c)
             if not (brightness >= 0 and brightness <= 10):
                 raise MatrixInvalidPixel("Invalid brightness specified")
-            if not (c >= 0 and c <= 9):
+            if not (c >= 0 and c <= 10):
                 raise MatrixInvalidPixel("Invalid pixel specified")
             color = (c, brightness)
         else:
