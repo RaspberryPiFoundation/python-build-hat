@@ -35,6 +35,8 @@ Colours may be passed as string or integer parameters.
      - orange
    * - 9
      - red
+   * - 10
+     - white
 
 .. autoclass:: buildhat.Matrix
    :members:

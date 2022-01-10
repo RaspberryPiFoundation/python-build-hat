@@ -50,6 +50,8 @@ class BuildHAT:
         self.rampcond = []
         self.fin = False
         self.running = True
+        self.vincond = Condition()
+        self.vin = None
 
         for i in range(4):
             self.connections.append(Connection())
@@ -242,6 +244,7 @@ class BuildHAT:
 
             if uselist and count == 4:
                 with cond:
+                    uselist = False
                     cond.notify()
 
             if not uselist and cmp(line, BuildHAT.DONE):
@@ -267,3 +270,9 @@ class BuildHAT:
                 self.connections[portid].data = newdata
                 with self.portcond[portid]:
                     self.portcond[portid].notify()
+
+            if line[1] == "." and line.strip().endswith(" V"):
+                vin = float(line.strip().split(" ")[0])
+                self.vin = vin
+                with self.vincond:
+                    self.vincond.notify()
