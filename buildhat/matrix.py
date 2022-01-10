@@ -1,6 +1,6 @@
 from .devices import Device
 from .devicetypes import DeviceTypes
-from .exc import DeviceInvalid
+from .exc import DeviceInvalid, MatrixInvalidPixel
 import threading
 import time
 
