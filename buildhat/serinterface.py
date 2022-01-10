@@ -270,7 +270,7 @@ class BuildHAT:
                 with self.portcond[portid]:
                     self.portcond[portid].notify()
 
-            if line[1] == "." and line[5] == "V":
+            if line[1] == "." and line.strip().endswith(" V"):
                 vin = float(line.strip().split(" ")[0])
                 self.vin = vin
                 with self.vincond:
