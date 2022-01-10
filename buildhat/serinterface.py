@@ -244,6 +244,7 @@ class BuildHAT:
 
             if uselist and count == 4:
                 with cond:
+                    uselist = False
                     cond.notify()
 
             if not uselist and cmp(line, BuildHAT.DONE):
