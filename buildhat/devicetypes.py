@@ -33,7 +33,7 @@ class DeviceTypes:
                       38: "Medium Linear Motor", # 88008
                       46: "Large Motor", #88013
                       47: "XL Motor", #88014
-                      48: "Medium Angular Motor (Cyan)", #45603 RPi docs says this is the "Large Angular" (Cyan), which is an emperical mismatch against 45603
+                      48: "Medium Angular Motor (Cyan)", #45603
                       49: "Motor", # BuildHAT serial protocol PDF says this is the "SPIKE Prime large motor" (which is Cyan).  RPi docs call id 31 "Medium Angular Motor"
                       65: "Small Angular Motor", #45607
                       75: "Medium Angular Motor", # Maybe 88018, came with 51515, which lists as 6299646, not 6359216
