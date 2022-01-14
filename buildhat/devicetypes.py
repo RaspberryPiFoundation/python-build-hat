@@ -37,7 +37,7 @@ class DeviceTypes:
                       49: "Motor", # BuildHAT serial protocol PDF says this is the "SPIKE Prime large motor" (which is Cyan).  RPi docs call id 31 "Medium Angular Motor"
                       65: "Small Angular Motor", #45607
                       75: "Medium Angular Motor", # Maybe 88018, came with 51515, which lists as 6299646, not 6359216
-                      76: "Motor"
+                      76: "Large Angular Motor (Grey)" #88017
                     }
 
     _unknown_device_name = "Unknown"
