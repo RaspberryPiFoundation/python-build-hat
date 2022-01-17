@@ -1,4 +1,4 @@
-Motor
+PassiveMotor
 =====
 
 LEGO® TECHNIC™ motors which do not have an integrated rotation sensor (encoder).

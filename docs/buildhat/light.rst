@@ -1,7 +1,7 @@
 Light
 ===========
 
-.. image:: images/4lights.jpg
+.. image:: images/lights.jpg
    :width: 200
    :alt: The LEGO Light
 
