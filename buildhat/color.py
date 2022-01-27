@@ -12,8 +12,6 @@ class ColorSensor(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 61:
-            raise DeviceInvalid('There is not a color sensor connected to port %s (Found %s)' % (port, self.name))
         self.reverse()
         self.mode(6)
         self.avg_reads = 4

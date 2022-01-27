@@ -11,5 +11,3 @@ class Light(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 8:
-            raise DeviceInvalid('There is not a light connected to port %s (Found %s)' % (port, self.name))

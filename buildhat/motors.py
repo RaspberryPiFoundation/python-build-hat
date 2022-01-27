@@ -13,12 +13,9 @@ class PassiveMotor(Device):
     :param port: Port of device
     :raises DeviceInvalid: Occurs if there is no passive motor attached to port
     """
-    MOTOR_SET = set([2])
 
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid not in PassiveMotor.MOTOR_SET:
-            raise DeviceInvalid('There is not a passive motor connected to port %s (Found %s)' % (port, self.name))
         self._default_speed = 20
         self.plimit(0.7)
         self.bias(0.3)
@@ -66,13 +63,9 @@ class Motor(Device):
     :param port: Port of device
     :raises DeviceInvalid: Occurs if there is no motor attached to port
     """
-    # See hub-python-module/drivers/m_sched_shortcake.h
-    MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
 
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid not in Motor.MOTOR_SET:
-            raise DeviceInvalid('There is not a motor connected to port %s (Found %s)' % (port, self.name))
         self.default_speed = 20
         self.mode([(1,0),(2,0),(3,0)])
         self.plimit(0.7)
