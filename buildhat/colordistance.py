@@ -12,8 +12,6 @@ class ColorDistanceSensor(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 37:
-            raise DeviceInvalid('There is not a colordistance sensor connected to port %s (Found %s)' % (port, self.name))
         self.on()
         self.mode(6)
         self.avg_reads = 4

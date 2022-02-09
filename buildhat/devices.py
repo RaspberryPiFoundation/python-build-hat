@@ -1,5 +1,5 @@
 from .serinterface import BuildHAT
-from .exc import DeviceNotFound, DeviceChanged, DeviceInvalidMode
+from .exc import DeviceNotFound, DeviceChanged, DeviceInvalidMode, DeviceInvalid
 import weakref
 import time
 import os
@@ -49,6 +49,8 @@ class Device:
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
+        if (self._typeid in Device._device_names and Device._device_names[self._typeid] != type(self).__name__) or self._typeid == -1:
+            raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, port, self.name))
 
     @property
     def _conn(self):

@@ -11,8 +11,6 @@ class Matrix(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 64:
-            raise DeviceInvalid('There is no LED matrix connected to port %s (Found %s)' % (port, self.name))
         self.on()
         self.mode(2)
         self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
