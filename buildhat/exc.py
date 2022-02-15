@@ -1,6 +1,9 @@
 class MatrixInvalidPixel(Exception):
     pass
 
+class LightException(Exception):
+    pass
+
 class MotorException(Exception):
     pass
 
