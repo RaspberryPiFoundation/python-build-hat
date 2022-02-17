@@ -1,5 +1,5 @@
 from .serinterface import BuildHAT
-from .exc import DeviceNotFound, DeviceChanged, DeviceInvalidMode, DeviceInvalid
+from .exc import DeviceNotFound, DeviceChanged, DeviceInvalidMode, DeviceInvalid, PortInUse
 import weakref
 import time
 import os
@@ -28,6 +28,11 @@ class Device:
                       75: "Motor",
                       76: "Motor"
                     }
+    _used = { 0: False,
+              1: False,
+              2: False,
+              3: False
+            }
     
     def __init__(self, port):
         if not isinstance(port, str) or len(port) != 1:
@@ -35,7 +40,10 @@ class Device:
         p = ord(port) - ord('A')
         if not (p >= 0 and p <= 3):
             raise DeviceNotFound("Invalid port")
+        if Device._used[p]:
+            raise PortInUse("Port already used")
         self.port = p
+        Device._used[p] = True
         if not Device._instance:
             data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
             firm = os.path.join(data,"firmware.bin")
@@ -45,12 +53,16 @@ class Device:
             v = int(vfile.read())
             vfile.close()
             Device._instance = BuildHAT(firm, sig, v)
-            weakref.finalize(self, self._close)
+            weakref.finalize(Device._instance, Device._instance.shutdown)
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
         if (self._typeid in Device._device_names and Device._device_names[self._typeid] != type(self).__name__) or self._typeid == -1:
             raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, port, self.name))
+
+    def __del__(self):
+        if hasattr(self, "port"):
+            Device._used[self.port] = False
 
     @property
     def _conn(self):

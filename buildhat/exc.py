@@ -22,6 +22,9 @@ class DeviceNotFound(Exception):
 class DeviceChanged(Exception):
     pass
 
+class PortInUse(Exception):
+    pass
+
 class DistanceSensorException(Exception):
     pass
 
