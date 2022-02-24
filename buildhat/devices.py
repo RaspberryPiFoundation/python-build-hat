@@ -64,6 +64,9 @@ class Device:
     def __del__(self):
         if hasattr(self, "port"):
             Device._used[self.port] = False
+            self._conn.callit = None
+            self.deselect()
+            self.off()
 
     @property
     def _conn(self):
