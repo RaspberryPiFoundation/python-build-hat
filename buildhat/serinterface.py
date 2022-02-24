@@ -1,5 +1,4 @@
 from .exc import DeviceNotFound, DeviceChanged, DeviceInvalid, HatNotFound
-import importlib
 import threading
 import gpiozero
 import serial
