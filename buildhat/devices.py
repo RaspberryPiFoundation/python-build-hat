@@ -175,4 +175,4 @@ class Device:
             self.select()
         else:
             self.deselect()
-        self._conn.callit = func
+        self._conn.callit = weakref.WeakMethod(func)

@@ -85,9 +85,6 @@ class Motor(Device):
             raise MotorException("Invalid Speed")
         self.default_speed = default_speed
 
-    def _isfinishedcb(self, speed, pos, apos):
-        self._bqueue.append(pos)
-
     def run_for_rotations(self, rotations, speed=None, blocking=True):
         """Runs motor for N rotations
 
@@ -266,22 +263,20 @@ class Motor(Device):
         """
         return self._when_rotated
 
-    def _intermediate(self, value, speed, pos, apos):
+    def _intermediate(self, data):
+        speed, pos, apos = data
         if self._oldpos is None:
             self._oldpos = pos
             return
         if abs(pos - self._oldpos) >= 1:
-            value(speed, pos, apos)
+            self._when_rotated(speed, pos, apos)
             self._oldpos = pos
 
     @when_rotated.setter
     def when_rotated(self, value):
         """Calls back, when motor has been rotated"""
-        if value is not None:
-            self._when_rotated = lambda lst: [self._intermediate(value, lst[0], lst[1], lst[2]),self._isfinishedcb(lst[0], lst[1], lst[2])]
-        else:
-            self._when_rotated = lambda lst: self._isfinishedcb(lst[0], lst[1], lst[2])
-        self.callback(self._when_rotated)
+        self._when_rotated = value
+        self.callback(self._intermediate)
 
     def plimit(self, plimit):
         if not (plimit >= 0 and plimit <= 1):
