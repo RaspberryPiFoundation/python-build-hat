@@ -3,7 +3,7 @@ import time
 from buildhat.exc import DeviceInvalid, DirectionInvalid, MotorException, PortInUse
 from buildhat import Motor
 
-class TestMotorMethods(unittest.TestCase):
+class TestMotor(unittest.TestCase):
 
     def test_rotations(self):
         m = Motor('A')
