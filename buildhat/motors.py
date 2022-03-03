@@ -269,7 +269,8 @@ class Motor(Device):
             self._oldpos = pos
             return
         if abs(pos - self._oldpos) >= 1:
-            self._when_rotated(speed, pos, apos)
+            if self._when_rotated is not None:
+                self._when_rotated(speed, pos, apos)
             self._oldpos = pos
 
     @when_rotated.setter

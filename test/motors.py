@@ -67,5 +67,12 @@ class TestMotorMethods(unittest.TestCase):
         m.run_for_seconds(1)
         self.assertGreater(handle_motor.evt, 0)
 
+    def test_none_callback(self):
+        m = Motor('A')
+        m.when_rotated = None
+        m.start()
+        time.sleep(0.5)
+        m.stop()
+
 if __name__ == '__main__':
     unittest.main()
