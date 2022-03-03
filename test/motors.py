@@ -1,9 +1,9 @@
 import unittest
 import time
-from buildhat.exc import DeviceInvalid, DirectionInvalid, MotorException
+from buildhat.exc import DeviceInvalid, DirectionInvalid, MotorException, PortInUse
 from buildhat import Motor
 
-class TestMotorMethods(unittest.TestCase):
+class TestMotor(unittest.TestCase):
 
     def test_rotations(self):
         m = Motor('A')
@@ -66,6 +66,22 @@ class TestMotorMethods(unittest.TestCase):
         m.when_rotated = handle_motor
         m.run_for_seconds(1)
         self.assertGreater(handle_motor.evt, 0)
+
+    def test_none_callback(self):
+        m = Motor('A')
+        m.when_rotated = None
+        m.start()
+        time.sleep(0.5)
+        m.stop()
+
+    def test_duplicate_port(self):
+        m1 = Motor('A')
+        self.assertRaises(PortInUse, Motor, 'A')
+
+    def test_del(self):
+        m1 = Motor('A')
+        del m1
+        m1 = Motor('A')
 
 if __name__ == '__main__':
     unittest.main()

@@ -127,25 +127,29 @@ class ColorDistanceSensor(Device):
             reads.append(self.get())
         return self._avgrgb(reads)
 
+    def _cb_handle(self, lst):
+        self._data.append(lst)
+        if len(self._data) == self.avg_reads:
+            r, g, b = self._avgrgb(self._data)
+            seg = self.segment_color(r, g, b)
+            if self._cmp(seg, self._color):
+                with self._cond:
+                    self._old_color = seg
+                    self._cond.notify()
+
     def wait_until_color(self, color):
         """Waits until specific color
 
         :param color: Color to look for 
         """
         self.mode(6)
-        cond = Condition()
-        data = deque(maxlen=self.avg_reads)
-        def cb(lst):
-            data.append(lst)
-            if len(data) == self.avg_reads:
-                r, g, b = self._avgrgb(data)
-                seg = self.segment_color(r, g, b)
-                if seg == color:
-                    with cond:
-                        cond.notify()
-        self.callback(cb)
-        with cond:
-            cond.wait()
+        self._cond = Condition()
+        self._data = deque(maxlen=self.avg_reads)
+        self._color = color
+        self._cmp = lambda x, y: x == y
+        self.callback(self._cb_handle)
+        with self._cond:
+            self._cond.wait()
         self.callback(None)
 
     def wait_for_new_color(self):
@@ -155,20 +159,13 @@ class ColorDistanceSensor(Device):
         if self._old_color is None:
             self._old_color = self.get_color()
             return self._old_color
-        cond = Condition()
-        data = deque(maxlen=self.avg_reads)
-        def cb(lst):
-            data.append(lst)
-            if len(data) ==  self.avg_reads:
-                r, g, b = self._avgrgb(data)
-                seg = self.segment_color(r, g, b)
-                if seg != self._old_color:
-                    self._old_color = seg
-                    with cond:
-                        cond.notify()
-        self.callback(cb)
-        with cond:
-            cond.wait()
+        self._cond = Condition()
+        self._data = deque(maxlen=self.avg_reads)
+        self._color = self._old_color
+        self._cmp = lambda x, y: x != y
+        self.callback(self._cb_handle)
+        with self._cond:
+            self._cond.wait()
         self.callback(None)
         return self._old_color
 

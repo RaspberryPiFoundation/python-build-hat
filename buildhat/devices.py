@@ -1,5 +1,5 @@
 from .serinterface import BuildHAT
-from .exc import DeviceNotFound, DeviceChanged, DeviceInvalidMode, DeviceInvalid
+from .exc import DeviceNotFound, DeviceChanged, DeviceInvalidMode, DeviceInvalid, PortInUse
 import weakref
 import time
 import os
@@ -29,6 +29,11 @@ class Device:
                       75: "Motor",
                       76: "Motor"
                     }
+    _used = { 0: False,
+              1: False,
+              2: False,
+              3: False
+            }
     
     def __init__(self, port):
         if not isinstance(port, str) or len(port) != 1:
@@ -36,22 +41,36 @@ class Device:
         p = ord(port) - ord('A')
         if not (p >= 0 and p <= 3):
             raise DeviceNotFound("Invalid port")
+        if Device._used[p]:
+            raise PortInUse("Port already used")
         self.port = p
-        if not Device._instance:
-            data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
-            firm = os.path.join(data,"firmware.bin")
-            sig = os.path.join(data,"signature.bin")
-            ver = os.path.join(data,"version")
-            vfile = open(ver)
-            v = int(vfile.read())
-            vfile.close()
-            Device._instance = BuildHAT(firm, sig, v)
-            weakref.finalize(self, self._close)
+        Device._setup()
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
         if (self._typeid in Device._device_names and Device._device_names[self._typeid] != type(self).__name__) or self._typeid == -1:
             raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, port, self.name))
+        Device._used[p] = True
+
+    def _setup(device="/dev/serial0"):
+        if Device._instance:
+            return
+        data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
+        firm = os.path.join(data,"firmware.bin")
+        sig = os.path.join(data,"signature.bin")
+        ver = os.path.join(data,"version")
+        vfile = open(ver)
+        v = int(vfile.read())
+        vfile.close()
+        Device._instance = BuildHAT(firm, sig, v, device=device)
+        weakref.finalize(Device._instance, Device._instance.shutdown)
+
+    def __del__(self):
+        if hasattr(self, "port") and Device._used[self.port]:
+            Device._used[self.port] = False
+            self._conn.callit = None
+            self.deselect()
+            self.off()
 
     @property
     def _conn(self):
@@ -82,9 +101,6 @@ class Device:
             return self._device_names[self.typeidcur]
         else:
             return "Unknown"
-
-    def _close(self):
-        Device._instance.shutdown()
 
     def isconnected(self):
         if not self.connected:
@@ -163,4 +179,7 @@ class Device:
             self.select()
         else:
             self.deselect()
-        self._conn.callit = func
+        if func is None:
+            self._conn.callit = None
+        else:
+            self._conn.callit = weakref.WeakMethod(func)
