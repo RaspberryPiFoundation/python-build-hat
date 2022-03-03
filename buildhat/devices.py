@@ -44,13 +44,13 @@ class Device:
         if Device._used[p]:
             raise PortInUse("Port already used")
         self.port = p
-        Device._used[p] = True
         Device._setup()
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
         if (self._typeid in Device._device_names and Device._device_names[self._typeid] != type(self).__name__) or self._typeid == -1:
             raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, port, self.name))
+        Device._used[p] = True
 
     def _setup(device="/dev/serial0"):
         if Device._instance:
@@ -66,7 +66,7 @@ class Device:
         weakref.finalize(Device._instance, Device._instance.shutdown)
 
     def __del__(self):
-        if hasattr(self, "port"):
+        if hasattr(self, "port") and Device._used[self.port]:
             Device._used[self.port] = False
             self._conn.callit = None
             self.deselect()
