@@ -1,6 +1,6 @@
 import unittest
 import time
-from buildhat.exc import DeviceInvalid, DirectionInvalid, MotorException
+from buildhat.exc import DeviceInvalid, DirectionInvalid, MotorException, PortInUse
 from buildhat import Motor
 
 class TestMotorMethods(unittest.TestCase):
@@ -73,6 +73,15 @@ class TestMotorMethods(unittest.TestCase):
         m.start()
         time.sleep(0.5)
         m.stop()
+
+    def test_duplicate_port(self):
+        m1 = Motor('A')
+        self.assertRaises(PortInUse, Motor, 'A')
+
+    def test_del(self):
+        m1 = Motor('A')
+        del m1
+        m1 = Motor('A')
 
 if __name__ == '__main__':
     unittest.main()
