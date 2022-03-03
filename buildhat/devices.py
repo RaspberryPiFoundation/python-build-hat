@@ -45,21 +45,25 @@ class Device:
             raise PortInUse("Port already used")
         self.port = p
         Device._used[p] = True
-        if not Device._instance:
-            data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
-            firm = os.path.join(data,"firmware.bin")
-            sig = os.path.join(data,"signature.bin")
-            ver = os.path.join(data,"version")
-            vfile = open(ver)
-            v = int(vfile.read())
-            vfile.close()
-            Device._instance = BuildHAT(firm, sig, v)
-            weakref.finalize(Device._instance, Device._instance.shutdown)
+        Device._setup()
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
         if (self._typeid in Device._device_names and Device._device_names[self._typeid] != type(self).__name__) or self._typeid == -1:
             raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, port, self.name))
+
+    def _setup(device="/dev/serial0"):
+        if Device._instance:
+            return
+        data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__),"data/")
+        firm = os.path.join(data,"firmware.bin")
+        sig = os.path.join(data,"signature.bin")
+        ver = os.path.join(data,"version")
+        vfile = open(ver)
+        v = int(vfile.read())
+        vfile.close()
+        Device._instance = BuildHAT(firm, sig, v, device=device)
+        weakref.finalize(Device._instance, Device._instance.shutdown)
 
     def __del__(self):
         if hasattr(self, "port"):
@@ -97,9 +101,6 @@ class Device:
             return self._device_names[self.typeidcur]
         else:
             return "Unknown"
-
-    def _close(self):
-        Device._instance.shutdown()
 
     def isconnected(self):
         if not self.connected:
