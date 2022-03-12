@@ -11,8 +11,6 @@ class ForceSensor(Device):
     """
     def __init__(self, port, threshold_force=1):
         super().__init__(port)
-        if self.typeid != 63:
-            raise DeviceInvalid('There is not a force sensor connected to port %s (Found %s)' % (port, self.name))
         self.mode([(0,0),(1,0),(3,0)])
         self._when_pressed = None
         self._when_released = None
