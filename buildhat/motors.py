@@ -13,12 +13,9 @@ class PassiveMotor(Device):
     :param port: Port of device
     :raises DeviceInvalid: Occurs if there is no passive motor attached to port
     """
-    MOTOR_SET = set([2])
 
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid not in PassiveMotor.MOTOR_SET:
-            raise DeviceInvalid('There is not a passive motor connected to port %s (Found %s)' % (port, self.name))
         self._default_speed = 20
         self.plimit(0.7)
         self.bias(0.3)
@@ -66,13 +63,9 @@ class Motor(Device):
     :param port: Port of device
     :raises DeviceInvalid: Occurs if there is no motor attached to port
     """
-    # See hub-python-module/drivers/m_sched_shortcake.h
-    MOTOR_SET = set([38, 46, 47, 48, 49, 65, 75, 76])
 
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid not in Motor.MOTOR_SET:
-            raise DeviceInvalid('There is not a motor connected to port %s (Found %s)' % (port, self.name))
         self.default_speed = 20
         self.mode([(1,0),(2,0),(3,0)])
         self.plimit(0.7)
@@ -91,9 +84,6 @@ class Motor(Device):
         if not (default_speed >= -100 and default_speed <= 100):
             raise MotorException("Invalid Speed")
         self.default_speed = default_speed
-
-    def _isfinishedcb(self, speed, pos, apos):
-        self._bqueue.append(pos)
 
     def run_for_rotations(self, rotations, speed=None, blocking=True):
         """Runs motor for N rotations
@@ -273,22 +263,21 @@ class Motor(Device):
         """
         return self._when_rotated
 
-    def _intermediate(self, value, speed, pos, apos):
+    def _intermediate(self, data):
+        speed, pos, apos = data
         if self._oldpos is None:
             self._oldpos = pos
             return
         if abs(pos - self._oldpos) >= 1:
-            value(speed, pos, apos)
+            if self._when_rotated is not None:
+                self._when_rotated(speed, pos, apos)
             self._oldpos = pos
 
     @when_rotated.setter
     def when_rotated(self, value):
         """Calls back, when motor has been rotated"""
-        if value is not None:
-            self._when_rotated = lambda lst: [self._intermediate(value, lst[0], lst[1], lst[2]),self._isfinishedcb(lst[0], lst[1], lst[2])]
-        else:
-            self._when_rotated = lambda lst: self._isfinishedcb(lst[0], lst[1], lst[2])
-        self.callback(self._when_rotated)
+        self._when_rotated = value
+        self.callback(self._intermediate)
 
     def plimit(self, plimit):
         if not (plimit >= 0 and plimit <= 1):

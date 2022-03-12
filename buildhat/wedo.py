@@ -9,8 +9,6 @@ class TiltSensor(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 34:
-            raise DeviceInvalid('There is not a tilt sensor connected to port %s (Found %s)' % (port, self.name))
         self.mode(0)
 
     def get_tilt(self):
@@ -30,8 +28,6 @@ class MotionSensor(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 35:
-            raise DeviceInvalid('There is not a motion sensor connected to port %s (Found %s)' % (port, self.name))
         self.mode(0)
 
     def get_distance(self):

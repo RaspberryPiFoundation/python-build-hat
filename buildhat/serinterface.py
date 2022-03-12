@@ -1,5 +1,4 @@
 from .exc import DeviceNotFound, DeviceChanged, DeviceInvalid, HatNotFound
-import importlib
 import threading
 import gpiozero
 import serial
@@ -186,6 +185,8 @@ class BuildHAT:
             self.fin = True
             self.running = False
             self.th.join()
+            self.cbqueue.put(())
+            self.cb.join()
             turnoff = ""
             for p in range(4):
                 conn = self.connections[p]
@@ -199,7 +200,13 @@ class BuildHAT:
     def callbackloop(self, q):
         while self.running:
             cb = q.get()
-            cb[0](cb[1])
+            # Test for empty tuple, which should only be passed when
+            # we're shutting down
+            if len(cb) == 0:
+                continue
+            if not cb[0]._alive:
+                continue
+            cb[0]()(cb[1])
             q.task_done()
 
     def loop(self, cond, uselist, q):
@@ -271,7 +278,7 @@ class BuildHAT:
                 with self.portcond[portid]:
                     self.portcond[portid].notify()
 
-            if line[1] == "." and line.strip().endswith(" V"):
+            if len(line) >= 5 and line[1] == "." and line.strip().endswith(" V"):
                 vin = float(line.strip().split(" ")[0])
                 self.vin = vin
                 with self.vincond:

@@ -12,8 +12,6 @@ class ColorSensor(Device):
     """
     def __init__(self, port):
         super().__init__(port)
-        if self.typeid != 61:
-            raise DeviceInvalid('There is not a color sensor connected to port %s (Found %s)' % (port, self.name))
         self.reverse()
         self.mode(6)
         self.avg_reads = 4
@@ -145,7 +143,17 @@ class ColorSensor(Device):
         hue = int((math.degrees((math.atan2(s,c))) + 360) % 360)
         sat = int(sum([hsv[1] for hsv in readings]) / len(readings))
         val = int(sum([hsv[2] for hsv in readings]) / len(readings))
-        return (hue, sat, val)       
+        return (hue, sat, val)
+
+    def _cb_handle(self, lst):
+        self._data.append(lst[:4])
+        if len(self._data) == self.avg_reads:
+            r, g, b, _ = self._avgrgbi(self._data)
+            seg = self.segment_color(r, g, b)
+            if self._cmp(seg, self._color):
+                with self._cond:
+                    self._old_color = seg
+                    self._cond.notify()
 
     def wait_until_color(self, color):
         """Waits until specific color
@@ -153,19 +161,13 @@ class ColorSensor(Device):
         :param color: Color to look for 
         """
         self.mode(5)
-        cond = Condition()
-        data = deque(maxlen=self.avg_reads)
-        def cb(lst):
-            data.append(lst[:4])
-            if len(data) == self.avg_reads:
-                r, g, b, _ = self._avgrgbi(data)
-                seg = self.segment_color(r, g, b)
-                if seg == color:
-                    with cond:
-                        cond.notify()
-        self.callback(cb)
-        with cond:
-            cond.wait()
+        self._cond = Condition()
+        self._data = deque(maxlen=self.avg_reads)
+        self._color = color
+        self._cmp = lambda x, y: x == y
+        self.callback(self._cb_handle)
+        with self._cond:
+            self._cond.wait()
         self.callback(None)
 
     def wait_for_new_color(self):
@@ -175,20 +177,13 @@ class ColorSensor(Device):
         if self._old_color is None:
             self._old_color = self.get_color()
             return self._old_color
-        cond = Condition()
-        data = deque(maxlen=self.avg_reads)
-        def cb(lst):
-            data.append(lst[:4])
-            if len(data) ==  self.avg_reads:
-                r, g, b, _ = self._avgrgbi(data)
-                seg = self.segment_color(r, g, b)
-                if seg != self._old_color:
-                    self._old_color = seg
-                    with cond:
-                        cond.notify()
-        self.callback(cb)
-        with cond:
-            cond.wait()
+        self._cond = Condition()
+        self._data = deque(maxlen=self.avg_reads)
+        self._color = self._old_color
+        self._cmp = lambda x, y: x != y
+        self.callback(self._cb_handle)
+        with self._cond:
+            self._cond.wait()
         self.callback(None)
         return self._old_color
 

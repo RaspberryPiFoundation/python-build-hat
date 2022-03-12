@@ -1,6 +1,9 @@
 class MatrixInvalidPixel(Exception):
     pass
 
+class LightException(Exception):
+    pass
+
 class MotorException(Exception):
     pass
 
@@ -17,6 +20,9 @@ class DeviceNotFound(Exception):
     pass
 
 class DeviceChanged(Exception):
+    pass
+
+class PortInUse(Exception):
     pass
 
 class DistanceSensorException(Exception):
