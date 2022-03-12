@@ -27,7 +27,7 @@ class Device:
                       49: ("Motor", "Large Angular Motor (Cyan)"),  # 45602
                       65: ("Motor", "Small Angular Motor"),         # 45607
                       75: ("Motor", "Medium Angular Motor (Grey)"), # 88018
-                      76: ("Motor", "Large Angular Motor (Grey)"),  # 88017
+                      76: ("Motor", "Large Angular Motor (Grey)")  # 88017
                     }
     _used = { 0: False,
               1: False,
