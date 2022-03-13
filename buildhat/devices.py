@@ -70,7 +70,8 @@ class Device:
             Device._used[self.port] = False
             self._conn.callit = None
             self.deselect()
-            self.off()
+            if self._typeid != 64:
+                self.off()
 
     @property
     def _conn(self):
