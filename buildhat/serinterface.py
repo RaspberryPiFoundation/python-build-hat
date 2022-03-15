@@ -191,7 +191,7 @@ class BuildHAT:
             for p in range(4):
                 conn = self.connections[p]
                 if conn.typeid != 64:
-                    turnoff += "port {} ; pwm ; coast ; off ".format(p)
+                    turnoff += "port {} ; pwm ; coast ; off ;".format(p)
                 else:
                     self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h) for h in [0xc2,0,0,0,0,0,0,0,0,0])).encode())
             self.write("{}\r".format(turnoff).encode())
