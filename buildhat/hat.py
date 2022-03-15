@@ -8,6 +8,7 @@ class Hat:
     """Allows enumeration of devices which are connected to the hat
     """
     def __init__(self):
+        self.led_status = -1
         Device._setup()
 
     def get(self):
@@ -39,6 +40,68 @@ class Hat:
             Device._instance.vincond.wait()
 
         return Device._instance.vin
+
+    def _set_led(self, intmode):
+        if isinstance(intmode, int) and intmode >= -1 and intmode <= 3:
+            self.led_status = intmode
+            Device._instance.write("ledmode {}\r".format(intmode).encode())
+
+    def set_leds(self, color="voltage"):
+        """Sets the two LEDs on or off on the BuildHAT.  By default
+        the color depends on the input voltage with green being nominal at around 8V
+        (The fastest time the LEDs can be perceptually toggled is around 0.025 seconds)
+        :param color: orange, green, both, off, or voltage (default)
+        """
+        if color == "orange":
+            self._set_led(1)
+        elif color == "green":
+            self._set_led(2)
+        elif color == "both":
+            self._set_led(3)
+        elif color == "off":
+            self._set_led(0)
+        elif color == "voltage":
+            self._set_led(-1)
+        else:
+            return
+
+    def orange_led(self, status=True):
+        """Turn the BuildHAT's orange LED on or off
+        :param status: True to turn it on, False to turn it off
+        """
+        if status:
+            if self.led_status == 3 or self.led_status == 1:
+                # already on
+                return
+            elif self.led_status == 2:
+                self._set_led(3)
+            # off or default
+            else:
+                self._set_led(1)
+        else:
+            if self.led_status == 1 or self.led_status == -1:
+                self._set_led(0)
+            elif self.led_status == 3:
+                self._set_led(2)
+
+    def green_led(self, status=True):
+        """Turn the BuildHAT's green LED on or off
+        :param status: True to turn it on, False to turn it off
+        """
+        if status:
+            if self.led_status == 3 or self.led_status == 2:
+                # already on
+                return
+            elif self.led_status == 1:
+                self._set_led(3)
+            # off or default
+            else:
+                self._set_led(2)
+        else:
+            if self.led_status == 2 or self.led_status == -1:
+                self._set_led(0)
+            elif self.led_status == 3:
+                self._set_led(1)
 
     def _close(self):
         Device._instance.shutdown()
