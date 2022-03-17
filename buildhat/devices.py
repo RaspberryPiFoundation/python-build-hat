@@ -70,10 +70,13 @@ class Device:
 
     def __del__(self):
         if hasattr(self, "port") and Device._used[self.port]:
+            if self._typeid == 64:
+                self.clear()
             Device._used[self.port] = False
             self._conn.callit = None
             self.deselect()
-            self.off()
+            if self._typeid != 64:
+                self.off()
 
     def name_for_id(typeid):
         """Translate integer type id to device name (python class)"""
