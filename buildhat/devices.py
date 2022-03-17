@@ -70,12 +70,12 @@ class Device:
 
     def __del__(self):
         if hasattr(self, "port") and Device._used[self.port]:
-            if self._typeid == 64:
+            if Device._device_names[self._typeid][0] == "Matrix":
                 self.clear()
             Device._used[self.port] = False
             self._conn.callit = None
             self.deselect()
-            if self._typeid != 64:
+            if Device._device_names[self._typeid][0] != "Matrix":
                 self.off()
 
     def name_for_id(typeid):
