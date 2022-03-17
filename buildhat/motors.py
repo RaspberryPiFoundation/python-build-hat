@@ -126,7 +126,15 @@ class Motor(Device):
         pos /= 360.0
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        self._run_positional_ramp(pos, newpos, dur)
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
+        self.port, pos, newpos, dur)
+        self._write(cmd)
+        with self._hat.rampcond[self.port]:
+            self._hat.rampcond[self.port].wait()
+        if self._release:
+            time.sleep(0.2)
+            self.coast()
+        self.runmode = MotorRunmode.NONE
 
     def _run_to_position(self, degrees, speed, direction):
         self.runmode = MotorRunmode.DEGREES
@@ -152,9 +160,6 @@ class Motor(Device):
         pos /= 360.0
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        self._run_positional_ramp(pos, newpos, dur)
-
-    def _run_positional_ramp(self, pos, newpos, dur):
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
         self.port, pos, newpos, dur)
         self._write(cmd)
