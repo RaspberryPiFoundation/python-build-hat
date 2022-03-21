@@ -20,13 +20,13 @@ class Matrix(Device):
 
         :param pixels: 3x3 list of tuples, with colour (0–9) and brightness (0–10) (see example for more detail)
         """
+        if len(matrix) != 3:
+            raise MatrixInvalidPixel("Incorrect matrix height")
         for x in range(3):
+            if len(matrix[x]) != 3:
+                raise MatrixInvalidPixel("Incorrect matrix width")
             for y in range(3):
-                color, brightness = matrix[x][y]
-                if not (brightness >= 0 and brightness <= 10):
-                    raise MatrixInvalidPixel("Invalid brightness specified")
-                if not (color >= 0 and color <= 9):
-                    raise MatrixInvalidPixel("Invalid pixel specified")
+                matrix[x][y] = Matrix.normalize_pixel(matrix[x][y])
         self._matrix = matrix
         self._output()
 
@@ -39,7 +39,13 @@ class Matrix(Device):
         self._write1(out)
         self.deselect()
 
-    def strtocolor(self, colorstr):
+    def strtocolor(colorstr):
+        """Return the BuldHAT's integer representation of a color string
+
+        :param colorstr: str of a valid color
+        :return: (0-10) representing the color
+        :rtype: int
+        """
         if colorstr == "pink":
             return 1
         elif colorstr == "lilac":
@@ -64,6 +70,40 @@ class Matrix(Device):
             return 0
         raise MatrixInvalidPixel("Invalid color specified")
 
+    def normalize_pixel(pixel):
+        """Validate a pixel tuple (color, brightness) and convert string colors to integers
+
+        :param pixel: tuple of colour (0–10) or string (ie:"red") and brightness (0–10)
+        :return: (color, brightness) integers
+        :rtype: tuple
+        """
+        if isinstance(pixel, tuple):
+            c, brightness = pixel
+            if isinstance(c, str):
+                c = Matrix.strtocolor(c)
+            if not ( isinstance(brightness, int) and isinstance(c, int)):
+                raise MatrixInvalidPixel("Invalid pixel specified")
+            if not (brightness >= 0 and brightness <= 10):
+                raise MatrixInvalidPixel("Invalid brightness value specified")
+            if not (c >= 0 and c <= 10):
+                raise MatrixInvalidPixel("Invalid pixel color specified")
+            return (c, brightness)
+        else:
+            raise MatrixInvalidPixel("Invalid pixel specified")	
+
+    def validate_coordinate(coord):
+        """"Validate an x,y coordinate for the 3x3 Matrix
+
+        :param coord: tuple of 0-3 for the X coordinate and 0-2 for the Y coordinate
+        """
+        if isinstance(coord, tuple):
+            if not (isinstance(coord[0], int) and isinstance(coord[1], int)):
+                raise MatrixInvalidPixel("Invalid coord specified")
+            elif coord[0] > 2 or coord[0] < 0 or coord[1] > 2 or coord[1] < 0:
+            	raise MatrixInvalidPixel("Invalid coord specified")
+        else:
+            raise MatrixInvalidPixel("Invalid coord specified")
+
     def clear(self, pixel=None):
         """Clear matrix or set all as the same pixel
 
@@ -72,20 +112,14 @@ class Matrix(Device):
         if pixel is None:
             self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
         else:
-            color = ()
-            if isinstance(pixel, tuple):
-                c, brightness = pixel
-                if isinstance(c, str):
-                    c = self.strtocolor(c)
-                if not (brightness >= 0 and brightness <= 10):
-                    raise MatrixInvalidPixel("Invalid brightness specified")
-                if not (c >= 0 and c <= 10):
-                    raise MatrixInvalidPixel("Invalid pixel specified")
-                color = (c, brightness)
-            else:
-                raise MatrixInvalidPixel("Invalid pixel specified")
+            color = Matrix.normalize_pixel(pixel)
             self._matrix = [[color for x in range(3)] for y in range(3)]
         self._output()
+
+    def off(self):
+        # Never send the "off" command to the port a Matrix is connected to
+        # Instead, just turn all the pixels off
+        self.clear()
 
     def level(self, level):
         """Use the matrix as a "level" meter from 0-9
@@ -144,22 +178,8 @@ class Matrix(Device):
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
         :param display: Whether to update matrix or not
         """
-        if isinstance(pixel, tuple):
-            c, brightness = pixel
-            if isinstance(c, str):
-                c = self.strtocolor(c)
-            if not (brightness >= 0 and brightness <= 10):
-                raise MatrixInvalidPixel("Invalid brightness specified")
-            if not (c >= 0 and c <= 10):
-                raise MatrixInvalidPixel("Invalid pixel specified")
-            color = (c, brightness)
-        else:
-            raise MatrixInvalidPixel("Invalid pixel specified")
-        if isinstance(coord, tuple):
-            if not (isinstance(coord[0], int) and isinstance(coord[1], int)):
-                raise MatrixInvalidPixel("Invalid coord specified")
-        else:
-            raise MatrixInvalidPixel("Invalid coord specified")
+        color = Matrix.normalize_pixel(pixel)
+        Matrix.validate_coordinate(coord)
         x, y = coord
         self._matrix[x][y] = color
         if display:
