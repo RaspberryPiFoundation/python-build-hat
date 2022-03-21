@@ -94,7 +94,7 @@ class Matrix(Device):
     def validate_coordinate(coord):
         """"Validate an x,y coordinate for the 3x3 Matrix
 
-        :param coord: tuple of 0-3 for the X coordinate and 0-2 for the Y coordinate
+        :param coord: tuple of 0-2 for the X coordinate and 0-2 for the Y coordinate
         """
         if isinstance(coord, tuple):
             if not (isinstance(coord[0], int) and isinstance(coord[1], int)):
