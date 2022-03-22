@@ -18,7 +18,7 @@ class Matrix(Device):
     def set_pixels(self, matrix):
         """Write pixel data to LED matrix
 
-        :param pixels: 3x3 list of tuples, with colour (0–9) and brightness (0–10) (see example for more detail)
+        :param pixels: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
         """
         if len(matrix) != 3:
             raise MatrixInvalidPixel("Incorrect matrix height")
