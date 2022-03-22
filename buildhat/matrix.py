@@ -18,14 +18,14 @@ class Matrix(Device):
     def set_pixels(self, matrix):
         """Write pixel data to LED matrix
 
-        :param pixels: 3x3 list of tuples, with colour (0–9) and brightness (0–10) (see example for more detail)
+        :param pixels: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
         """
         for x in range(3):
             for y in range(3):
                 color, brightness = matrix[x][y]
                 if not (brightness >= 0 and brightness <= 10):
                     raise MatrixInvalidPixel("Invalid brightness specified")
-                if not (color >= 0 and color <= 9):
+                if not (color >= 0 and color <= 10):
                     raise MatrixInvalidPixel("Invalid pixel specified")
         self._matrix = matrix
         self._output()
