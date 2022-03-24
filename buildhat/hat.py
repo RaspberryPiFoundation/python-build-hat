@@ -7,8 +7,11 @@ import weakref
 class Hat:
     """Allows enumeration of devices which are connected to the hat
     """
-    def __init__(self):
-        Device._setup()
+    def __init__(self, device=None):
+        if not device:
+            Device._setup()
+        else:
+            Device._setup(device)
 
     def get(self):
         """Gets devices which are connected or disconnected 
