@@ -40,6 +40,10 @@ class BuildHAT:
     BOOTLOADER="BuildHAT bootloader version"
     DONE="Done initialising ports"
 
+    _firmware_file = None
+    _firmware_signature = None
+    _firmware_version = None
+
     def __init__(self, firmware, signature, version, device="/dev/serial0"):
         self.cond = Condition()
         self.state = HatState.OTHER
@@ -51,6 +55,9 @@ class BuildHAT:
         self.running = True
         self.vincond = Condition()
         self.vin = None
+        self._firmware_file = firmware
+        self._firmware_signature = signature
+        self._firmware_version = version
 
         for i in range(4):
             self.connections.append(Connection())
@@ -60,43 +67,13 @@ class BuildHAT:
 
         self.ser = serial.Serial(device, 115200, timeout=5)
         # Check if we're in the bootloader or the firmware
-        self.write(b"version\r")
+        self.state = self._what_state_are_we_in()
 
-        incdata = 0
-        while True:
-            try:
-                line = self.ser.readline().decode('utf-8', 'ignore')
-            except serial.SerialException:
-                pass
-            if len(line) == 0:
-                # Didn't recieve any data
-                break
-            if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
-                self.state = HatState.FIRMWARE
-                ver =  line[len(BuildHAT.FIRMWARE):].split(' ')
-                if int(ver[0]) == version:
-                    self.state = HatState.FIRMWARE
-                    break
-                else:
-                    self.state = HatState.NEEDNEWFIRMWARE
-                    break
-            elif line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
-                self.state = HatState.BOOTLOADER
-                break
-            else:
-                # got other data we didn't understand - send version again
-                incdata += 1
-                if incdata > 5:
-                    break
-                else:
-                    self.write(b"version\r")
-        # Use to force hat reset
-        #self.state = HatState.NEEDNEWFIRMWARE
         if self.state == HatState.NEEDNEWFIRMWARE:
             self.resethat()
-            self.loadfirmware(firmware, signature)
+            self.loadfirmware()
         elif self.state == HatState.BOOTLOADER:
-            self.loadfirmware(firmware, signature)
+            self.loadfirmware()
         elif self.state == HatState.OTHER:
             raise HatNotFound()
 
@@ -111,15 +88,59 @@ class BuildHAT:
         self.th.daemon = True
         self.th.start()
 
-        if self.state == HatState.FIRMWARE:
-            self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
-            self.write(b"list\r")
-        elif self.state == HatState.NEEDNEWFIRMWARE or self.state == HatState.BOOTLOADER:
+        if self.state == HatState.NEEDNEWFIRMWARE or self.state == HatState.BOOTLOADER:
             self.write(b"reboot\r")
 
         # wait for initialisation to finish
         with self.cond:
             self.cond.wait()
+
+    def _what_state_are_we_in(self):
+        """Is the BuildHAT in the bootloader or the firmware?"""
+        self.ser.timeout = 5
+        detected_state = HatState.OTHER
+        self.write(b"version\r")
+        incdata = 0
+        while True:
+            try:
+                line = self.ser.readline().decode('utf-8', 'ignore')
+            except serial.SerialException:
+                pass
+            if len(line) == 0:
+                break
+            if line == "\r\n":
+                # When initially connecting to the serial port a CRLF is
+                # returned when the version is sent, so just send it again
+                self.write(b"version\r")
+                continue
+            if line == "version\r\n":
+                # When initially connecting to the serial port in the 
+                # bootloader, it will just echo your command with a CRLF
+                # and do nothing, so just send it again
+                self.write(b"version\r")
+                continue
+
+            if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
+                ver =  line[len(BuildHAT.FIRMWARE):].split(' ')
+                if int(ver[0]) == self._firmware_version:
+                    detected_state = HatState.FIRMWARE
+                else:
+                    detected_state = HatState.NEEDNEWFIRMWARE
+                break
+            elif line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
+                # HAT does not have any firmware loaded or is stuck in the bootloader
+                detected_state = HatState.BOOTLOADER
+                break
+
+            else:
+                # got other data we didn't understand - send version again
+                incdata += 1
+                if incdata > 5:
+                    break
+                else:
+                    self.write(b"version\r")
+        self.ser.timeout = 1
+        return detected_state
 
     def resethat(self):
         RESET_GPIO_NUMBER = 4
@@ -135,10 +156,10 @@ class BuildHAT:
         reset.close()
         time.sleep(0.5)
 
-    def loadfirmware(self, firmware, signature):
-        with open(firmware, "rb") as f:
+    def loadfirmware(self):
+        with open(self._firmware_file, "rb") as f:
             firm = f.read()
-        with open(signature, "rb") as f:
+        with open(self._firmware_signature, "rb") as f:
             sig = f.read()
         self.write(b"clear\r")
         self.getprompt()
@@ -180,6 +201,30 @@ class BuildHAT:
     def write(self, data):
         self.ser.write(data)
 
+    def reboot(self):
+        # Stop the main loop
+        self.running = False
+        self.th.join()
+        self.ser.timeout = 5
+        self.ser.reset_input_buffer()
+        self.ser.reset_output_buffer()
+        self.resethat()
+        self.loadfirmware()
+
+        # Reboot out of the bootloader into the firmware
+        self.write(b"reboot\r")
+        self.running = True
+
+        # Start the loop serial input processor
+        self.ser.timeout = 1
+        self.th = threading.Thread(target=self.loop, args=(self.cond, False, self.cbqueue))
+        self.th.daemon = True
+        self.th.start()
+
+        # Wait for the serial input thread signal that the ports are enumerated
+        with self.cond:
+            self.cond.wait()
+
     def shutdown(self):
         if not self.fin:
             self.fin = True
@@ -210,6 +255,12 @@ class BuildHAT:
             q.task_done()
 
     def loop(self, cond, uselist, q):
+        if uselist:
+            # Ports need to be enumerated.
+            self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
+            self.write(b"list\r")
+        # else didn't have firmware (rebooted) so use the port listing that's auto-issued after BuildHAT.DONE
+
         count = 0
         while self.running:
             line = b""
@@ -258,6 +309,8 @@ class BuildHAT:
                 def runit():
                     with cond:
                         cond.notify()
+                # On reboot, wait for the port listing to complete before notifying
+                # Can't be counted out because the reboot listing doesn't list disconnected ports
                 t = Timer(8.0, runit)
                 t.start()
 
