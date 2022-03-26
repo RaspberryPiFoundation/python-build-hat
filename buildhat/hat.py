@@ -40,5 +40,8 @@ class Hat:
 
         return Device._instance.vin
 
+    def reboot(self):
+        Device._instance.reboot()
+
     def _close(self):
         Device._instance.shutdown()
