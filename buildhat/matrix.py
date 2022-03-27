@@ -15,10 +15,11 @@ class Matrix(Device):
         self.mode(2)
         self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
 
-    def set_pixels(self, matrix):
+    def set_pixels(self, matrix, display=True):
         """Write pixel data to LED matrix
 
         :param pixels: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
+        :param display: Whether to update matrix or not
         """
         if len(matrix) != 3:
             raise MatrixInvalidPixel("Incorrect matrix height")
@@ -28,7 +29,8 @@ class Matrix(Device):
             for y in range(3):
                 matrix[x][y] = Matrix.normalize_pixel(matrix[x][y])
         self._matrix = matrix
-        self._output()
+        if display:
+            self._output()
 
     def _output(self):
         out = [0xc2]
