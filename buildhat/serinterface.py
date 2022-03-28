@@ -75,7 +75,12 @@ class BuildHAT:
         elif self.state == HatState.BOOTLOADER:
             self.loadfirmware()
         elif self.state == HatState.OTHER:
-            raise HatNotFound()
+            # HAT not responding?  Try GPIO rebooting it before giving up
+            self.resethat()
+            self.loadfirmware()
+            self.state = self.what_state_are_we_in()
+            if self.state == HatState.OTHER:
+                raise HatNotFound()
 
         self.cbqueue = queue.Queue()
         self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))
