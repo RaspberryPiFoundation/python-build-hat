@@ -8,14 +8,14 @@ class Hat:
     """Allows enumeration of devices which are connected to the hat
     """
     def __init__(self, device=None):
-      self.led_status = -1
-      if not device:
+        self.led_status = -1
+        if not device:
             Device._setup()
         else:
             Device._setup(device)
 
     def get(self):
-        """Gets devices which are connected or disconnected 
+        """Gets devices which are connected or disconnected
 
         :return: Dictionary of devices
         :rtype: dict
