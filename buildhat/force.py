@@ -11,7 +11,7 @@ class ForceSensor(Device):
     """
     def __init__(self, port, threshold_force=1):
         super().__init__(port)
-        self.mode([(0,0),(1,0)])
+        self.mode([(0,0),(1,0),(3,0)])
         self._when_pressed = None
         self._when_released = None
         self._fired_pressed = False
@@ -53,6 +53,15 @@ class ForceSensor(Device):
         :rtype: int
         """
         return self.get()[0]
+
+    def get_peak_force(self):
+        """Gets the maximum force registered since the sensor was reset
+        (The sensor gets reset when the firmware is reloaded)
+
+        :return: 0 - 100
+        :rtype: int
+        """
+        return self.get()[2]
 
     def is_pressed(self):
         """Gets whether the button is pressed

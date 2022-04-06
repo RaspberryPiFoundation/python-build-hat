@@ -83,5 +83,23 @@ class TestMotor(unittest.TestCase):
         del m1
         m1 = Motor('A')
 
+    def test_continuous_start(self):
+        t = time.time() + (60*5)
+        m = Motor('A')
+        while time.time() < t:
+            m.start(0)
+
+    def test_continuous_degrees(self):
+        t = time.time() + (60*5)
+        m = Motor('A')
+        while time.time() < t:
+            m.run_for_degrees(0)
+
+    def test_continuous_position(self):
+        t = time.time() + (60*5)
+        m = Motor('A')
+        while time.time() < t:
+            m.run_to_position(0)
+
 if __name__ == '__main__':
     unittest.main()
