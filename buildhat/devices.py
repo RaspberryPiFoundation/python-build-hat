@@ -10,31 +10,34 @@ class Device:
     """Creates a single instance of the buildhat for all devices to use"""
     _instance = None
     _started = 0
-    _device_names = {  1: "PassiveMotor",
-                       2: "PassiveMotor",
-                       8: "Light",
-                      34: "TiltSensor",
-                      35: "MotionSensor",
-                      37: "ColorDistanceSensor",
-                      61: "ColorSensor",
-                      62: "DistanceSensor",
-                      63: "ForceSensor",
-                      64: "Matrix",
-                      38: "Motor",
-                      46: "Motor",
-                      47: "Motor",
-                      48: "Motor",
-                      49: "Motor",
-                      65: "Motor",
-                      75: "Motor",
-                      76: "Motor"
+    _device_names = {  1: ("PassiveMotor", "PassiveMotor"),
+                       2: ("PassiveMotor", "PassiveMotor"),
+                       8: ("Light", "Light"),                       # 88005
+                      34: ("TiltSensor", "WeDo 2.0 Tilt Sensor"),   # 45305
+                      35: ("MotionSensor", "MotionSensor"),         # 45304
+                      37: ("ColorDistanceSensor", "Color & Distance Sensor"), # 88007
+                      61: ("ColorSensor", "Color Sensor"),          # 45605
+                      62: ("DistanceSensor","Distance Sensor"),     # 45604
+                      63: ("ForceSensor", "Force Sensor"),          # 45606
+                      64: ("Matrix", "3x3 Color Light Matrix"),     # 45608
+                      38: ("Motor", "Medium Linear Motor"),         # 88008
+                      46: ("Motor", "Large Motor"),                 # 88013
+                      47: ("Motor", "XL Motor"),                    # 88014
+                      48: ("Motor", "Medium Angular Motor (Cyan)"), # 45603
+                      49: ("Motor", "Large Angular Motor (Cyan)"),  # 45602
+                      65: ("Motor", "Small Angular Motor"),         # 45607
+                      75: ("Motor", "Medium Angular Motor (Grey)"), # 88018
+                      76: ("Motor", "Large Angular Motor (Grey)")  # 88017
                     }
     _used = { 0: False,
               1: False,
               2: False,
               3: False
             }
-    
+
+    UNKNOWN_DEVICE = "Unknown"
+    DISCONNECTED_DEVICE = "Disconnected"
+
     def __init__(self, port):
         if not isinstance(port, str) or len(port) != 1:
             raise DeviceNotFound("Invalid port")
@@ -48,7 +51,7 @@ class Device:
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
-        if (self._typeid in Device._device_names and Device._device_names[self._typeid] != type(self).__name__) or self._typeid == -1:
+        if (self._typeid in Device._device_names and Device._device_names[self._typeid][0] != type(self).__name__) or self._typeid == -1:
             raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, port, self.name))
         Device._used[p] = True
 
@@ -67,13 +70,27 @@ class Device:
 
     def __del__(self):
         if hasattr(self, "port") and Device._used[self.port]:
-            if self._typeid == 64:
+            if Device._device_names[self._typeid][0] == "Matrix":
                 self.clear()
             Device._used[self.port] = False
             self._conn.callit = None
             self.deselect()
-            if self._typeid != 64:
+            if Device._device_names[self._typeid][0] != "Matrix":
                 self.off()
+
+    def name_for_id(typeid):
+        """Translate integer type id to device name (python class)"""
+        if typeid in Device._device_names:
+            return Device._device_names[typeid][0]
+        else:
+            return Device.UNKNOWN_DEVICE
+
+    def desc_for_id(typeid):
+        """Translate integer type id to something more descriptive than the device name"""
+        if typeid in Device._device_names:
+            return Device._device_names[typeid][1]
+        else:
+            return Device.UNKNOWN_DEVICE
 
     @property
     def _conn(self):
@@ -99,11 +116,21 @@ class Device:
     def name(self):
         """Determines name of device on port"""
         if self.connected == False:
-            return "No device"
+            return Device.DISCONNECTED_DEVICE
         elif self.typeidcur in self._device_names:
-            return self._device_names[self.typeidcur]
+            return self._device_names[self.typeidcur][0]
         else:
-            return "Unknown"
+            return Device.UNKNOWN_DEVICE
+
+    @property
+    def description(self):
+        """Description of device on port"""
+        if self.connected == False:
+            return Device.DISCONNECTED_DEVICE
+        elif self.typeidcur in self._device_names:
+            return self._device_names[self.typeidcur][1]
+        else:
+            return Device.UNKNOWN_DEVICE
 
     def isconnected(self):
         if not self.connected:
