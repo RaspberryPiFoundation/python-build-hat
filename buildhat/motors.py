@@ -125,16 +125,7 @@ class Motor(Device):
         pos = self.get_position()
         newpos = ((degrees*mul)+pos)/360.0
         pos /= 360.0
-        speed *= 0.05
-        dur = abs((newpos - pos) / speed)
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
-        self.port, pos, newpos, dur)
-        self._write(cmd)
-        with self._hat.rampcond[self.port]:
-            self._hat.rampcond[self.port].wait()
-        if self._release:
-            time.sleep(0.2)
-            self.coast()
+        self._run_positional_ramp(pos, newpos, speed)
         self._runmode = MotorRunmode.NONE
 
     def _run_to_position(self, degrees, speed, direction):
@@ -158,18 +149,28 @@ class Motor(Device):
             newpos = (pos + diff[0])/360
         else:
             raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
+        # Convert current motor position to decimal rotations from preset position to match newpos units
         pos /= 360.0
+        self._run_positional_ramp(pos, newpos, speed)
+        self._runmode = MotorRunmode.NONE
+
+    def _run_positional_ramp(self, pos, newpos, speed):
+        """
+        :param pos: Current motor position in decimal rotations (from preset position)
+        :param newpos: New motor postion in decimal rotations (from preset position)
+        :param speed: -100 to 100
+        """
+        # Collapse speed range to -5 to 5
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(self.port,
-        self.port, pos, newpos, dur)
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(
+            self.port, self.port, pos, newpos, dur)
         self._write(cmd)
         with self._hat.rampcond[self.port]:
             self._hat.rampcond[self.port].wait()
         if self._release:
             time.sleep(0.2)
             self.coast()
-        self._runmode = MotorRunmode.NONE
 
     def run_for_degrees(self, degrees, speed=None, blocking=True):
         """Runs motor for N degrees
@@ -194,7 +195,7 @@ class Motor(Device):
     def run_to_position(self, degrees, speed=None, blocking=True, direction="shortest"):
         """Runs motor to position (in degrees)
 
-        :param degrees: Position in degrees
+        :param degrees: Position in degrees from -180 to 180
         :param speed: Speed ranging from 0 to 100
         """
         self._runmode = MotorRunmode.DEGREES
@@ -264,7 +265,6 @@ class Motor(Device):
         self._currentspeed = speed
         self._write(cmd)
 
-
     def stop(self):
         """Stops motor"""
         self._runmode = MotorRunmode.NONE
@@ -274,7 +274,7 @@ class Motor(Device):
     def get_position(self):
         """Gets position of motor with relation to preset position (can be negative or positive)
 
-        :return: Position of motor
+        :return: Position of motor in degrees from preset position
         :rtype: int
         """
         return self.get()[1]
@@ -282,7 +282,7 @@ class Motor(Device):
     def get_aposition(self):
         """Gets absolute position of motor
 
-        :return: Absolute position of motor
+        :return: Absolute position of motor from -180 to 180
         :rtype: int
         """
         return self.get()[2]
