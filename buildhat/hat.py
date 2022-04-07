@@ -109,5 +109,8 @@ class Hat:
             elif self.led_status == 3:
                 self._set_led(1)
 
+    def reboot(self):
+        Device._instance.reboot()
+
     def _close(self):
         Device._instance.shutdown()
