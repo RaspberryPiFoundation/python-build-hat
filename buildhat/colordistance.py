@@ -11,11 +11,14 @@ class ColorDistanceSensor(Device):
     :raises DeviceInvalid: Occurs if there is no colordistance sensor attached to port
     """
     def __init__(self, port):
-        super().__init__(port)
-        self.on()
-        self.mode(6)
         self.avg_reads = 4
         self._old_color = None
+        super().__init__(port)
+
+    def _reset(self):
+        super()._reset()
+        self.on()
+        self.mode(6)
 
     def segment_color(self, r, g, b):
         """Returns the color name from HSV
@@ -39,7 +42,7 @@ class ColorDistanceSensor(Device):
                 near = itm[0]
                 euc = cur
         return near
-    
+
     def rgb_to_hsv(self, r, g, b):
         """Convert RGB to HSV
 
@@ -57,7 +60,7 @@ class ColorDistanceSensor(Device):
         elif cmax == r:
             h = 60 * (((g - b) / delt) % 6)
         elif cmax == g:
-            h = 60 * ((((b - r) / delt)) + 2) 
+            h = 60 * ((((b - r) / delt)) + 2)
         elif cmax == b:
             h = 60 * ((((r - g) / delt)) + 4)
         if cmax == 0:
@@ -87,7 +90,7 @@ class ColorDistanceSensor(Device):
         for i in range(self.avg_reads):
             readings.append(self.get()[0])
         return int(sum(readings)/len(readings))
-    
+
     def get_reflected_light(self):
         """Returns the reflected light
 
@@ -116,9 +119,9 @@ class ColorDistanceSensor(Device):
         return rgb
 
     def get_color_rgb(self):
-        """Returns the color 
+        """Returns the color
 
-        :return: RGBI representation 
+        :return: RGBI representation
         :rtype: list
         """
         self.mode(6)
@@ -140,7 +143,7 @@ class ColorDistanceSensor(Device):
     def wait_until_color(self, color):
         """Waits until specific color
 
-        :param color: Color to look for 
+        :param color: Color to look for
         """
         self.mode(6)
         self._cond = Condition()
