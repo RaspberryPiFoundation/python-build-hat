@@ -246,8 +246,9 @@ class BuildHAT:
             self.cond.wait()
 
         # Signal all device instances that they've been reset
-        for device in self._used:
-            if device:
+        for devref in self._used:
+            if devref is not None:
+                device = devref()
                 device._reset()
 
     def shutdown(self):
