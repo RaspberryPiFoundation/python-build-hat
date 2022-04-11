@@ -10,14 +10,17 @@ class ForceSensor(Device):
     :raises DeviceInvalid: Occurs if there is no force sensor attached to port
     """
     def __init__(self, port, threshold_force=1):
-        super().__init__(port)
-        self.mode([(0,0),(1,0),(3,0)])
         self._when_pressed = None
         self._when_released = None
-        self._fired_pressed = False
-        self._fired_released = False
         self._cond_force = Condition()
         self._threshold_force = threshold_force
+        super().__init__(port)
+
+    def _reset(self):
+        super()._reset()
+        self.mode([(0,0),(1,0),(3,0)])
+        self._fired_pressed = False
+        self._fired_released = False
 
     def _intermediate(self, data):
         with self._cond_force:
