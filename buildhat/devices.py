@@ -27,13 +27,8 @@ class Device:
                       49: ("Motor", "Large Angular Motor (Cyan)"),  # 45602
                       65: ("Motor", "Small Angular Motor"),         # 45607
                       75: ("Motor", "Medium Angular Motor (Grey)"), # 88018
-                      76: ("Motor", "Large Angular Motor (Grey)")  # 88017
+                      76: ("Motor", "Large Angular Motor (Grey)")   # 88017
                     }
-    _used = { 0: False,
-              1: False,
-              2: False,
-              3: False
-            }
 
     UNKNOWN_DEVICE = "Unknown"
     DISCONNECTED_DEVICE = "Disconnected"
@@ -44,16 +39,19 @@ class Device:
         p = ord(port) - ord('A')
         if not (p >= 0 and p <= 3):
             raise DeviceNotFound("Invalid port")
-        if Device._used[p]:
-            raise PortInUse("Port already used")
         self.port = p
         Device._setup()
+        if Device._instance._used[p]:
+            raise PortInUse("Port already used")
+        self._reset()
+        Device._instance._used[p] = self
+
+    def _reset(self):
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
         if (self._typeid in Device._device_names and Device._device_names[self._typeid][0] != type(self).__name__) or self._typeid == -1:
             raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, port, self.name))
-        Device._used[p] = True
 
     def _setup(device="/dev/serial0"):
         if Device._instance:
@@ -69,14 +67,13 @@ class Device:
         weakref.finalize(Device._instance, Device._instance.shutdown)
 
     def __del__(self):
-        if hasattr(self, "port") and Device._used[self.port]:
-            if Device._device_names[self._typeid][0] == "Matrix":
-                self.clear()
-            Device._used[self.port] = False
-            self._conn.callit = None
-            self.deselect()
-            if Device._device_names[self._typeid][0] != "Matrix":
-                self.off()
+        if Device._device_names[self._typeid][0] == "Matrix":
+            self.clear()
+        Device._instance._used[self.port] = None
+        self._conn.callit = None
+        self.deselect()
+        if Device._device_names[self._typeid][0] != "Matrix":
+            self.off()
 
     def name_for_id(typeid):
         """Translate integer type id to device name (python class)"""
