@@ -10,16 +10,19 @@ class DistanceSensor(Device):
     :raises DeviceInvalid: Occurs if there is no distance sensor attached to port
     """
     def __init__(self, port, threshold_distance=100):
-        super().__init__(port)
-        self.on()
-        self.mode(0)
         self._cond_data = Condition()
         self._when_in_range = None
         self._when_out_of_range = None
-        self._fired_in = False
-        self._fired_out = False
         self._threshold_distance = threshold_distance
         self._distance = -1
+        super().__init__(port)
+
+    def _reset(self):
+        super()._reset()
+        self.on()
+        self.mode(0)
+        self._fired_in = False
+        self._fired_out = False
 
     def _intermediate(self, data):
         self._distance = data[0]
@@ -108,7 +111,7 @@ class DistanceSensor(Device):
             self._cond_data.wait()
             while self._data < distance:
                 self._cond_data.wait()
-        
+
     def wait_for_in_range(self, distance):
         """Waits until object is closer than specified distance
 
