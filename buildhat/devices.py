@@ -41,10 +41,10 @@ class Device:
             raise DeviceNotFound("Invalid port")
         self.port = p
         Device._setup()
-        if Device._instance._used[p]:
+        if Device._instance._used[p] is not None:
             raise PortInUse("Port already used")
         self._reset()
-        Device._instance._used[p] = self
+        Device._instance._used[p] = weakref.ref(self)
 
     def _reset(self):
         self._simplemode = -1
