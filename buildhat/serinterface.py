@@ -19,6 +19,7 @@ class Connection:
         self.typeid = -1
         self.connected = False
         self.callit = None
+        self.data = None
 
     def update(self, typeid, connected, callit=None):
         self.typeid = typeid
@@ -58,6 +59,8 @@ class BuildHAT:
         self._firmware_file = firmware
         self._firmware_signature = signature
         self._firmware_version = version
+        # Class instances using each port
+        self._used = [ None, None, None, None ]
 
         for i in range(4):
             self.connections.append(Connection())
@@ -119,7 +122,7 @@ class BuildHAT:
                 self.write(b"version\r")
                 continue
             if line == "version\r\n":
-                # When initially connecting to the serial port in the 
+                # When initially connecting to the serial port in the
                 # bootloader, it will just echo your command with a CRLF
                 # and do nothing, so just send it again
                 self.write(b"version\r")
@@ -173,12 +176,14 @@ class BuildHAT:
         self.write(b"\x02")
         self.write(firm)
         self.write(b"\x03\r")
+        time.sleep(0.1)
         self.getprompt()
         self.write("signature {}\r".format(len(sig)).encode())
         time.sleep(0.1)
         self.write(b"\x02")
         self.write(sig)
         self.write(b"\x03\r")
+        time.sleep(0.1)
         self.getprompt()
 
     def getprompt(self):
@@ -210,6 +215,10 @@ class BuildHAT:
         # Stop the main loop
         self.running = False
         self.th.join()
+
+        # Trigger running evaluation
+        self.cbqueue.put(())
+        self.cb.join()
         self.ser.timeout = 5
         self.ser.reset_input_buffer()
         self.ser.reset_output_buffer()
@@ -220,6 +229,12 @@ class BuildHAT:
         self.write(b"reboot\r")
         self.running = True
 
+        # Restart callback queue
+        self.cbqueue = queue.Queue()
+        self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))
+        self.cb.daemon = True
+        self.cb.start()
+
         # Start the loop serial input processor
         self.ser.timeout = 1
         self.th = threading.Thread(target=self.loop, args=(self.cond, False, self.cbqueue))
@@ -229,6 +244,11 @@ class BuildHAT:
         # Wait for the serial input thread signal that the ports are enumerated
         with self.cond:
             self.cond.wait()
+
+        # Signal all device instances that they've been reset
+        for device in self._used:
+            if device:
+                device._reset()
 
     def shutdown(self):
         if not self.fin:
@@ -245,6 +265,7 @@ class BuildHAT:
                 else:
                     self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h) for h in [0xc2,0,0,0,0,0,0,0,0,0])).encode())
             self.write("{}\r".format(turnoff).encode())
+            self._used = [ None, None, None, None ]
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
