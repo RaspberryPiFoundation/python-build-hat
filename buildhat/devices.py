@@ -67,13 +67,14 @@ class Device:
         weakref.finalize(Device._instance, Device._instance.shutdown)
 
     def __del__(self):
-        if Device._device_names[self._typeid][0] == "Matrix":
-            self.clear()
-        Device._instance._used[self.port] = None
-        self._conn.callit = None
-        self.deselect()
-        if Device._device_names[self._typeid][0] != "Matrix":
-            self.off()
+        if hasattr(self, "port") and (Device._instance._used[self.port] is not None):
+            if Device._device_names[self._typeid][0] == "Matrix":
+                self.clear()
+            Device._instance._used[self.port] = None
+            self._conn.callit = None
+            self.deselect()
+            if Device._device_names[self._typeid][0] != "Matrix":
+                self.off()
 
     def name_for_id(typeid):
         """Translate integer type id to device name (python class)"""
