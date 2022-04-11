@@ -15,9 +15,12 @@ class PassiveMotor(Device):
     """
 
     def __init__(self, port):
-        super().__init__(port)
         self._default_speed = 20
         self._currentspeed = 0
+        super().__init__(port)
+
+    def _reset(self):
+        super()._reset()
         self.plimit(0.7)
         self.bias(0.3)
 
@@ -80,17 +83,20 @@ class Motor(Device):
     """
 
     def __init__(self, port):
-        super().__init__(port)
         self.default_speed = 20
+        self._release = True
+        self._bqueue = deque(maxlen=5)
+        self._cvqueue = Condition()
+        self._oldpos = None
+        super().__init__(port)
+        self.when_rotated = None
+
+    def _reset(self):
+        super()._reset()
         self._currentspeed = 0
         self.mode([(1,0),(2,0),(3,0)])
         self.plimit(0.7)
         self.bias(0.3)
-        self._release = True
-        self._bqueue = deque(maxlen=5)
-        self._cvqueue = Condition()
-        self.when_rotated = None
-        self._oldpos = None
         self._runmode = MotorRunmode.NONE
 
     def set_default_speed(self, default_speed):
