@@ -10,10 +10,14 @@ class Matrix(Device):
     :raises DeviceInvalid: Occurs if there is no LED matrix attached to port
     """
     def __init__(self, port):
+        self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
         super().__init__(port)
+
+    def _reset(self):
+        super()._reset()
         self.on()
         self.mode(2)
-        self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
+        self._output()
 
     def set_pixels(self, matrix):
         """Write pixel data to LED matrix
