@@ -15,7 +15,7 @@ class Light(Device):
 
     def _reset(self):
         super()._reset()
-        self.brightness(_brightness)
+        self.brightness(self._brightness)
 
     def brightness(self, brightness):
         """
