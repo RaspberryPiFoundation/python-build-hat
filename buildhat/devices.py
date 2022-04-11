@@ -51,7 +51,7 @@ class Device:
         self._combimode = -1
         self._typeid = self._conn.typeid
         if (self._typeid in Device._device_names and Device._device_names[self._typeid][0] != type(self).__name__) or self._typeid == -1:
-            raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, port, self.name))
+            raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__, self.port, self.name))
 
     def _setup(device="/dev/serial0"):
         if Device._instance:
