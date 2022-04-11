@@ -11,11 +11,14 @@ class ColorSensor(Device):
     :raises DeviceInvalid: Occurs if there is no color sensor attached to port
     """
     def __init__(self, port):
-        super().__init__(port)
-        self.reverse()
-        self.mode(6)
         self.avg_reads = 4
         self._old_color = None
+        super().__init__(port)
+
+    def _reset(self):
+        super()._reset()
+        self.reverse()
+        self.mode(6)
 
     def segment_color(self, r, g, b):
         """Returns the color name from RGB
@@ -39,7 +42,7 @@ class ColorSensor(Device):
                 near = itm[0]
                 euc = cur
         return near
-    
+
     def rgb_to_hsv(self, r, g, b):
         """Convert RGB to HSV
 
@@ -57,7 +60,7 @@ class ColorSensor(Device):
         elif cmax == r:
             h = 60 * (((g - b) / delt) % 6)
         elif cmax == g:
-            h = 60 * ((((b - r) / delt)) + 2) 
+            h = 60 * ((((b - r) / delt)) + 2)
         elif cmax == b:
             h = 60 * ((((r - g) / delt)) + 4)
         if cmax == 0:
@@ -87,7 +90,7 @@ class ColorSensor(Device):
         for i in range(self.avg_reads):
             readings.append(self.get()[0])
         return int(sum(readings)/len(readings))
-    
+
     def get_reflected_light(self):
         """Returns the reflected light
 
@@ -111,9 +114,9 @@ class ColorSensor(Device):
         return rgbi
 
     def get_color_rgbi(self):
-        """Returns the color 
+        """Returns the color
 
-        :return: RGBI representation 
+        :return: RGBI representation
         :rtype: list
         """
         self.mode(5)
@@ -123,9 +126,9 @@ class ColorSensor(Device):
         return self._avgrgbi(reads)
 
     def get_color_hsv(self):
-        """Returns the color 
+        """Returns the color
 
-        :return: HSV representation 
+        :return: HSV representation
         :rtype: tuple
         """
         self.mode(6)
@@ -138,7 +141,7 @@ class ColorSensor(Device):
         for hsv in readings:
             hue = hsv[0]
             s += math.sin(math.radians(hue))
-            c += math.cos(math.radians(hue))    
+            c += math.cos(math.radians(hue))
 
         hue = int((math.degrees((math.atan2(s,c))) + 360) % 360)
         sat = int(sum([hsv[1] for hsv in readings]) / len(readings))
@@ -158,7 +161,7 @@ class ColorSensor(Device):
     def wait_until_color(self, color):
         """Waits until specific color
 
-        :param color: Color to look for 
+        :param color: Color to look for
         """
         self.mode(5)
         self._cond = Condition()
