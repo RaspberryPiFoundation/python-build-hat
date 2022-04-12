@@ -45,18 +45,17 @@ class BuildHAT:
         self.state = HatState.OTHER
         self.connections = []
         self.portcond = []
-        self.pulsecond = []
-        self.rampcond = []
         self.fin = False
         self.running = True
         self.vincond = Condition()
         self.vin = None
 
+        # Class instances using each port
+        self._used = [ None, None, None, None ]
+
         for i in range(4):
             self.connections.append(Connection())
             self.portcond.append(Condition())
-            self.pulsecond.append(Condition())
-            self.rampcond.append(Condition())
 
         self.ser = serial.Serial(device, 115200, timeout=5)
         # Check if we're in the bootloader or the firmware
@@ -195,6 +194,7 @@ class BuildHAT:
                 else:
                     self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h) for h in [0xc2,0,0,0,0,0,0,0,0,0])).encode())
             self.write("{}\r".format(turnoff).encode())
+            self._used = [ None, None, None, None ]
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
@@ -243,11 +243,13 @@ class BuildHAT:
                     if uselist:
                         count += 1
                 elif cmp(msg, BuildHAT.RAMPDONE):
-                    with self.rampcond[portid]:
-                        self.rampcond[portid].notify()
+                    if self._used[portid] is not None:
+                        device = self._used[portid]()
+                        device._notify_ramp_done()
                 elif cmp(msg, BuildHAT.PULSEDONE):
-                    with self.pulsecond[portid]:
-                        self.pulsecond[portid].notify()
+                    if self._used[portid] is not None:
+                        device = self._used[portid]()
+                        device._notify_pulse_done()
 
             if uselist and count == 4:
                 with cond:
