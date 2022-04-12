@@ -89,7 +89,10 @@ class Motor(Device):
         self._release = True
         self._bqueue = deque(maxlen=5)
         self._cvqueue = Condition()
+        self._rampcond = Condition()
+        self._pulsecond = Condition()
         self.when_rotated = None
+        self.when_waveform_done = None
         self._oldpos = None
         self._runmode = MotorRunmode.NONE
 
@@ -166,8 +169,8 @@ class Motor(Device):
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(
             self.port, self.port, pos, newpos, dur)
         self._write(cmd)
-        with self._hat.rampcond[self.port]:
-            self._hat.rampcond[self.port].wait()
+        with self._rampcond:
+            self._rampcond.wait()
         if self._release:
             time.sleep(0.2)
             self.coast()
@@ -216,8 +219,8 @@ class Motor(Device):
         self._runmode = MotorRunmode.SECONDS
         cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, seconds);
         self._write(cmd);
-        with self._hat.pulsecond[self.port]:
-            self._hat.pulsecond[self.port].wait()
+        with self._pulsecond:
+            self._pulsecond.wait()
         if self._release:
             self.coast()
         self._runmode = MotorRunmode.NONE
@@ -305,6 +308,16 @@ class Motor(Device):
         """
         return self._when_rotated
 
+    @property
+    def when_waveform_done(self):
+        """
+        Handles PID waveform movement finished events
+
+        :getter: Returns function to be called when PID waveform movement is finished
+        :setter: Sets function to be called when PID waveform movement is finished
+        """
+        return self._when_waveform_done
+
     def _intermediate(self, data):
         speed, pos, apos = data
         if self._oldpos is None:
@@ -315,11 +328,28 @@ class Motor(Device):
                 self._when_rotated(speed, pos, apos)
             self._oldpos = pos
 
+    def _notify_pulse_done(self):
+        with self._pulsecond:
+            self._pulsecond.notify()
+        if self._when_waveform_done is not None:
+            self._when_waveform_done()
+
+    def _notify_ramp_done(self):
+        with self._rampcond:
+            self._rampcond.notify()
+        if self._when_waveform_done is not None:
+            self._when_waveform_done()
+
     @when_rotated.setter
     def when_rotated(self, value):
         """Calls back, when motor has been rotated"""
         self._when_rotated = value
         self.callback(self._intermediate)
+
+    @when_waveform_done.setter
+    def when_waveform_done(self, value):
+        """Calls back when the motor is done making a PID waveform movement"""
+        self._when_waveform_done = value
 
     def plimit(self, plimit):
         if not (plimit >= 0 and plimit <= 1):
