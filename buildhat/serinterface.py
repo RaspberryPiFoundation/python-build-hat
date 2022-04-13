@@ -250,9 +250,13 @@ class BuildHAT:
                         self.pulsecond[portid].notify()
 
             if uselist and count == 4:
-                with cond:
+                def runit():
+                    global uselist
                     uselist = False
-                    cond.notify()
+                    with cond:
+                        cond.notify()
+                t = Timer(3.0, runit)
+                t.start()
 
             if not uselist and cmp(line, BuildHAT.DONE):
                 def runit():
