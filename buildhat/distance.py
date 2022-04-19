@@ -1,7 +1,8 @@
-from .devices import Device
-from .exc import DeviceInvalid, DistanceSensorException
 from threading import Condition
-import threading
+
+from .devices import Device
+from .exc import DistanceSensorException
+
 
 class DistanceSensor(Device):
     """Distance sensor
@@ -108,7 +109,7 @@ class DistanceSensor(Device):
             self._cond_data.wait()
             while self._data < distance:
                 self._cond_data.wait()
-        
+
     def wait_for_in_range(self, distance):
         """Waits until object is closer than specified distance
 
