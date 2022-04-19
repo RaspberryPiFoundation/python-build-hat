@@ -16,6 +16,7 @@ with open('VERSION') as versionf:
 setup(name='buildhat',
       version=version,
       description='Build HAT Python library',
+      licence='MIT',
       long_description=long_description,
       long_description_content_type="text/markdown",
       author='Raspberry Pi Foundation',
