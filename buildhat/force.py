@@ -1,7 +1,7 @@
-from .devices import Device
-from .exc import DeviceInvalid
 from threading import Condition
-import threading
+
+from .devices import Device
+
 
 class ForceSensor(Device):
     """Force sensor
@@ -11,7 +11,7 @@ class ForceSensor(Device):
     """
     def __init__(self, port, threshold_force=1):
         super().__init__(port)
-        self.mode([(0,0),(1,0),(3,0)])
+        self.mode([(0, 0), (1, 0), (3, 0)])
         self._when_pressed = None
         self._when_released = None
         self._fired_pressed = False
