@@ -1,11 +1,12 @@
-from .devices import Device
-from .exc import DeviceInvalid, DirectionInvalid, MotorException
-from threading import Condition
+import threading
+import time
 from collections import deque
 from enum import Enum
-import threading
-import statistics
-import time
+from threading import Condition
+
+from .devices import Device
+from .exc import DirectionInvalid, MotorException
+
 
 class PassiveMotor(Device):
     """Passive Motor device
@@ -45,7 +46,7 @@ class PassiveMotor(Device):
             if not (speed >= -100 and speed <= 100):
                 raise MotorException("Invalid Speed")
         self._currentspeed = speed
-        cmd = "port {} ; pwm ; set {}\r".format(self.port, speed/100)
+        cmd = "port {} ; pwm ; set {}\r".format(self.port, speed / 100)
         self._write(cmd)
 
     def stop(self):
@@ -83,7 +84,7 @@ class Motor(Device):
         super().__init__(port)
         self.default_speed = 20
         self._currentspeed = 0
-        self.mode([(1,0),(2,0),(3,0)])
+        self.mode([(1, 0), (2, 0), (3, 0)])
         self.plimit(0.7)
         self.bias(0.3)
         self._release = True
@@ -123,7 +124,7 @@ class Motor(Device):
             speed = abs(speed)
             mul = -1
         pos = self.get_position()
-        newpos = ((degrees*mul)+pos)/360.0
+        newpos = ((degrees * mul) + pos) / 360.0
         pos /= 360.0
         self._run_positional_ramp(pos, newpos, speed)
         self._runmode = MotorRunmode.NONE
@@ -133,10 +134,10 @@ class Motor(Device):
         data = self.get()
         pos = data[1]
         apos = data[2]
-        diff = (degrees-apos+180) % 360 - 180
-        newpos = (pos + diff)/360
-        v1 = (degrees - apos)%360
-        v2 = (apos - degrees)%360
+        diff = (degrees - apos + 180) % 360 - 180
+        newpos = (pos + diff) / 360
+        v1 = (degrees - apos) % 360
+        v2 = (apos - degrees) % 360
         mul = 1
         if diff > 0:
             mul = -1
@@ -144,9 +145,9 @@ class Motor(Device):
         if direction == "shortest":
             pass
         elif direction == "clockwise":
-            newpos = (pos + diff[1])/360
+            newpos = (pos + diff[1]) / 360
         elif direction == "anticlockwise":
-            newpos = (pos + diff[0])/360
+            newpos = (pos + diff[0]) / 360
         else:
             raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
         # Convert current motor position to decimal rotations from preset position to match newpos units
@@ -163,8 +164,8 @@ class Motor(Device):
         # Collapse speed range to -5 to 5
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(
-            self.port, self.port, pos, newpos, dur)
+        cmd = "port {}; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(
+              self.port, self.port, pos, newpos, dur)
         self._write(cmd)
         with self._hat.rampcond[self.port]:
             self._hat.rampcond[self.port].wait()
@@ -214,8 +215,9 @@ class Motor(Device):
 
     def _run_for_seconds(self, seconds, speed):
         self._runmode = MotorRunmode.SECONDS
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, seconds);
-        self._write(cmd);
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(
+              self.port, self.port, speed, seconds)
+        self._write(cmd)
         with self._hat.pulsecond[self.port]:
             self._hat.pulsecond[self.port].wait()
         if self._release:
@@ -260,7 +262,8 @@ class Motor(Device):
                 raise MotorException("Invalid Speed")
         cmd = "port {} ; set {}\r".format(self.port, speed)
         if self._runmode == MotorRunmode.NONE:
-            cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, self.port, speed)
+            cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(
+                  self.port, self.port, speed)
         self._runmode = MotorRunmode.FREE
         self._currentspeed = speed
         self._write(cmd)
@@ -341,6 +344,7 @@ class Motor(Device):
 
     def float(self):
         self.pwm(0)
+
 
 class MotorPair:
     """Pair of motors
