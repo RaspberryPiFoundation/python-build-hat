@@ -1,7 +1,6 @@
 from .devices import Device
-from .exc import DeviceInvalid, MatrixInvalidPixel
-import threading
-import time
+from .exc import MatrixInvalidPixel
+
 
 class Matrix(Device):
     """LED Matrix
@@ -13,7 +12,7 @@ class Matrix(Device):
         super().__init__(port)
         self.on()
         self.mode(2)
-        self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
+        self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
 
     def set_pixels(self, matrix):
         """Write pixel data to LED matrix
@@ -70,7 +69,7 @@ class Matrix(Device):
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
         """
         if pixel is None:
-            self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
+            self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
         else:
             color = ()
             if isinstance(pixel, tuple):
