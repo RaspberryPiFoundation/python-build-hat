@@ -1,5 +1,6 @@
 from .devices import Device
-from .exc import DeviceInvalid, LightException
+from .exc import LightException
+
 
 class Light(Device):
     """Light
@@ -18,6 +19,6 @@ class Light(Device):
 
         :param brightness: Brightness argument 0 to 100
         """
-        if not (brightness >= 0 and brightness <= 100) :
+        if not (brightness >= 0 and brightness <= 100):
             raise LightException("Need brightness arg, of 0 to 100")
         self._write("port {} ; on ; plimit {}\r".format(self.port, brightness / 100.0))
