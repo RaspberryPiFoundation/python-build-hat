@@ -1,5 +1,5 @@
 from .devices import Device
-from .exc import DeviceInvalid
+
 
 class TiltSensor(Device):
     """Tilt sensor
@@ -19,6 +19,7 @@ class TiltSensor(Device):
         :rtype: tuple
         """
         return tuple(self.get())
+
 
 class MotionSensor(Device):
     """Motion sensor
