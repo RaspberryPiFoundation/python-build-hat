@@ -7,7 +7,7 @@ from threading import Condition, Timer
 import serial
 from gpiozero import DigitalOutputDevice
 
-from .exc import HatNotFound
+from .exc import HatError
 
 
 class HatState(Enum):
@@ -105,7 +105,7 @@ class BuildHAT:
         elif self.state == HatState.BOOTLOADER:
             self.loadfirmware(firmware, signature)
         elif self.state == HatState.OTHER:
-            raise HatNotFound()
+            raise HatError("HAT not found")
 
         self.cbqueue = queue.Queue()
         self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))

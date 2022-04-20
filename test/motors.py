@@ -2,7 +2,7 @@ import time
 import unittest
 
 from buildhat import Motor
-from buildhat.exc import MotorException, PortInUse
+from buildhat.exc import DeviceError, MotorError
 
 
 class TestMotor(unittest.TestCase):
@@ -37,28 +37,28 @@ class TestMotor(unittest.TestCase):
     def test_speed(self):
         m = Motor('A')
         m.set_default_speed(50)
-        self.assertRaises(MotorException, m.set_default_speed, -101)
-        self.assertRaises(MotorException, m.set_default_speed, 101)
+        self.assertRaises(MotorError, m.set_default_speed, -101)
+        self.assertRaises(MotorError, m.set_default_speed, 101)
 
     def test_plimit(self):
         m = Motor('A')
         m.plimit(0.5)
-        self.assertRaises(MotorException, m.plimit, -1)
-        self.assertRaises(MotorException, m.plimit, 2)
+        self.assertRaises(MotorError, m.plimit, -1)
+        self.assertRaises(MotorError, m.plimit, 2)
 
     def test_bias(self):
         m = Motor('A')
         m.bias(0.5)
-        self.assertRaises(MotorException, m.bias, -1)
-        self.assertRaises(MotorException, m.bias, 2)
+        self.assertRaises(MotorError, m.bias, -1)
+        self.assertRaises(MotorError, m.bias, 2)
 
     def test_pwm(self):
         m = Motor('A')
         m.pwm(0.3)
         time.sleep(0.5)
         m.pwm(0)
-        self.assertRaises(MotorException, m.pwm, -2)
-        self.assertRaises(MotorException, m.pwm, 2)
+        self.assertRaises(MotorError, m.pwm, -2)
+        self.assertRaises(MotorError, m.pwm, 2)
 
     def test_callback(self):
         m = Motor('A')
@@ -79,7 +79,7 @@ class TestMotor(unittest.TestCase):
 
     def test_duplicate_port(self):
         m1 = Motor('A')  # noqa: F841
-        self.assertRaises(PortInUse, Motor, 'A')
+        self.assertRaises(DeviceError, Motor, 'A')
 
     def test_del(self):
         m1 = Motor('A')

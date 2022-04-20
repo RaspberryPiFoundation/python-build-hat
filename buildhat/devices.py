@@ -2,8 +2,7 @@ import os
 import sys
 import weakref
 
-from .exc import (DeviceChanged, DeviceInvalid, DeviceInvalidMode,
-                  DeviceNotFound, PortInUse)
+from .exc import DeviceError
 from .serinterface import BuildHAT
 
 
@@ -40,12 +39,12 @@ class Device:
 
     def __init__(self, port):
         if not isinstance(port, str) or len(port) != 1:
-            raise DeviceNotFound("Invalid port")
+            raise DeviceError("Invalid port")
         p = ord(port) - ord('A')
         if not (p >= 0 and p <= 3):
-            raise DeviceNotFound("Invalid port")
+            raise DeviceError("Invalid port")
         if Device._used[p]:
-            raise PortInUse("Port already used")
+            raise DeviceError("Port already used")
         self.port = p
         Device._setup()
         self._simplemode = -1
@@ -53,10 +52,10 @@ class Device:
         self._typeid = self._conn.typeid
         if (
             self._typeid in Device._device_names
-            and Device._device_names[self._typeid][0] != type(self).__name__
+            and Device._device_names[self._typeid][0] != type(self).__name__  # noqa: W503
         ) or self._typeid == -1:
-            raise DeviceInvalid('There is not a {} connected to port {} (Found {})'.format(type(self).__name__,
-                                                                                           port, self.name))
+            raise DeviceError('There is not a {} connected to port {} (Found {})'.format(type(self).__name__,
+                                                                                         port, self.name))
         Device._used[p] = True
 
     @staticmethod
@@ -141,9 +140,9 @@ class Device:
 
     def isconnected(self):
         if not self.connected:
-            raise DeviceNotFound("No device found")
+            raise DeviceError("No device found")
         if self.typeid != self.typeidcur:
-            raise DeviceChanged("Device has changed")
+            raise DeviceError("Device has changed")
 
     def reverse(self):
         self._write("port {} ; plimit 1 ; set -1\r".format(self.port))
@@ -156,7 +155,7 @@ class Device:
         elif self._combimode != -1:
             idx = self._combimode
         else:
-            raise DeviceInvalidMode("Not in simple or combimode")
+            raise DeviceError("Not in simple or combimode")
         self._write("port {} ; selonce {}\r".format(self.port, idx))
         # wait for data
         with Device._instance.portcond[self.port]:
@@ -186,7 +185,7 @@ class Device:
         elif self._combimode != -1:
             idx = self._combimode
         else:
-            raise DeviceInvalidMode("Not in simple or combimode")
+            raise DeviceError("Not in simple or combimode")
         self._write("port {} ; select {}\r".format(self.port, idx))
 
     def on(self):

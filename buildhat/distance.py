@@ -1,7 +1,7 @@
 from threading import Condition
 
 from .devices import Device
-from .exc import DistanceSensorException
+from .exc import DistanceSensorError
 
 
 class DistanceSensor(Device):
@@ -130,10 +130,10 @@ class DistanceSensor(Device):
         """
         out = [0xc5]
         if len(args) != 4:
-            raise DistanceSensorException("Need 4 brightness args, of 0 to 100")
+            raise DistanceSensorError("Need 4 brightness args, of 0 to 100")
         for v in args:
             if not (v >= 0 and v <= 100):
-                raise DistanceSensorException("Need 4 brightness args, of 0 to 100")
+                raise DistanceSensorError("Need 4 brightness args, of 0 to 100")
             out += [v]
         self._write1(out)
 

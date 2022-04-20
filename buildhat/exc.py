@@ -1,42 +1,22 @@
-class MatrixInvalidPixel(Exception):
+class DistanceSensorError(Exception):
     pass
 
 
-class LightException(Exception):
+class MatrixError(Exception):
     pass
 
 
-class MotorException(Exception):
+class LightError(Exception):
     pass
 
 
-class HatNotFound(Exception):
+class MotorError(Exception):
     pass
 
 
-class DeviceInvalidMode(Exception):
+class HatError(Exception):
     pass
 
 
-class DeviceInvalid(Exception):
-    pass
-
-
-class DeviceNotFound(Exception):
-    pass
-
-
-class DeviceChanged(Exception):
-    pass
-
-
-class PortInUse(Exception):
-    pass
-
-
-class DistanceSensorException(Exception):
-    pass
-
-
-class DirectionInvalid(Exception):
+class DeviceError(Exception):
     pass
