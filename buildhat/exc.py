@@ -1,32 +1,42 @@
 class MatrixInvalidPixel(Exception):
     pass
 
+
 class LightException(Exception):
     pass
+
 
 class MotorException(Exception):
     pass
 
+
 class HatNotFound(Exception):
     pass
+
 
 class DeviceInvalidMode(Exception):
     pass
 
+
 class DeviceInvalid(Exception):
     pass
+
 
 class DeviceNotFound(Exception):
     pass
 
+
 class DeviceChanged(Exception):
     pass
+
 
 class PortInUse(Exception):
     pass
 
+
 class DistanceSensorException(Exception):
     pass
+
 
 class DirectionInvalid(Exception):
     pass
