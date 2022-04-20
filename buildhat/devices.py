@@ -2,7 +2,8 @@ import os
 import sys
 import weakref
 
-from .exc import DeviceChanged, DeviceInvalid, DeviceInvalidMode, DeviceNotFound, PortInUse
+from .exc import (DeviceChanged, DeviceInvalid, DeviceInvalidMode,
+                  DeviceNotFound, PortInUse)
 from .serinterface import BuildHAT
 
 
