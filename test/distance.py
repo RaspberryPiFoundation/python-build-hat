@@ -1,6 +1,8 @@
 import unittest
+
 from buildhat import DistanceSensor
 from buildhat.exc import PortInUse
+
 
 class TestDistance(unittest.TestCase):
 
@@ -25,6 +27,7 @@ class TestDistance(unittest.TestCase):
         d = DistanceSensor('A')
         del d
         d = DistanceSensor('A')
+
 
 if __name__ == '__main__':
     unittest.main()

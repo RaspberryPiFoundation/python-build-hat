@@ -1,28 +1,30 @@
-import unittest
 import time
-from buildhat.exc import DeviceInvalid, DirectionInvalid, MotorException, PortInUse
+import unittest
+
 from buildhat import Motor
+from buildhat.exc import MotorException, PortInUse
+
 
 class TestMotor(unittest.TestCase):
 
     def test_rotations(self):
         m = Motor('A')
         pos1 = m.get_position()
-        m.run_for_rotations(2) 
+        m.run_for_rotations(2)
         pos2 = m.get_position()
-        rotated = (pos2 - pos1)/360
+        rotated = (pos2 - pos1) / 360
         self.assertLess(abs(rotated - 2), 0.5)
 
     def test_position(self):
         m = Motor('A')
         m.run_to_position(0)
         pos1 = m.get_aposition()
-        diff = abs((0-pos1+180) % 360 - 180)
+        diff = abs((0 - pos1 + 180) % 360 - 180)
         self.assertLess(diff, 10)
 
         m.run_to_position(180)
         pos1 = m.get_aposition()
-        diff = abs((180-pos1+180) % 360 - 180)
+        diff = abs((180 - pos1 + 180) % 360 - 180)
         self.assertLess(diff, 10)
 
     def test_time(self):
@@ -60,6 +62,7 @@ class TestMotor(unittest.TestCase):
 
     def test_callback(self):
         m = Motor('A')
+
         def handle_motor(speed, pos, apos):
             handle_motor.evt += 1
         handle_motor.evt = 0
@@ -84,22 +87,23 @@ class TestMotor(unittest.TestCase):
         m1 = Motor('A')
 
     def test_continuous_start(self):
-        t = time.time() + (60*5)
+        t = time.time() + (60 * 5)
         m = Motor('A')
         while time.time() < t:
             m.start(0)
 
     def test_continuous_degrees(self):
-        t = time.time() + (60*5)
+        t = time.time() + (60 * 5)
         m = Motor('A')
         while time.time() < t:
             m.run_for_degrees(0)
 
     def test_continuous_position(self):
-        t = time.time() + (60*5)
+        t = time.time() + (60 * 5)
         m = Motor('A')
         while time.time() < t:
             m.run_to_position(0)
+
 
 if __name__ == '__main__':
     unittest.main()
