@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.5.9
+
+### Added
+
+n/a
+
+### Changed
+
+* Linting of code
+* Renamed exceptions to conform to linter's style
+
+### Removed
+
+n/a
+
 ## 0.5.8
 
 ### Added
