@@ -4,7 +4,10 @@
 
 ### Added
 
-n/a
+* Allow the BuildHAT LEDs to be turned on and off
+* Allow for White in set\_pixels
+* Prevent using same port multiple times
+* Add support for checking maximum force sensed
 
 ### Changed
 
