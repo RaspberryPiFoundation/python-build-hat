@@ -78,13 +78,13 @@ class TestMotor(unittest.TestCase):
         m.stop()
 
     def test_duplicate_port(self):
-        m1 = Motor('A')
+        m1 = Motor('A')  # noqa: F841
         self.assertRaises(PortInUse, Motor, 'A')
 
     def test_del(self):
         m1 = Motor('A')
         del m1
-        m1 = Motor('A')
+        Motor('A')
 
     def test_continuous_start(self):
         t = time.time() + (60 * 5)

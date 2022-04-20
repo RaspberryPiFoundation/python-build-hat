@@ -1,7 +1,7 @@
 from .color import ColorSensor
 from .colordistance import ColorDistanceSensor
 from .distance import DistanceSensor
-from .exc import *
+from .exc import *  # noqa: F403
 from .force import ForceSensor
 from .hat import Hat
 from .light import Light

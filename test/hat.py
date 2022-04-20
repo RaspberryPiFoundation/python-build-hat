@@ -16,7 +16,7 @@ class TestHat(unittest.TestCase):
         self.assertIsInstance(h.get(), dict)
 
     def test_serial(self):
-        h = Hat(device="/dev/serial0")
+        Hat(device="/dev/serial0")
 
 
 if __name__ == '__main__':

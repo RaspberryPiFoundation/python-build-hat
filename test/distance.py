@@ -20,13 +20,13 @@ class TestDistance(unittest.TestCase):
         d.eyes(100, 100, 100, 100)
 
     def test_duplicate_port(self):
-        d = DistanceSensor('A')
+        d = DistanceSensor('A')  # noqa: F841
         self.assertRaises(PortInUse, DistanceSensor, 'A')
 
     def test_del(self):
         d = DistanceSensor('A')
         del d
-        d = DistanceSensor('A')
+        DistanceSensor('A')
 
 
 if __name__ == '__main__':
