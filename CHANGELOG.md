@@ -12,7 +12,7 @@
 
 * New firmware to fix passive devices in hardware revision
 
-## Removed
+### Removed
 
 n/a
 
@@ -29,7 +29,7 @@ n/a
 
 n/a
 
-## Removed
+### Removed
 
 n/a
 
