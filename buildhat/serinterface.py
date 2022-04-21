@@ -59,7 +59,7 @@ class BuildHAT:
         self.vin = None
 
         # Class instances using each port
-        self._used = [ None, None, None, None ]
+        self._used = [None, None, None, None]
 
         for _ in range(4):
             self.connections.append(Connection())
@@ -199,7 +199,7 @@ class BuildHAT:
                     self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h)
                                                               for h in [0xc2, 0, 0, 0, 0, 0, 0, 0, 0, 0])).encode())
             self.write("{}\r".format(turnoff).encode())
-            self._used = [ None, None, None, None ]
+            self._used = [None, None, None, None]
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
