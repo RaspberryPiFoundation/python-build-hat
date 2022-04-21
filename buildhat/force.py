@@ -18,7 +18,7 @@ class ForceSensor(Device):
 
     def _reset(self):
         super()._reset()
-        self.mode([(0, 0) ,(1, 0), (3, 0)])
+        self.mode([(0, 0), (1, 0), (3, 0)])
         self._fired_pressed = False
         self._fired_released = False
 
