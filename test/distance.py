@@ -1,6 +1,8 @@
 import unittest
+
 from buildhat import DistanceSensor
-from buildhat.exc import PortInUse
+from buildhat.exc import DeviceError
+
 
 class TestDistance(unittest.TestCase):
 
@@ -18,13 +20,14 @@ class TestDistance(unittest.TestCase):
         d.eyes(100, 100, 100, 100)
 
     def test_duplicate_port(self):
-        d = DistanceSensor('A')
-        self.assertRaises(PortInUse, DistanceSensor, 'A')
+        d = DistanceSensor('A')  # noqa: F841
+        self.assertRaises(DeviceError, DistanceSensor, 'A')
 
     def test_del(self):
         d = DistanceSensor('A')
         del d
-        d = DistanceSensor('A')
+        DistanceSensor('A')
+
 
 if __name__ == '__main__':
     unittest.main()
