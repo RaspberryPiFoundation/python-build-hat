@@ -21,10 +21,10 @@ class Matrix(Device):
         :param display: Whether to update matrix or not
         """
         if len(matrix) != 3:
-            raise MatrixInvalidPixel("Incorrect matrix height")
+            raise MatrixError("Incorrect matrix height")
         for x in range(3):
             if len(matrix[x]) != 3:
-                raise MatrixInvalidPixel("Incorrect matrix width")
+                raise MatrixError("Incorrect matrix width")
             for y in range(3):
                 matrix[x][y] = Matrix.normalize_pixel(matrix[x][y])
         self._matrix = matrix
@@ -83,14 +83,14 @@ class Matrix(Device):
             if isinstance(c, str):
                 c = Matrix.strtocolor(c)
             if not ( isinstance(brightness, int) and isinstance(c, int)):
-                raise MatrixInvalidPixel("Invalid pixel specified")
+                raise MatrixError("Invalid pixel specified")
             if not (brightness >= 0 and brightness <= 10):
-                raise MatrixInvalidPixel("Invalid brightness value specified")
+                raise MatrixError("Invalid brightness value specified")
             if not (c >= 0 and c <= 10):
-                raise MatrixInvalidPixel("Invalid pixel color specified")
+                raise MatrixError("Invalid pixel color specified")
             return (c, brightness)
         else:
-            raise MatrixInvalidPixel("Invalid pixel specified")	
+            raise MatrixError("Invalid pixel specified")
 
     def validate_coordinate(coord):
         """"Validate an x,y coordinate for the 3x3 Matrix
@@ -99,11 +99,11 @@ class Matrix(Device):
         """
         if isinstance(coord, tuple):
             if not (isinstance(coord[0], int) and isinstance(coord[1], int)):
-                raise MatrixInvalidPixel("Invalid coord specified")
+                raise MatrixError("Invalid coord specified")
             elif coord[0] > 2 or coord[0] < 0 or coord[1] > 2 or coord[1] < 0:
-            	raise MatrixInvalidPixel("Invalid coord specified")
+            	raise MatrixError("Invalid coord specified")
         else:
-            raise MatrixInvalidPixel("Invalid coord specified")
+            raise MatrixError("Invalid coord specified")
 
     def clear(self, pixel=None):
         """Clear matrix or set all as the same pixel
