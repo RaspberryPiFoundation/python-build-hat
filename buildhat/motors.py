@@ -12,7 +12,7 @@ class PassiveMotor(Device):
     """Passive Motor device
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no passive motor attached to port
+    :raises DeviceError: Occurs if there is no passive motor attached to port
     """
 
     def __init__(self, port):
@@ -77,7 +77,7 @@ class Motor(Device):
     """Motor device
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no motor attached to port
+    :raises DeviceError: Occurs if there is no motor attached to port
     """
 
     def __init__(self, port):
@@ -351,7 +351,7 @@ class MotorPair:
 
     :param motora: One of the motors to drive
     :param motorb: Other motor in pair to drive
-    :raises DeviceInvalid: Occurs if there is no motor attached to port
+    :raises DeviceError: Occurs if there is no motor attached to port
     """
     def __init__(self, leftport, rightport):
         super().__init__()

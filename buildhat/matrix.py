@@ -6,7 +6,7 @@ class Matrix(Device):
     """LED Matrix
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no LED matrix attached to port
+    :raises DeviceError: Occurs if there is no LED matrix attached to port
     """
     def __init__(self, port):
         super().__init__(port)

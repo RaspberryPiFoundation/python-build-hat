@@ -5,7 +5,7 @@ class TiltSensor(Device):
     """Tilt sensor
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no tilt sensor attached to port
+    :raises DeviceError: Occurs if there is no tilt sensor attached to port
     """
     def __init__(self, port):
         super().__init__(port)
@@ -25,7 +25,7 @@ class MotionSensor(Device):
     """Motion sensor
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no motion sensor attached to port
+    :raises DeviceError: Occurs if there is no motion sensor attached to port
     """
     def __init__(self, port):
         super().__init__(port)

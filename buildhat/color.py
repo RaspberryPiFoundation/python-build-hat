@@ -9,7 +9,7 @@ class ColorSensor(Device):
     """Color sensor
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no color sensor attached to port
+    :raises DeviceError: Occurs if there is no color sensor attached to port
     """
     def __init__(self, port):
         super().__init__(port)

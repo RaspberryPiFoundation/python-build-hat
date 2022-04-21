@@ -8,7 +8,7 @@ class DistanceSensor(Device):
     """Distance sensor
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no distance sensor attached to port
+    :raises DeviceError: Occurs if there is no distance sensor attached to port
     """
     def __init__(self, port, threshold_distance=100):
         super().__init__(port)

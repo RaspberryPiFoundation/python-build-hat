@@ -7,7 +7,7 @@ class ForceSensor(Device):
     """Force sensor
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no force sensor attached to port
+    :raises DeviceError: Occurs if there is no force sensor attached to port
     """
     def __init__(self, port, threshold_force=1):
         super().__init__(port)

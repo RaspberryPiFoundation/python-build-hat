@@ -14,7 +14,7 @@ class MotorError(Exception):
     pass
 
 
-class HatError(Exception):
+class BuildHATError(Exception):
     pass
 
 
