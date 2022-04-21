@@ -253,7 +253,7 @@ class BuildHAT:
         # Signal all device instances that they've been reset
         for devref in self._used:
             if devref is not None:
-                device = devref()  #pylint: disable=not-callable
+                device = devref()  # pylint: disable=not-callable
                 device._reset()
 
     def shutdown(self):
