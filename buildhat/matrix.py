@@ -1,5 +1,6 @@
 from .devices import Device
 from .exc import MatrixError
+from typing import List, Any, Tuple
 
 
 class Matrix(Device):
@@ -14,7 +15,7 @@ class Matrix(Device):
         self.mode(2)
         self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
 
-    def set_pixels(self, matrix, display=True):
+    def set_pixels(self, matrix: List[List[Tuple[Any, int]]], display=True):
         """Write pixel data to LED matrix
 
         :param pixels: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
@@ -26,7 +27,7 @@ class Matrix(Device):
             if len(matrix[x]) != 3:
                 raise MatrixError("Incorrect matrix width")
             for y in range(3):
-                matrix[x][y] = Matrix.normalize_pixel(matrix[x][y])
+                matrix[x][y] = Matrix.normalize_pixel(matrix[x][y])  # pylint: disable=too-many-function-args
         self._matrix = matrix
         if display:
             self._output()
@@ -40,6 +41,7 @@ class Matrix(Device):
         self._write1(out)
         self.deselect()
 
+    @classmethod
     def strtocolor(colorstr):
         """Return the BuldHAT's integer representation of a color string
 
@@ -71,7 +73,8 @@ class Matrix(Device):
             return 0
         raise MatrixError("Invalid color specified")
 
-    def normalize_pixel(pixel):
+    @classmethod
+    def normalize_pixel(pixel: Tuple[Any, int]):
         """Validate a pixel tuple (color, brightness) and convert string colors to integers
 
         :param pixel: tuple of colour (0–10) or string (ie:"red") and brightness (0–10)
@@ -79,10 +82,10 @@ class Matrix(Device):
         :rtype: tuple
         """
         if isinstance(pixel, tuple):
-            c, brightness = pixel
+            c, brightness = pixel  # pylint: disable=unpacking-non-sequence
             if isinstance(c, str):
-                c = Matrix.strtocolor(c)
-            if not ( isinstance(brightness, int) and isinstance(c, int)):
+                c = Matrix.strtocolor(c)  # pylint: disable=too-many-function-args
+            if not (isinstance(brightness, int) and isinstance(c, int)):
                 raise MatrixError("Invalid pixel specified")
             if not (brightness >= 0 and brightness <= 10):
                 raise MatrixError("Invalid brightness value specified")
@@ -92,20 +95,22 @@ class Matrix(Device):
         else:
             raise MatrixError("Invalid pixel specified")
 
-    def validate_coordinate(coord):
+    @classmethod
+    def validate_coordinate(coord: Tuple[int, int]):
         """"Validate an x,y coordinate for the 3x3 Matrix
 
         :param coord: tuple of 0-2 for the X coordinate and 0-2 for the Y coordinate
         """
+        # pylint: disable=unsubscriptable-object
         if isinstance(coord, tuple):
             if not (isinstance(coord[0], int) and isinstance(coord[1], int)):
                 raise MatrixError("Invalid coord specified")
             elif coord[0] > 2 or coord[0] < 0 or coord[1] > 2 or coord[1] < 0:
-            	raise MatrixError("Invalid coord specified")
+                raise MatrixError("Invalid coord specified")
         else:
             raise MatrixError("Invalid coord specified")
 
-    def clear(self, pixel=None):
+    def clear(self, pixel: Tuple[Any, int] = None):
         """Clear matrix or set all as the same pixel
 
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
@@ -113,7 +118,7 @@ class Matrix(Device):
         if pixel is None:
             self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
         else:
-            color = Matrix.normalize_pixel(pixel)
+            color = Matrix.normalize_pixel(pixel)  # pylint: disable=too-many-function-args
             self._matrix = [[color for x in range(3)] for y in range(3)]
         self._output()
 
@@ -172,15 +177,15 @@ class Matrix(Device):
         self.mode(2)  # The rest of the Matrix code seems to expect this to be always set
         self.deselect()
 
-    def set_pixel(self, coord, pixel, display=True):
+    def set_pixel(self, coord: Tuple[int, int], pixel: Tuple[Any, int], display=True):
         """Write pixel to coordinate
 
         :param coord: (0,0) to (2,2)
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
         :param display: Whether to update matrix or not
         """
-        color = Matrix.normalize_pixel(pixel)
-        Matrix.validate_coordinate(coord)
+        color = Matrix.normalize_pixel(pixel)  # pylint: disable=too-many-function-args
+        Matrix.validate_coordinate(coord)   # pylint: disable=too-many-function-args
         x, y = coord
         self._matrix[x][y] = color
         if display:
