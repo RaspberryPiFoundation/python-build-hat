@@ -1,14 +1,15 @@
-from .devices import Device
-from .exc import DeviceInvalid
-from threading import Condition
-from collections import deque
 import math
+from collections import deque
+from threading import Condition
+
+from .devices import Device
+
 
 class ColorSensor(Device):
     """Color sensor
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no color sensor attached to port
+    :raises DeviceError: Occurs if there is no color sensor attached to port
     """
     def __init__(self, port):
         super().__init__(port)
@@ -23,14 +24,14 @@ class ColorSensor(Device):
         :return: Name of the color as a string
         :rtype: str
         """
-        table = [("black",(0,0,0)),
-                 ("violet",(127,0,255)),
-                 ("blue",(0,0,255)),
-                 ("cyan",(0,183,235)),
-                 ("green",(0,128,0)),
-                 ("yellow",(255,255,0)),
-                 ("red",(255,0,0)),
-                 ("white",(255,255,255))]
+        table = [("black", (0, 0, 0)),
+                 ("violet", (127, 0, 255)),
+                 ("blue", (0, 0, 255)),
+                 ("cyan", (0, 183, 235)),
+                 ("green", (0, 128, 0)),
+                 ("yellow", (255, 255, 0)),
+                 ("red", (255, 0, 0)),
+                 ("white", (255, 255, 255))]
         near = ""
         euc = math.inf
         for itm in table:
@@ -39,7 +40,7 @@ class ColorSensor(Device):
                 near = itm[0]
                 euc = cur
         return near
-    
+
     def rgb_to_hsv(self, r, g, b):
         """Convert RGB to HSV
 
@@ -48,7 +49,7 @@ class ColorSensor(Device):
         :return: HSV representation of color
         :rtype: tuple
         """
-        r, g, b = r/255.0, g/255.0, b/255.0
+        r, g, b = r / 255.0, g / 255.0, b / 255.0
         cmax = max(r, g, b)
         cmin = min(r, g, b)
         delt = cmax - cmin
@@ -57,7 +58,7 @@ class ColorSensor(Device):
         elif cmax == r:
             h = 60 * (((g - b) / delt) % 6)
         elif cmax == g:
-            h = 60 * ((((b - r) / delt)) + 2) 
+            h = 60 * ((((b - r) / delt)) + 2)
         elif cmax == b:
             h = 60 * ((((r - g) / delt)) + 4)
         if cmax == 0:
@@ -65,7 +66,7 @@ class ColorSensor(Device):
         else:
             s = delt / cmax
         v = cmax
-        return int(h), int(s*100), int(v*100)
+        return int(h), int(s * 100), int(v * 100)
 
     def get_color(self):
         """Returns the color
@@ -84,10 +85,10 @@ class ColorSensor(Device):
         """
         self.mode(2)
         readings = []
-        for i in range(self.avg_reads):
+        for _ in range(self.avg_reads):
             readings.append(self.get()[0])
-        return int(sum(readings)/len(readings))
-    
+        return int(sum(readings) / len(readings))
+
     def get_reflected_light(self):
         """Returns the reflected light
 
@@ -96,14 +97,17 @@ class ColorSensor(Device):
         """
         self.mode(1)
         readings = []
-        for i in range(self.avg_reads):
+        for _ in range(self.avg_reads):
             readings.append(self.get()[0])
-        return int(sum(readings)/len(readings))
+        return int(sum(readings) / len(readings))
 
     def _avgrgbi(self, reads):
         readings = []
         for read in reads:
-            read = [int((read[0]/1024)*255), int((read[1]/1024)*255), int((read[2]/1024)*255), int((read[3]/1024)*255)]
+            read = [int((read[0] / 1024) * 255),
+                    int((read[1] / 1024) * 255),
+                    int((read[2] / 1024) * 255),
+                    int((read[3] / 1024) * 255)]
             readings.append(read)
         rgbi = []
         for i in range(4):
@@ -111,36 +115,36 @@ class ColorSensor(Device):
         return rgbi
 
     def get_color_rgbi(self):
-        """Returns the color 
+        """Returns the color
 
-        :return: RGBI representation 
+        :return: RGBI representation
         :rtype: list
         """
         self.mode(5)
         reads = []
-        for i in range(self.avg_reads):
+        for _ in range(self.avg_reads):
             reads.append(self.get())
         return self._avgrgbi(reads)
 
     def get_color_hsv(self):
-        """Returns the color 
+        """Returns the color
 
-        :return: HSV representation 
+        :return: HSV representation
         :rtype: tuple
         """
         self.mode(6)
         readings = []
-        for i in range(self.avg_reads):
+        for _ in range(self.avg_reads):
             read = self.get()
-            read = [read[0], int((read[1]/1024)*100), int((read[2]/1024)*100)]
+            read = [read[0], int((read[1] / 1024) * 100), int((read[2] / 1024) * 100)]
             readings.append(read)
         s = c = 0
         for hsv in readings:
             hue = hsv[0]
             s += math.sin(math.radians(hue))
-            c += math.cos(math.radians(hue))    
+            c += math.cos(math.radians(hue))
 
-        hue = int((math.degrees((math.atan2(s,c))) + 360) % 360)
+        hue = int((math.degrees((math.atan2(s, c))) + 360) % 360)
         sat = int(sum([hsv[1] for hsv in readings]) / len(readings))
         val = int(sum([hsv[2] for hsv in readings]) / len(readings))
         return (hue, sat, val)
@@ -158,7 +162,7 @@ class ColorSensor(Device):
     def wait_until_color(self, color):
         """Waits until specific color
 
-        :param color: Color to look for 
+        :param color: Color to look for
         """
         self.mode(5)
         self._cond = Condition()
