@@ -68,7 +68,7 @@ class BuildHAT:
         self._firmware_signature = signature
         self._firmware_version = version
         # Class instances using each port
-        self._used = [ None, None, None, None ]
+        self._used = [None, None, None, None]
 
         for _ in range(4):
             self.connections.append(Connection())
@@ -89,7 +89,7 @@ class BuildHAT:
             # HAT not responding?  Try GPIO rebooting it before giving up
             self.resethat()
             self.loadfirmware()
-            self.state = self.what_state_are_we_in()
+            self.state = self._what_state_are_we_in()
             if self.state == HatState.OTHER:
                 raise BuildHATError("HAT not found")
 
@@ -137,7 +137,7 @@ class BuildHAT:
                 continue
 
             if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
-                ver =  line[len(BuildHAT.FIRMWARE):].split(' ')
+                ver = line[len(BuildHAT.FIRMWARE):].split(' ')
                 if int(ver[0]) == self._firmware_version:
                     detected_state = HatState.FIRMWARE
                 else:
@@ -253,7 +253,7 @@ class BuildHAT:
         # Signal all device instances that they've been reset
         for devref in self._used:
             if devref is not None:
-                device = devref()
+                device = devref()  #pylint: disable=not-callable
                 device._reset()
 
     def shutdown(self):
@@ -272,7 +272,7 @@ class BuildHAT:
                     self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h)
                                                               for h in [0xc2, 0, 0, 0, 0, 0, 0, 0, 0, 0])).encode())
             self.write("{}\r".format(turnoff).encode())
-            self._used = [ None, None, None, None ]
+            self._used = [None, None, None, None]
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
