@@ -28,8 +28,6 @@ class Device:
                      65: ("Motor", "Small Angular Motor"),                    # 45607
                      75: ("Motor", "Medium Angular Motor (Grey)"),            # 88018
                      76: ("Motor", "Large Angular Motor (Grey)")}             # 88017
-
-
     UNKNOWN_DEVICE = "Unknown"
     DISCONNECTED_DEVICE = "Disconnected"
 
@@ -38,10 +36,10 @@ class Device:
             raise DeviceError("Invalid port")
         p = ord(port) - ord('A')
         if not (p >= 0 and p <= 3):
-            raise DeviceNotFound("Invalid port")
+            raise DeviceError("Invalid port")
         if Device._instance is not None:
             if Device._instance._used[p] is not None:
-	            raise PortInUse("Port already used")
+                raise DeviceError("Port already used")
         self.port = p
         Device._setup()
         self._simplemode = -1
