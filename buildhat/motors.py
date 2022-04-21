@@ -95,7 +95,7 @@ class Motor(Device):
     def _reset(self):
         super()._reset()
         self._currentspeed = 0
-        self.mode([(1,0),(2,0),(3,0)])
+        self.mode([(1, 0), (2, 0), (3, 0)])
         self.plimit(0.7)
         self.bias(0.3)
         self._runmode = MotorRunmode.NONE
