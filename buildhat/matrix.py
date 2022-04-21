@@ -1,13 +1,12 @@
 from .devices import Device
-from .exc import DeviceInvalid, MatrixInvalidPixel
-import threading
-import time
+from .exc import MatrixError
+
 
 class Matrix(Device):
     """LED Matrix
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no LED matrix attached to port
+    :raises DeviceError: Occurs if there is no LED matrix attached to port
     """
     def __init__(self, port):
         self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
@@ -17,7 +16,6 @@ class Matrix(Device):
         super()._reset()
         self.on()
         self.mode(2)
-        self._output()
 
     def set_pixels(self, matrix):
         """Write pixel data to LED matrix
@@ -28,9 +26,9 @@ class Matrix(Device):
             for y in range(3):
                 color, brightness = matrix[x][y]
                 if not (brightness >= 0 and brightness <= 10):
-                    raise MatrixInvalidPixel("Invalid brightness specified")
+                    raise MatrixError("Invalid brightness specified")
                 if not (color >= 0 and color <= 10):
-                    raise MatrixInvalidPixel("Invalid pixel specified")
+                    raise MatrixError("Invalid pixel specified")
         self._matrix = matrix
         self._output()
 
@@ -66,7 +64,7 @@ class Matrix(Device):
             return 10
         elif colorstr == "":
             return 0
-        raise MatrixInvalidPixel("Invalid color specified")
+        raise MatrixError("Invalid color specified")
 
     def clear(self, pixel=None):
         """Clear matrix or set all as the same pixel
@@ -74,7 +72,7 @@ class Matrix(Device):
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
         """
         if pixel is None:
-            self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
+            self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
         else:
             color = ()
             if isinstance(pixel, tuple):
@@ -82,12 +80,12 @@ class Matrix(Device):
                 if isinstance(c, str):
                     c = self.strtocolor(c)
                 if not (brightness >= 0 and brightness <= 10):
-                    raise MatrixInvalidPixel("Invalid brightness specified")
+                    raise MatrixError("Invalid brightness specified")
                 if not (c >= 0 and c <= 10):
-                    raise MatrixInvalidPixel("Invalid pixel specified")
+                    raise MatrixError("Invalid pixel specified")
                 color = (c, brightness)
             else:
-                raise MatrixInvalidPixel("Invalid pixel specified")
+                raise MatrixError("Invalid pixel specified")
             self._matrix = [[color for x in range(3)] for y in range(3)]
         self._output()
 
@@ -98,9 +96,9 @@ class Matrix(Device):
         :param level: The height of the bar graph, 0-9
         """
         if not isinstance(level, int):
-            raise MatrixInvalidPixel("Invalid level, not integer")
+            raise MatrixError("Invalid level, not integer")
         if not (level >= 0 and level <= 9):
-            raise MatrixInvalidPixel("Invalid level specified")
+            raise MatrixError("Invalid level specified")
         self.mode(0)
         self.select()
         self._write1([0xc0, level])
@@ -132,9 +130,9 @@ class Matrix(Device):
         :param transition: Transition mode (0-2)
         """
         if not isinstance(transition, int):
-            raise MatrixInvalidPixel("Invalid transition, not integer")
+            raise MatrixError("Invalid transition, not integer")
         if not (transition >= 0 and transition <= 2):
-            raise MatrixInvalidPixel("Invalid transition specified")
+            raise MatrixError("Invalid transition specified")
         self.mode(3)
         self.select()
         self._write1([0xc3, transition])
@@ -153,17 +151,17 @@ class Matrix(Device):
             if isinstance(c, str):
                 c = self.strtocolor(c)
             if not (brightness >= 0 and brightness <= 10):
-                raise MatrixInvalidPixel("Invalid brightness specified")
+                raise MatrixError("Invalid brightness specified")
             if not (c >= 0 and c <= 10):
-                raise MatrixInvalidPixel("Invalid pixel specified")
+                raise MatrixError("Invalid pixel specified")
             color = (c, brightness)
         else:
-            raise MatrixInvalidPixel("Invalid pixel specified")
+            raise MatrixError("Invalid pixel specified")
         if isinstance(coord, tuple):
             if not (isinstance(coord[0], int) and isinstance(coord[1], int)):
-                raise MatrixInvalidPixel("Invalid coord specified")
+                raise MatrixError("Invalid coord specified")
         else:
-            raise MatrixInvalidPixel("Invalid coord specified")
+            raise MatrixError("Invalid coord specified")
         x, y = coord
         self._matrix[x][y] = color
         if display:

@@ -1,5 +1,6 @@
-from buildhat import Light
 from time import sleep
+
+from buildhat import Light
 
 light = Light('A')
 

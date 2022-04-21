@@ -1,8 +1,5 @@
-from .serinterface import BuildHAT
 from .devices import Device
-import os
-import sys
-import weakref
+
 
 class Hat:
     """Allows enumeration of devices which are connected to the hat
@@ -29,10 +26,10 @@ class Hat:
             elif Device._instance.connections[i].typeid == -1:
                 name = Device.DISCONNECTED_DEVICE
                 desc = ''
-            devices[chr(ord('A')+i)] = {"typeid" : Device._instance.connections[i].typeid,
-                                        "connected" : Device._instance.connections[i].connected,
-                                        "name" : name,
-                                        "description" : desc }
+            devices[chr(ord('A') + i)] = {"typeid": Device._instance.connections[i].typeid,
+                                          "connected": Device._instance.connections[i].connected,
+                                          "name": name,
+                                          "description": desc}
         return devices
 
     def get_vin(self):

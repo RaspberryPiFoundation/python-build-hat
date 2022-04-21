@@ -1,11 +1,11 @@
-from .motors import Motor, MotorPair, PassiveMotor
-from .distance import DistanceSensor
-from .force import ForceSensor
 from .color import ColorSensor
 from .colordistance import ColorDistanceSensor
-from .matrix import Matrix
-from .wedo import TiltSensor, MotionSensor
-from .light import Light
+from .distance import DistanceSensor
+from .exc import *  # noqa: F403
+from .force import ForceSensor
 from .hat import Hat
+from .light import Light
+from .matrix import Matrix
+from .motors import Motor, MotorPair, PassiveMotor
 from .serinterface import BuildHAT
-from .exc import *
+from .wedo import MotionSensor, TiltSensor

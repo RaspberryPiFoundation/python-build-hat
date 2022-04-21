@@ -1,18 +1,21 @@
-from .exc import DeviceNotFound, DeviceChanged, DeviceInvalid, HatNotFound
-import threading
-import gpiozero
-import serial
-import time
 import queue
-from threading import Condition, Timer
-from gpiozero import DigitalOutputDevice
+import threading
+import time
 from enum import Enum
+from threading import Condition, Timer
+
+import serial
+from gpiozero import DigitalOutputDevice
+
+from .exc import BuildHATError
+
 
 class HatState(Enum):
     OTHER = 0
     FIRMWARE = 1
     NEEDNEWFIRMWARE = 2
     BOOTLOADER = 3
+
 
 class Connection:
     def __init__(self):
@@ -26,20 +29,25 @@ class Connection:
         self.connected = connected
         self.callit = callit
 
+
 def cmp(str1, str2):
     return str1[:len(str2)] == str2
 
+
 class BuildHAT:
-    CONNECTED=": connected to active ID"
-    CONNECTEDPASSIVE=": connected to passive ID"
-    DISCONNECTED=": disconnected"
-    DEVTIMEOUT=": timeout during data phase: disconnecting"
-    NOTCONNECTED=": no device detected"
-    PULSEDONE=": pulse done"
-    RAMPDONE=": ramp done"
-    FIRMWARE="Firmware version: "
-    BOOTLOADER="BuildHAT bootloader version"
-    DONE="Done initialising ports"
+    CONNECTED = ": connected to active ID"
+    CONNECTEDPASSIVE = ": connected to passive ID"
+    DISCONNECTED = ": disconnected"
+    DEVTIMEOUT = ": timeout during data phase: disconnecting"
+    NOTCONNECTED = ": no device detected"
+    PULSEDONE = ": pulse done"
+    RAMPDONE = ": ramp done"
+    FIRMWARE = "Firmware version: "
+    BOOTLOADER = "BuildHAT bootloader version"
+    DONE = "Done initialising ports"
+    PROMPT = "BHBL>"
+    RESET_GPIO_NUMBER = 4
+    BOOT0_GPIO_NUMBER = 22
 
     _firmware_file = None
     _firmware_signature = None
@@ -62,7 +70,7 @@ class BuildHAT:
         # Class instances using each port
         self._used = [ None, None, None, None ]
 
-        for i in range(4):
+        for _ in range(4):
             self.connections.append(Connection())
             self.portcond.append(Condition())
             self.pulsecond.append(Condition())
@@ -83,7 +91,7 @@ class BuildHAT:
             self.loadfirmware()
             self.state = self.what_state_are_we_in()
             if self.state == HatState.OTHER:
-                raise HatNotFound()
+                raise BuildHATError("HAT not found")
 
         self.cbqueue = queue.Queue()
         self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))
@@ -151,10 +159,8 @@ class BuildHAT:
         return detected_state
 
     def resethat(self):
-        RESET_GPIO_NUMBER = 4
-        BOOT0_GPIO_NUMBER = 22
-        reset = DigitalOutputDevice(RESET_GPIO_NUMBER)
-        boot0 = DigitalOutputDevice(BOOT0_GPIO_NUMBER)
+        reset = DigitalOutputDevice(BuildHAT.RESET_GPIO_NUMBER)
+        boot0 = DigitalOutputDevice(BuildHAT.BOOT0_GPIO_NUMBER)
         boot0.off()
         reset.off()
         time.sleep(0.01)
@@ -188,14 +194,13 @@ class BuildHAT:
 
     def getprompt(self):
         # Need to decide what we will do, when no prompt
-        PROMPT="BHBL>"
         while True:
             line = b""
             try:
                 line = self.ser.readline().decode('utf-8', 'ignore')
             except serial.SerialException:
                 pass
-            if line[:len(PROMPT)] == PROMPT:
+            if line[:len(BuildHAT.PROMPT)] == BuildHAT.PROMPT:
                 break
 
     def checksum(self, data):
@@ -264,7 +269,8 @@ class BuildHAT:
                 if conn.typeid != 64:
                     turnoff += "port {} ; pwm ; coast ; off ;".format(p)
                 else:
-                    self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h) for h in [0xc2,0,0,0,0,0,0,0,0,0])).encode())
+                    self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h)
+                                                              for h in [0xc2, 0, 0, 0, 0, 0, 0, 0, 0, 0])).encode())
             self.write("{}\r".format(turnoff).encode())
             self._used = [ None, None, None, None ]
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
@@ -301,14 +307,14 @@ class BuildHAT:
                 portid = int(line[1])
                 msg = line[2:]
                 if cmp(msg, BuildHAT.CONNECTED):
-                    typeid = int(line[2+len(BuildHAT.CONNECTED):],16)
+                    typeid = int(line[2 + len(BuildHAT.CONNECTED):], 16)
                     self.connections[portid].update(typeid, True)
                     if typeid == 64:
                         self.write("port {} ; on\r".format(portid).encode())
                     if uselist:
                         count += 1
                 elif cmp(msg, BuildHAT.CONNECTEDPASSIVE):
-                    typeid = int(line[2+len(BuildHAT.CONNECTEDPASSIVE):],16)
+                    typeid = int(line[2 + len(BuildHAT.CONNECTEDPASSIVE):], 16)
                     self.connections[portid].update(typeid, True)
                     if uselist:
                         count += 1
