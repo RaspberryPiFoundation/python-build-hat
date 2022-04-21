@@ -9,7 +9,7 @@ class Matrix(Device):
     :raises DeviceError: Occurs if there is no LED matrix attached to port
     """
     def __init__(self, port):
-        self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
+        self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
         super().__init__(port)
 
     def _reset(self):
