@@ -42,7 +42,7 @@ class Device:
         Device._setup()
         if Device._instance is not None:
             if Device._instance._used[p] is not None:
-	            raise DeviceError("Port already used")
+                raise DeviceError("Port already used")
         self._reset()
         Device._instance._used[p] = weakref.ref(self)
 
@@ -55,7 +55,7 @@ class Device:
             and Device._device_names[self._typeid][0] != type(self).__name__  # noqa: W503
         ) or self._typeid == -1:
             raise DeviceError('There is not a {} connected to port {} (Found {})'.format(type(self).__name__,
-                                                                                         port, self.name))
+                                                                                         self.port, self.name))
 
     @staticmethod
     def _setup(device="/dev/serial0"):
