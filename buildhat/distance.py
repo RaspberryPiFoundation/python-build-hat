@@ -1,13 +1,14 @@
-from .devices import Device
-from .exc import DeviceInvalid, DistanceSensorException
 from threading import Condition
-import threading
+
+from .devices import Device
+from .exc import DistanceSensorError
+
 
 class DistanceSensor(Device):
     """Distance sensor
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no distance sensor attached to port
+    :raises DeviceError: Occurs if there is no distance sensor attached to port
     """
     def __init__(self, port, threshold_distance=100):
         super().__init__(port)
@@ -108,7 +109,7 @@ class DistanceSensor(Device):
             self._cond_data.wait()
             while self._data < distance:
                 self._cond_data.wait()
-        
+
     def wait_for_in_range(self, distance):
         """Waits until object is closer than specified distance
 
@@ -129,10 +130,10 @@ class DistanceSensor(Device):
         """
         out = [0xc5]
         if len(args) != 4:
-            raise DistanceSensorException("Need 4 brightness args, of 0 to 100")
+            raise DistanceSensorError("Need 4 brightness args, of 0 to 100")
         for v in args:
             if not (v >= 0 and v <= 100):
-                raise DistanceSensorException("Need 4 brightness args, of 0 to 100")
+                raise DistanceSensorError("Need 4 brightness args, of 0 to 100")
             out += [v]
         self._write1(out)
 

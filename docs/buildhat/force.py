@@ -1,5 +1,6 @@
 from signal import pause
-from buildhat import Motor, ForceSensor
+
+from buildhat import ForceSensor, Motor
 
 motor = Motor('A')
 button = ForceSensor('D', threshold_force=1)
@@ -14,13 +15,16 @@ motor.run_for_rotations(1)
 print("Wait for button to be pressed")
 
 button.wait_until_pressed()
-motor.run_for_rotations(2) 
+motor.run_for_rotations(2)
+
 
 def handle_pressed(force):
     print("pressed", force)
 
+
 def handle_released(force):
     print("released", force)
+
 
 button.when_pressed = handle_pressed
 button.when_released = handle_released
