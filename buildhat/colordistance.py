@@ -1,3 +1,5 @@
+"""Color distance sensor handling functionality"""
+
 import math
 from collections import deque
 from threading import Condition
@@ -11,7 +13,13 @@ class ColorDistanceSensor(Device):
     :param port: Port of device
     :raises DeviceError: Occurs if there is no colordistance sensor attached to port
     """
+
     def __init__(self, port):
+        """
+        Initialise color distance sensor
+
+        :param port: Port of device
+        """
         super().__init__(port)
         self.on()
         self.mode(6)
@@ -19,8 +27,11 @@ class ColorDistanceSensor(Device):
         self._old_color = None
 
     def segment_color(self, r, g, b):
-        """Returns the color name from HSV
+        """Return the color name from HSV
 
+        :param r: Red
+        :param g: Green
+        :param b: Blue
         :return: Name of the color as a string
         :rtype: str
         """
@@ -46,6 +57,9 @@ class ColorDistanceSensor(Device):
 
         Based on https://www.rapidtables.com/convert/color/rgb-to-hsv.html algorithm
 
+        :param r: Red
+        :param g: Green
+        :param b: Blue
         :return: HSV representation of color
         :rtype: tuple
         """
@@ -69,7 +83,7 @@ class ColorDistanceSensor(Device):
         return int(h), int(s * 100), int(v * 100)
 
     def get_color(self):
-        """Returns the color
+        """Return the color
 
         :return: Name of the color as a string
         :rtype: str
@@ -78,7 +92,7 @@ class ColorDistanceSensor(Device):
         return self.segment_color(r, g, b)
 
     def get_ambient_light(self):
-        """Returns the ambient light
+        """Return the ambient light
 
         :return: Ambient light
         :rtype: int
@@ -90,7 +104,7 @@ class ColorDistanceSensor(Device):
         return int(sum(readings) / len(readings))
 
     def get_reflected_light(self):
-        """Returns the reflected light
+        """Return the reflected light
 
         :return: Reflected light
         :rtype: int
@@ -117,7 +131,7 @@ class ColorDistanceSensor(Device):
         return rgb
 
     def get_color_rgb(self):
-        """Returns the color
+        """Return the color
 
         :return: RGBI representation
         :rtype: list
@@ -139,7 +153,7 @@ class ColorDistanceSensor(Device):
                     self._cond.notify()
 
     def wait_until_color(self, color):
-        """Waits until specific color
+        """Wait until specific color
 
         :param color: Color to look for
         """
@@ -154,7 +168,10 @@ class ColorDistanceSensor(Device):
         self.callback(None)
 
     def wait_for_new_color(self):
-        """Waits for new color or returns immediately if first call
+        """Wait for new color or returns immediately if first call
+
+        :return: Name of the color as a string
+        :rtype: str
         """
         self.mode(6)
         if self._old_color is None:
@@ -171,7 +188,5 @@ class ColorDistanceSensor(Device):
         return self._old_color
 
     def on(self):
-        """
-        Turns on the sensor and LED
-        """
+        """Turn on the sensor and LED"""
         self._write("port {} ; plimit 1 ; set -1\r".format(self.port))
