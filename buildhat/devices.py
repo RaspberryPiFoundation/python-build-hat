@@ -1,3 +1,5 @@
+"""Functionality for handling Build HAT devices"""
+
 import os
 import sys
 import weakref
@@ -8,6 +10,7 @@ from .serinterface import BuildHAT
 
 class Device:
     """Creates a single instance of the buildhat for all devices to use"""
+
     _instance = None
     _started = 0
     _device_names = {1: ("PassiveMotor", "PassiveMotor"),
@@ -38,6 +41,11 @@ class Device:
     DISCONNECTED_DEVICE = "Disconnected"
 
     def __init__(self, port):
+        """Initialise device
+
+        :param port: Port of device
+        :raises DeviceError: Occurs if incorrect port specified or port already used
+        """
         if not isinstance(port, str) or len(port) != 1:
             raise DeviceError("Invalid port")
         p = ord(port) - ord('A')
@@ -73,6 +81,7 @@ class Device:
         weakref.finalize(Device._instance, Device._instance.shutdown)
 
     def __del__(self):
+        """Handle deletion of device"""
         if hasattr(self, "port") and Device._used[self.port]:
             if Device._device_names[self._typeid][0] == "Matrix":
                 self.clear()  # noqa: PLE1101
@@ -84,7 +93,11 @@ class Device:
 
     @staticmethod
     def name_for_id(typeid):
-        """Translate integer type id to device name (python class)"""
+        """Translate integer type id to device name (python class)
+
+        :param typeid: Type of device
+        :return: Name of device
+        """
         if typeid in Device._device_names:
             return Device._device_names[typeid][0]
         else:
@@ -92,7 +105,11 @@ class Device:
 
     @staticmethod
     def desc_for_id(typeid):
-        """Translate integer type id to something more descriptive than the device name"""
+        """Translate integer type id to something more descriptive than the device name
+
+        :param typeid: Type of device
+        :return: Description of device
+        """
         if typeid in Device._device_names:
             return Device._device_names[typeid][1]
         else:
@@ -104,23 +121,42 @@ class Device:
 
     @property
     def connected(self):
+        """Whether device is connected or not
+
+        :return: Connection status
+        """
         return self._conn.connected
 
     @property
     def typeid(self):
+        """Type ID of device
+
+        :return: Type ID
+        """
         return self._typeid
 
     @property
     def typeidcur(self):
+        """Type ID currently present
+
+        :return: Type ID
+        """
         return self._conn.typeid
 
     @property
     def _hat(self):
+        """Hat instance
+
+        :return: Hat instance
+        """
         return Device._instance
 
     @property
     def name(self):
-        """Determines name of device on port"""
+        """Determine name of device on port
+
+        :return: Device name
+        """
         if not self.connected:
             return Device.DISCONNECTED_DEVICE
         elif self.typeidcur in self._device_names:
@@ -130,7 +166,10 @@ class Device:
 
     @property
     def description(self):
-        """Description of device on port"""
+        """Device on port info
+
+        :return: Device description
+        """
         if not self.connected:
             return Device.DISCONNECTED_DEVICE
         elif self.typeidcur in self._device_names:
@@ -139,15 +178,25 @@ class Device:
             return Device.UNKNOWN_DEVICE
 
     def isconnected(self):
+        """Whether it is connected or not
+
+        :raises DeviceError: Occurs if device no longer the same
+        """
         if not self.connected:
             raise DeviceError("No device found")
         if self.typeid != self.typeidcur:
             raise DeviceError("Device has changed")
 
     def reverse(self):
+        """Reverse polarity"""
         self._write("port {} ; plimit 1 ; set -1\r".format(self.port))
 
     def get(self):
+        """Extract information from device
+
+        :return: Data from device
+        :raises DeviceError: Occurs if device not in valid mode
+        """
         self.isconnected()
         idx = -1
         if self._simplemode != -1:
@@ -163,6 +212,10 @@ class Device:
         return self._conn.data
 
     def mode(self, modev):
+        """Set combimode or simple mode
+
+        :param modev: List of tuples for a combimode, or integer for simple mode
+        """
         self.isconnected()
         if isinstance(modev, list):
             self._combimode = 0
@@ -179,6 +232,10 @@ class Device:
             self._simplemode = int(modev)
 
     def select(self):
+        """Request data from mode
+
+        :raises DeviceError: Occurs if device not in valid mode
+        """
         self.isconnected()
         if self._simplemode != -1:
             idx = self._simplemode
@@ -189,18 +246,15 @@ class Device:
         self._write("port {} ; select {}\r".format(self.port, idx))
 
     def on(self):
-        """
-        Turns on sensor
-        """
+        """Turn on sensor"""
         self._write("port {} ; plimit 1 ; on\r".format(self.port))
 
     def off(self):
-        """
-        Turns off sensor
-        """
+        """Turn off sensor"""
         self._write("port {} ; off\r".format(self.port))
 
     def deselect(self):
+        """Unselect data from mode"""
         self._write("port {} ; select\r".format(self.port))
 
     def _write(self, cmd):
@@ -211,6 +265,10 @@ class Device:
         self._write("port {} ; write1 {}\r".format(self.port, ' '.join('{:x}'.format(h) for h in data)))
 
     def callback(self, func):
+        """Set callback function
+
+        :param func: Callback function
+        """
         if func is not None:
             self.select()
         else:
