@@ -1,3 +1,5 @@
+"""Force sensor handling functionality"""
+
 from threading import Condition
 
 from .devices import Device
@@ -9,7 +11,13 @@ class ForceSensor(Device):
     :param port: Port of device
     :raises DeviceError: Occurs if there is no force sensor attached to port
     """
+
     def __init__(self, port, threshold_force=1):
+        """Initialise force sensor
+
+        :param port: Port of device
+        :param threshold_force: Optional
+        """
         super().__init__(port)
         self.mode([(0, 0), (1, 0), (3, 0)])
         self._when_pressed = None
@@ -36,9 +44,11 @@ class ForceSensor(Device):
 
     @property
     def threshold_force(self):
-        """
+        """Threshold force
+
         :getter: Returns threshold force
         :setter: Sets threshold force
+        :return: Threshold force
         """
         return self._threshold_force
 
@@ -47,7 +57,7 @@ class ForceSensor(Device):
         self._threshold_force = value
 
     def get_force(self):
-        """Returns the force in (N)
+        """Return the force in (N)
 
         :return: The force exerted on the button
         :rtype: int
@@ -55,7 +65,8 @@ class ForceSensor(Device):
         return self.get()[0]
 
     def get_peak_force(self):
-        """Gets the maximum force registered since the sensor was reset
+        """Get the maximum force registered since the sensor was reset
+
         (The sensor gets reset when the firmware is reloaded)
 
         :return: 0 - 100
@@ -64,7 +75,7 @@ class ForceSensor(Device):
         return self.get()[2]
 
     def is_pressed(self):
-        """Gets whether the button is pressed
+        """Get whether the button is pressed
 
         :return: If button is pressed
         :rtype: bool
@@ -73,36 +84,46 @@ class ForceSensor(Device):
 
     @property
     def when_pressed(self):
-        """Handles force events
+        """Handle force events
 
         :getter: Returns function to be called when pressed
         :setter: Sets function to be called when pressed
+        :return: Callback function
         """
         return self._when_pressed
 
     @when_pressed.setter
     def when_pressed(self, value):
-        """Calls back, when button is has pressed"""
+        """Call back, when button is has pressed
+
+        :param value: Callback function
+        """
         self._when_pressed = value
         self.callback(self._intermediate)
 
     @property
     def when_released(self):
-        """Handles force events
+        """Handle force events
 
         :getter: Returns function to be called when released
         :setter: Sets function to be called when released
+        :return: Callback function
         """
         return self._when_pressed
 
     @when_released.setter
     def when_released(self, value):
-        """Calls back, when button is has released"""
+        """Call back, when button is has released
+
+        :param value: Callback function
+        """
         self._when_released = value
         self.callback(self._intermediate)
 
     def wait_until_pressed(self, force=1):
-        """Waits until the button is pressed
+        """Wait until the button is pressed
+
+        :param force: Optional
         """
         self.callback(self._intermediate)
         with self._cond_force:
@@ -111,7 +132,9 @@ class ForceSensor(Device):
                 self._cond_force.wait()
 
     def wait_until_released(self, force=0):
-        """Waits until the button is released
+        """Wait until the button is released
+
+        :param force: Optional
         """
         self.callback(self._intermediate)
         with self._cond_force:
