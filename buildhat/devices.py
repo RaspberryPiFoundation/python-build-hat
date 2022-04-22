@@ -69,13 +69,10 @@ class Device:
 
     def __del__(self):
         if hasattr(self, "port") and (Device._instance._used[self.port] is not None):
-            if Device._device_names[self._typeid][0] == "Matrix":
-                self.clear()  # noqa: PLE1101
             Device._instance._used[self.port] = None
             self._conn.callit = None
             self.deselect()
-            if Device._device_names[self._typeid][0] != "Matrix":
-                self.off()
+            self.off()
 
     @staticmethod
     def name_for_id(typeid):
