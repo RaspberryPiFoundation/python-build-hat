@@ -109,7 +109,7 @@ class Matrix(Device):
         else:
             raise MatrixError("Invalid coord specified")
 
-    def clear(self, pixel = None):
+    def clear(self, pixel=None):
         """Clear matrix or set all as the same pixel
 
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
