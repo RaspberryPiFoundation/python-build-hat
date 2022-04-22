@@ -1,3 +1,5 @@
+"""Distance sensor handling functionality"""
+
 from threading import Condition
 
 from .devices import Device
@@ -10,7 +12,14 @@ class DistanceSensor(Device):
     :param port: Port of device
     :raises DeviceError: Occurs if there is no distance sensor attached to port
     """
+
     def __init__(self, port, threshold_distance=100):
+        """
+        Initialise distance sensor
+
+        :param port: Port of device
+        :param threshold_distance: Optional
+        """
         self._cond_data = Condition()
         self._when_in_range = None
         self._when_out_of_range = None
@@ -44,15 +53,21 @@ class DistanceSensor(Device):
     @property
     def distance(self):
         """
+        Obtain previously stored distance
+
         :getter: Returns distance
+        :return: Stored distance
         """
         return self._distance
 
     @property
     def threshold_distance(self):
         """
+        Threshold distance value
+
         :getter: Returns threshold distance
         :setter: Sets threshold distance
+        :return: Threshold distance
         """
         return self._threshold_distance
 
@@ -62,7 +77,7 @@ class DistanceSensor(Device):
 
     def get_distance(self):
         """
-        Returns the distance from ultrasonic sensor to object
+        Return the distance from ultrasonic sensor to object
 
         :return: Distance from ultrasonic sensor
         :rtype: int
@@ -73,37 +88,45 @@ class DistanceSensor(Device):
     @property
     def when_in_range(self):
         """
-        Handles motion events
+        Handle motion events
 
         :getter: Returns function to be called when in range
         :setter: Sets function to be called when in range
+        :return: In range callback
         """
         return self._when_in_range
 
     @when_in_range.setter
     def when_in_range(self, value):
-        """Calls back, when distance in range"""
+        """Call back, when distance in range
+
+        :param value: In range callback
+        """
         self._when_in_range = value
         self.callback(self._intermediate)
 
     @property
     def when_out_of_range(self):
         """
-        Handles motion events
+        Handle motion events
 
         :getter: Returns function to be called when out of range
         :setter: Sets function to be called when out of range
+        :return: Out of range callback
         """
         return self._when_out_of_range
 
     @when_out_of_range.setter
     def when_out_of_range(self, value):
-        """Calls back, when distance out of range"""
+        """Call back, when distance out of range
+
+        :param value: Out of range callback
+        """
         self._when_out_of_range = value
         self.callback(self._intermediate)
 
     def wait_for_out_of_range(self, distance):
-        """Waits until object is farther than specified distance
+        """Wait until object is farther than specified distance
 
         :param distance: Distance
         """
@@ -114,7 +137,7 @@ class DistanceSensor(Device):
                 self._cond_data.wait()
 
     def wait_for_in_range(self, distance):
-        """Waits until object is closer than specified distance
+        """Wait until object is closer than specified distance
 
         :param distance: Distance
         """
@@ -127,9 +150,11 @@ class DistanceSensor(Device):
     def eyes(self, *args):
         """
         Brightness of LEDs on sensor
+
         (Sensor Right Upper, Sensor Left Upper, Sensor Right Lower, Sensor Left Lower)
 
-        :param \*args: Four brightness arguments of 0 to 100
+        :param args: Four brightness arguments of 0 to 100
+        :raises DistanceSensorError: Occurs if invalid brightness passed
         """
         out = [0xc5]
         if len(args) != 4:
@@ -141,7 +166,5 @@ class DistanceSensor(Device):
         self._write1(out)
 
     def on(self):
-        """
-        Turns on the sensor
-        """
+        """Turn on the sensor"""
         self._write("port {} ; set -1\r".format(self.port))

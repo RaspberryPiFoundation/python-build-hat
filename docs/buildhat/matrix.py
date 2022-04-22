@@ -1,3 +1,5 @@
+"""Example driving LED matrix"""
+
 import random
 import time
 

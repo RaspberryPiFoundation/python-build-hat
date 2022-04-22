@@ -1,3 +1,5 @@
+"""WeDo sensor handling functionality"""
+
 from .devices import Device
 
 
@@ -7,7 +9,13 @@ class TiltSensor(Device):
     :param port: Port of device
     :raises DeviceError: Occurs if there is no tilt sensor attached to port
     """
+
     def __init__(self, port):
+        """
+        Initialise tilt sensor
+
+        :param port: Port of device
+        """
         super().__init__(port)
 
     def _reset(self):
@@ -16,7 +24,7 @@ class TiltSensor(Device):
 
     def get_tilt(self):
         """
-        Returns the tilt from tilt sensor to object
+        Return the tilt from tilt sensor
 
         :return: Tilt from tilt sensor
         :rtype: tuple
@@ -30,7 +38,13 @@ class MotionSensor(Device):
     :param port: Port of device
     :raises DeviceError: Occurs if there is no motion sensor attached to port
     """
+
     def __init__(self, port):
+        """
+        Initialise motion sensor
+
+        :param port: Port of device
+        """
         super().__init__(port)
 
     def _reset(self):
@@ -39,7 +53,7 @@ class MotionSensor(Device):
 
     def get_distance(self):
         """
-        Returns the distance from motion sensor to object
+        Return the distance from motion sensor
 
         :return: Distance from motion sensor
         :rtype: int

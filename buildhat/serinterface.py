@@ -1,3 +1,5 @@
+"""Build HAT handling functionality"""
+
 import queue
 import threading
 import time
@@ -11,6 +13,8 @@ from .exc import BuildHATError
 
 
 class HatState(Enum):
+    """Current state that hat is in"""
+
     OTHER = 0
     FIRMWARE = 1
     NEEDNEWFIRMWARE = 2
@@ -18,23 +22,40 @@ class HatState(Enum):
 
 
 class Connection:
+    """Connection information for a port"""
+
     def __init__(self):
+        """Initialise connection"""
         self.typeid = -1
         self.connected = False
         self.callit = None
         self.data = None
 
     def update(self, typeid, connected, callit=None):
+        """Update connection information for port
+
+        :param typeid: Type ID of device on port
+        :param connected: Whether device is connected or not
+        :param callit: Callback function
+        """
         self.typeid = typeid
         self.connected = connected
         self.callit = callit
 
 
 def cmp(str1, str2):
+    """Look for str2 in str1
+
+    :param str1: String to look in
+    :param str2: String to look for
+    :return: Whether str2 exists
+    """
     return str1[:len(str2)] == str2
 
 
 class BuildHAT:
+    """Interacts with Build HAT via UART interface"""
+
     CONNECTED = ": connected to active ID"
     CONNECTEDPASSIVE = ": connected to passive ID"
     DISCONNECTED = ": disconnected"
@@ -54,6 +75,14 @@ class BuildHAT:
     _firmware_version = None
 
     def __init__(self, firmware, signature, version, device="/dev/serial0"):
+        """Interact with Build HAT
+
+        :param firmware: Firmware file
+        :param signature: Signature file
+        :param version: Firmware version
+        :param device: Serial device to use
+        :raises BuildHATError: Occurs if can't find HAT
+        """
         self.cond = Condition()
         self.state = HatState.OTHER
         self.connections = []
@@ -159,6 +188,7 @@ class BuildHAT:
         return detected_state
 
     def resethat(self):
+        """Reset the HAT"""
         reset = DigitalOutputDevice(BuildHAT.RESET_GPIO_NUMBER)
         boot0 = DigitalOutputDevice(BuildHAT.BOOT0_GPIO_NUMBER)
         boot0.off()
@@ -171,6 +201,11 @@ class BuildHAT:
         time.sleep(0.5)
 
     def loadfirmware(self):
+        """Load firmware
+
+        :param firmware: Firmware to load
+        :param signature: Signature to load
+        """
         with open(self._firmware_file, "rb") as f:
             firm = f.read()
         with open(self._firmware_signature, "rb") as f:
@@ -193,7 +228,10 @@ class BuildHAT:
         self.getprompt()
 
     def getprompt(self):
-        # Need to decide what we will do, when no prompt
+        """Loop until prompt is found
+
+        Need to decide what we will do, when no prompt
+        """
         while True:
             line = b""
             try:
@@ -204,6 +242,11 @@ class BuildHAT:
                 break
 
     def checksum(self, data):
+        """Calculate checksum from data
+
+        :param data: Data to calculate the checksum from
+        :return: Checksum that has been calculated
+        """
         u = 1
         for i in range(0, len(data)):
             if (u & 0x80000000) != 0:
@@ -214,6 +257,10 @@ class BuildHAT:
         return u
 
     def write(self, data):
+        """Write data to the serial port of Build HAT
+
+        :param data: Data to write to Build HAT
+        """
         self.ser.write(data)
 
     def reboot(self):
@@ -257,6 +304,7 @@ class BuildHAT:
                 device._reset()
 
     def shutdown(self):
+        """Turn off the Build HAT devices"""
         if not self.fin:
             self.fin = True
             self.running = False
@@ -276,6 +324,10 @@ class BuildHAT:
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
+        """Event handling for callbacks
+
+        :param q: Queue of callback events
+        """
         while self.running:
             cb = q.get()
             # Test for empty tuple, which should only be passed when
@@ -288,8 +340,14 @@ class BuildHAT:
             q.task_done()
 
     def loop(self, cond, uselist, q):
+        """Event handling for Build HAT
+
+        :param cond: Condition used to block user's script till we're ready
+        :param uselist: Whether we're using the HATs 'list' function or not
+        :param q: Queue for callback events
+        """
         if uselist:
-            # Ports need to be enumerated.
+            # Ports need to be enumerated from a listing
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
             self.write(b"list\r")
         # else didn't have firmware (rebooted) so use the port listing that's auto-issued after BuildHAT.DONE

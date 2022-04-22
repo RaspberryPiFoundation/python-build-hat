@@ -1,3 +1,5 @@
+"""Test motors"""
+
 import time
 import unittest
 
@@ -6,8 +8,10 @@ from buildhat.exc import DeviceError, MotorError
 
 
 class TestMotor(unittest.TestCase):
+    """Test motors"""
 
     def test_rotations(self):
+        """Test motor rotating"""
         m = Motor('A')
         pos1 = m.get_position()
         m.run_for_rotations(2)
@@ -16,6 +20,7 @@ class TestMotor(unittest.TestCase):
         self.assertLess(abs(rotated - 2), 0.5)
 
     def test_position(self):
+        """Test motor goes to desired position"""
         m = Motor('A')
         m.run_to_position(0)
         pos1 = m.get_aposition()
@@ -28,6 +33,7 @@ class TestMotor(unittest.TestCase):
         self.assertLess(diff, 10)
 
     def test_time(self):
+        """Test motor runs for correct duration"""
         m = Motor('A')
         t1 = time.time()
         m.run_for_seconds(5)
@@ -35,24 +41,28 @@ class TestMotor(unittest.TestCase):
         self.assertEqual(int(t2 - t1), 5)
 
     def test_speed(self):
+        """Test setting motor speed"""
         m = Motor('A')
         m.set_default_speed(50)
         self.assertRaises(MotorError, m.set_default_speed, -101)
         self.assertRaises(MotorError, m.set_default_speed, 101)
 
     def test_plimit(self):
+        """Test altering power limit of motor"""
         m = Motor('A')
         m.plimit(0.5)
         self.assertRaises(MotorError, m.plimit, -1)
         self.assertRaises(MotorError, m.plimit, 2)
 
     def test_bias(self):
+        """Test setting motor bias"""
         m = Motor('A')
         m.bias(0.5)
         self.assertRaises(MotorError, m.bias, -1)
         self.assertRaises(MotorError, m.bias, 2)
 
     def test_pwm(self):
+        """Test PWMing motor"""
         m = Motor('A')
         m.pwm(0.3)
         time.sleep(0.5)
@@ -61,6 +71,7 @@ class TestMotor(unittest.TestCase):
         self.assertRaises(MotorError, m.pwm, 2)
 
     def test_callback(self):
+        """Test setting callback"""
         m = Motor('A')
 
         def handle_motor(speed, pos, apos):
@@ -71,6 +82,7 @@ class TestMotor(unittest.TestCase):
         self.assertGreater(handle_motor.evt, 0)
 
     def test_none_callback(self):
+        """Test setting empty callback"""
         m = Motor('A')
         m.when_rotated = None
         m.start()
@@ -78,27 +90,32 @@ class TestMotor(unittest.TestCase):
         m.stop()
 
     def test_duplicate_port(self):
+        """Test using same port for motor"""
         m1 = Motor('A')  # noqa: F841
         self.assertRaises(DeviceError, Motor, 'A')
 
     def test_del(self):
+        """Test deleting motor"""
         m1 = Motor('A')
         del m1
         Motor('A')
 
     def test_continuous_start(self):
+        """Test starting motor for 5mins"""
         t = time.time() + (60 * 5)
         m = Motor('A')
         while time.time() < t:
             m.start(0)
 
     def test_continuous_degrees(self):
+        """Test setting degrees for 5mins"""
         t = time.time() + (60 * 5)
         m = Motor('A')
         while time.time() < t:
             m.run_for_degrees(0)
 
     def test_continuous_position(self):
+        """Test setting position of motor for 5mins"""
         t = time.time() + (60 * 5)
         m = Motor('A')
         while time.time() < t:

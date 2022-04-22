@@ -1,3 +1,5 @@
+"""Example getting color values from color sensor"""
+
 from buildhat import ColorSensor
 
 color = ColorSensor('C')

@@ -1,3 +1,5 @@
+"""Provide all the classes we need for build HAT"""
+
 from .color import ColorSensor
 from .colordistance import ColorDistanceSensor
 from .distance import DistanceSensor
