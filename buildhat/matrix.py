@@ -1,6 +1,5 @@
 from .devices import Device
 from .exc import MatrixError
-from typing import List, Any, Tuple
 
 
 class Matrix(Device):
@@ -15,7 +14,7 @@ class Matrix(Device):
         self.mode(2)
         self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
 
-    def set_pixels(self, matrix: List[List[Tuple[Any, int]]], display=True):
+    def set_pixels(self, matrix, display=True):
         """Write pixel data to LED matrix
 
         :param pixels: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
@@ -41,7 +40,7 @@ class Matrix(Device):
         self._write1(out)
         self.deselect()
 
-    @classmethod
+    @staticmethod
     def strtocolor(colorstr):
         """Return the BuldHAT's integer representation of a color string
 
@@ -73,8 +72,8 @@ class Matrix(Device):
             return 0
         raise MatrixError("Invalid color specified")
 
-    @classmethod
-    def normalize_pixel(pixel: Tuple[Any, int]):
+    @staticmethod
+    def normalize_pixel(pixel):
         """Validate a pixel tuple (color, brightness) and convert string colors to integers
 
         :param pixel: tuple of colour (0–10) or string (ie:"red") and brightness (0–10)
@@ -95,8 +94,8 @@ class Matrix(Device):
         else:
             raise MatrixError("Invalid pixel specified")
 
-    @classmethod
-    def validate_coordinate(coord: Tuple[int, int]):
+    @staticmethod
+    def validate_coordinate(coord):
         """"Validate an x,y coordinate for the 3x3 Matrix
 
         :param coord: tuple of 0-2 for the X coordinate and 0-2 for the Y coordinate
@@ -110,7 +109,7 @@ class Matrix(Device):
         else:
             raise MatrixError("Invalid coord specified")
 
-    def clear(self, pixel: Tuple[Any, int] = None):
+    def clear(self, pixel = None):
         """Clear matrix or set all as the same pixel
 
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
@@ -177,7 +176,7 @@ class Matrix(Device):
         self.mode(2)  # The rest of the Matrix code seems to expect this to be always set
         self.deselect()
 
-    def set_pixel(self, coord: Tuple[int, int], pixel: Tuple[Any, int], display=True):
+    def set_pixel(self, coord, pixel, display=True):
         """Write pixel to coordinate
 
         :param coord: (0,0) to (2,2)
