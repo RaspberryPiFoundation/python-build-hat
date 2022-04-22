@@ -351,10 +351,12 @@ class Motor(Device):
     @property
     def when_waveform_done(self):
         """
-        Handles PID waveform movement finished events
+        Return the callback that will handle the completion of a PID waveform movement
+        (A ramp or pulse from a run command)
 
         :getter: Returns function to be called when PID waveform movement is finished
         :setter: Sets function to be called when PID waveform movement is finished
+        :return: Callback function
         """
         return self._when_waveform_done
 
@@ -391,7 +393,10 @@ class Motor(Device):
 
     @when_waveform_done.setter
     def when_waveform_done(self, value):
-        """Calls back when the motor is done making a PID waveform movement"""
+        """Call back when the motor is done making a PID waveform movement
+        
+        :param value: Callback function
+        """
         self._when_waveform_done = value
 
     def plimit(self, plimit):
