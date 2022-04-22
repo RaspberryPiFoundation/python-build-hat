@@ -10,7 +10,7 @@ flake8-eradicate
 flake8-isort
 flake8-isort
 flake8-pylint
-flake8_quotes
+flake8-quotes
 flake8-rst-docstrings
 flake8-string-format
 gpiozero
