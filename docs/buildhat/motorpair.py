@@ -1,3 +1,5 @@
+"""Example for pair of motors"""
+
 from buildhat import MotorPair
 
 pair = MotorPair('C', 'D')

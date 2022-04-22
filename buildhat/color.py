@@ -1,3 +1,5 @@
+"""Color sensor handling functionality"""
+
 import math
 from collections import deque
 from threading import Condition
@@ -11,7 +13,13 @@ class ColorSensor(Device):
     :param port: Port of device
     :raises DeviceError: Occurs if there is no color sensor attached to port
     """
+
     def __init__(self, port):
+        """
+        Initialise color sensor
+
+        :param port: Port of device
+        """
         super().__init__(port)
         self.reverse()
         self.mode(6)
@@ -19,8 +27,11 @@ class ColorSensor(Device):
         self._old_color = None
 
     def segment_color(self, r, g, b):
-        """Returns the color name from RGB
+        """Return the color name from RGB
 
+        :param r: Red
+        :param g: Green
+        :param b: Blue
         :return: Name of the color as a string
         :rtype: str
         """
@@ -46,6 +57,9 @@ class ColorSensor(Device):
 
         Based on https://www.rapidtables.com/convert/color/rgb-to-hsv.html algorithm
 
+        :param r: Red
+        :param g: Green
+        :param b: Blue
         :return: HSV representation of color
         :rtype: tuple
         """
@@ -69,7 +83,7 @@ class ColorSensor(Device):
         return int(h), int(s * 100), int(v * 100)
 
     def get_color(self):
-        """Returns the color
+        """Return the color
 
         :return: Name of the color as a string
         :rtype: str
@@ -78,7 +92,7 @@ class ColorSensor(Device):
         return self.segment_color(r, g, b)
 
     def get_ambient_light(self):
-        """Returns the ambient light
+        """Return the ambient light
 
         :return: Ambient light
         :rtype: int
@@ -90,7 +104,7 @@ class ColorSensor(Device):
         return int(sum(readings) / len(readings))
 
     def get_reflected_light(self):
-        """Returns the reflected light
+        """Return the reflected light
 
         :return: Reflected light
         :rtype: int
@@ -115,7 +129,7 @@ class ColorSensor(Device):
         return rgbi
 
     def get_color_rgbi(self):
-        """Returns the color
+        """Return the color
 
         :return: RGBI representation
         :rtype: list
@@ -127,7 +141,7 @@ class ColorSensor(Device):
         return self._avgrgbi(reads)
 
     def get_color_hsv(self):
-        """Returns the color
+        """Return the color
 
         :return: HSV representation
         :rtype: tuple
@@ -160,7 +174,7 @@ class ColorSensor(Device):
                     self._cond.notify()
 
     def wait_until_color(self, color):
-        """Waits until specific color
+        """Wait until specific color
 
         :param color: Color to look for
         """
@@ -175,7 +189,10 @@ class ColorSensor(Device):
         self.callback(None)
 
     def wait_for_new_color(self):
-        """Waits for new color or returns immediately if first call
+        """Wait for new color or returns immediately if first call
+
+        :return: Name of the color as a string
+        :rtype: str
         """
         self.mode(5)
         if self._old_color is None:
@@ -192,7 +209,5 @@ class ColorSensor(Device):
         return self._old_color
 
     def on(self):
-        """
-        Turns on the sensor and LED
-        """
+        """Turn on the sensor and LED"""
         self._write("port {} ; plimit 1 ; set -1\r".format(self.port))

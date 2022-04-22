@@ -1,3 +1,5 @@
+"""Example driving motors"""
+
 import time
 
 from buildhat import Motor
@@ -7,6 +9,12 @@ motorb = Motor('B')
 
 
 def handle_motor(speed, pos, apos):
+    """Motor data
+
+    :param speed: Speed of motor
+    :param pos: Position of motor
+    :param apos: Absolute position of motor
+    """
     print("Motor", speed, pos, apos)
 
 

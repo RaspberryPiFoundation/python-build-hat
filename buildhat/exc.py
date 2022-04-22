@@ -1,22 +1,25 @@
+"""Exceptions for all build HAT classes"""
+
+
 class DistanceSensorError(Exception):
-    pass
+    """Error raised when invalid arguments passed to distance sensor functions"""
 
 
 class MatrixError(Exception):
-    pass
+    """Error raised when invalid arguments passed to matrix functions"""
 
 
 class LightError(Exception):
-    pass
+    """Error raised when invalid arguments passed to light functions"""
 
 
 class MotorError(Exception):
-    pass
+    """Error raised when invalid arguments passed to motor functions"""
 
 
 class BuildHATError(Exception):
-    pass
+    """Error raised when HAT not found"""
 
 
 class DeviceError(Exception):
-    pass
+    """Error raised when there is a Device issue"""

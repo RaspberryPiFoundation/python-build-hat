@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
 
+"""Setup file"""
+
 # Copyright (c) 2020-2021 Raspberry Pi Foundation
 #
 # SPDX-License-Identifier: MIT

@@ -1,3 +1,5 @@
+"""Example for distance sensor"""
+
 from signal import pause
 
 from buildhat import DistanceSensor, Motor
@@ -15,10 +17,18 @@ motor.run_for_rotations(2)
 
 
 def handle_in(distance):
+    """Within range
+
+    :param distance: Distance
+    """
     print("in range", distance)
 
 
 def handle_out(distance):
+    """Out of range
+
+    :param distance: Distance
+    """
     print("out of range", distance)
 
 

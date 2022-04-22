@@ -1,3 +1,5 @@
+"""Matrix device handling functionality"""
+
 from .devices import Device
 from .exc import MatrixError
 
@@ -8,7 +10,12 @@ class Matrix(Device):
     :param port: Port of device
     :raises DeviceError: Occurs if there is no LED matrix attached to port
     """
+
     def __init__(self, port):
+        """Initialise matrix
+
+        :param port: Port of device
+        """
         super().__init__(port)
         self.on()
         self.mode(2)
@@ -17,8 +24,9 @@ class Matrix(Device):
     def set_pixels(self, matrix, display=True):
         """Write pixel data to LED matrix
 
-        :param pixels: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
+        :param matrix: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
         :param display: Whether to update matrix or not
+        :raises MatrixError: Occurs if invalid matrix height/width provided
         """
         if len(matrix) != 3:
             raise MatrixError("Incorrect matrix height")
@@ -47,6 +55,7 @@ class Matrix(Device):
         :param colorstr: str of a valid color
         :return: (0-10) representing the color
         :rtype: int
+        :raises MatrixError: Occurs if invalid color specified
         """
         if colorstr == "pink":
             return 1
@@ -79,6 +88,7 @@ class Matrix(Device):
         :param pixel: tuple of colour (0–10) or string (ie:"red") and brightness (0–10)
         :return: (color, brightness) integers
         :rtype: tuple
+        :raises MatrixError: Occurs if invalid pixel specified
         """
         if isinstance(pixel, tuple):
             c, brightness = pixel  # pylint: disable=unpacking-non-sequence
@@ -96,9 +106,10 @@ class Matrix(Device):
 
     @staticmethod
     def validate_coordinate(coord):
-        """"Validate an x,y coordinate for the 3x3 Matrix
+        """Validate an x,y coordinate for the 3x3 Matrix
 
         :param coord: tuple of 0-2 for the X coordinate and 0-2 for the Y coordinate
+        :raises MatrixError: Occurs if invalid coordinate specified
         """
         # pylint: disable=unsubscriptable-object
         if isinstance(coord, tuple):
@@ -122,15 +133,20 @@ class Matrix(Device):
         self._output()
 
     def off(self):
-        # Never send the "off" command to the port a Matrix is connected to
-        # Instead, just turn all the pixels off
+        """Pretends to turn matrix off
+
+        Never send the "off" command to the port a Matrix is connected to
+        Instead, just turn all the pixels off
+        """
         self.clear()
 
     def level(self, level):
         """Use the matrix as a "level" meter from 0-9
+
         (The level meter is expressed in green which seems to be unchangeable)
 
         :param level: The height of the bar graph, 0-9
+        :raises MatrixError: Occurs if invalid level specified
         """
         if not isinstance(level, int):
             raise MatrixError("Invalid level, not integer")
@@ -165,6 +181,7 @@ class Matrix(Device):
         fade which will cause the fade to "pop" in brightness.
 
         :param transition: Transition mode (0-2)
+        :raises MatrixError: Occurs if invalid transition
         """
         if not isinstance(transition, int):
             raise MatrixError("Invalid transition, not integer")

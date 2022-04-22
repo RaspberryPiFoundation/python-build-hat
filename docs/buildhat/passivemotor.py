@@ -1,3 +1,5 @@
+"""Passive motor example"""
+
 import time
 
 from buildhat import PassiveMotor

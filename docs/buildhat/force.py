@@ -1,3 +1,5 @@
+"""Example using force sensor"""
+
 from signal import pause
 
 from buildhat import ForceSensor, Motor
@@ -19,10 +21,18 @@ motor.run_for_rotations(2)
 
 
 def handle_pressed(force):
+    """Force sensor pressed
+
+    :param force: Force value
+    """
     print("pressed", force)
 
 
 def handle_released(force):
+    """Force sensor released
+
+    :param force: Force value
+    """
     print("released", force)
 
 
