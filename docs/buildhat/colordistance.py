@@ -1,3 +1,5 @@
+"""Example for color distance sensor"""
+
 from buildhat import ColorDistanceSensor
 
 color = ColorDistanceSensor('C')
