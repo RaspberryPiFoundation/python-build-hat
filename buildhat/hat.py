@@ -117,6 +117,7 @@ class Hat:
                 self._set_led(1)
 
     def reboot(self):
+        """Reboot the connected BuildHAT"""
         Device._instance.reboot()
 
     def _close(self):
