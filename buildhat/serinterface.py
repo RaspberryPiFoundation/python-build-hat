@@ -264,6 +264,7 @@ class BuildHAT:
         self.ser.write(data)
 
     def reboot(self):
+        """Reboot the BuildHAT"""
         # Stop the main loop
         self.running = False
         self.th.join()
