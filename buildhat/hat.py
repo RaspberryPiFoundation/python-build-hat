@@ -116,9 +116,10 @@ class Hat:
             elif self.led_status == 3:
                 self._set_led(1)
 
-    def reboot(self):
+    def reset(self):
         """Reboot the connected BuildHAT"""
-        Device._instance.reboot()
+        Device._instance.reset()
 
     def _close(self):
         Device._instance.shutdown()
+        Device._instance = None
