@@ -2,6 +2,7 @@
 
 from .devices import Device
 from .exc import MatrixError
+import time
 
 
 class Matrix(Device):
@@ -11,6 +12,8 @@ class Matrix(Device):
     :raises DeviceError: Occurs if there is no LED matrix attached to port
     """
 
+    MATRIX_STARUP_DELAY = 2
+
     def __init__(self, port):
         """Initialise matrix
 
@@ -19,8 +22,18 @@ class Matrix(Device):
         self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
         super().__init__(port)
 
-    def _reset(self):
-        super()._reset()
+    def _startup(self):
+        if Device._instance.time_when_ready:
+            time_since_startup = time.time() - Device._instance.time_when_ready
+            if time_since_startup < Matrix.MATRIX_STARUP_DELAY:
+                # Matrix has... issues... in the firmware.  Wait for it to decide to connect
+                # Often not manifested until after a command is sent to it
+                time.sleep(Matrix.MATRIX_STARUP_DELAY - time_since_startup)
+            # else the device existed AND was started while enumerating all the
+            # ports which means a reboot occurred and _startup is being called
+            # inside the enumeration loop, so don't wait
+
+        super()._startup()
         self.on()
         self.mode(2)
 
@@ -47,6 +60,7 @@ class Matrix(Device):
         for x in range(3):
             for y in range(3):
                 out.append((self._matrix[x][y][1] << 4) | self._matrix[x][y][0])
+        self.mode(2)
         self.select()
         self._write1(out)
         self.deselect()
