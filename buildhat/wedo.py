@@ -18,8 +18,8 @@ class TiltSensor(Device):
         """
         super().__init__(port)
 
-    def _reset(self):
-        super()._reset()
+    def _startup(self):
+        super()._startup()
         self.mode(0)
 
     def get_tilt(self):
@@ -47,8 +47,8 @@ class MotionSensor(Device):
         """
         super().__init__(port)
 
-    def _reset(self):
-        super()._reset()
+    def _startup(self):
+        super()._startup()
         self.mode(0)
 
     def get_distance(self):
