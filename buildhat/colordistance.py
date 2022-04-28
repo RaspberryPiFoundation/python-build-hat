@@ -20,14 +20,14 @@ class ColorDistanceSensor(Device):
 
         :param port: Port of device
         """
-        self.avg_reads = 4
-        self._old_color = None
         super().__init__(port)
+        self.avg_reads = 4
 
-    def _reset(self):
-        super()._reset()
+    def _startup(self):
+        super()._startup()
         self.on()
         self.mode(6)
+        self._old_color = None
 
     def segment_color(self, r, g, b):
         """Return the color name from HSV
