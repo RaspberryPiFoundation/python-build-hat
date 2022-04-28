@@ -20,19 +20,19 @@ class DistanceSensor(Device):
         :param port: Port of device
         :param threshold_distance: Optional
         """
+        super().__init__(port)
         self._cond_data = Condition()
         self._when_in_range = None
         self._when_out_of_range = None
-        self._threshold_distance = threshold_distance
-        self._distance = -1
-        super().__init__(port)
-
-    def _reset(self):
-        super()._reset()
-        self.on()
-        self.mode(0)
         self._fired_in = False
         self._fired_out = False
+        self._threshold_distance = threshold_distance
+        self._distance = -1
+
+    def _startup(self):
+        super()._startup()
+        self.on()
+        self.mode(0)
 
     def _intermediate(self, data):
         self._distance = data[0]
