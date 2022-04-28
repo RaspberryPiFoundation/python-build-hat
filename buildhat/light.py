@@ -21,8 +21,8 @@ class Light(Device):
         """
         super().__init__(port)
 
-    def _reset(self):
-        super()._reset()
+    def _shutdown(self):
+        self.off()
 
     def brightness(self, brightness):
         """
