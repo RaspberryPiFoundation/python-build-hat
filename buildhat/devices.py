@@ -48,13 +48,12 @@ class Device:
             raise DeviceError("Invalid port")
         self.port = p
         Device._setup()
-        if Device._instance is not None:
-            if Device._instance._used[p] is not None:
-                raise DeviceError("Port already used")
-        self._reset()
-        Device._instance._used[p] = weakref.ref(self)
+        if Device._instance.is_port_in_use(self.port):
+            raise DeviceError("Port already used")
+        self._startup()
+        Device._instance.use_device(self)
 
-    def _reset(self):
+    def _startup(self):
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
@@ -79,13 +78,24 @@ class Device:
         Device._instance = BuildHAT(firm, sig, v, device=device)
         weakref.finalize(Device._instance, Device._instance.shutdown)
 
+    def _shutdown(self):
+        if self.connected:
+            # Send commands for clean shutdown
+            # BuildHAT calls this when managing port in-use list
+            if Device._instance.is_port_in_use(self.port):
+                self.deselect()
+                self.off()
+            else:
+                raise DeviceError("Attempted to shutdown a device that was not in use")
+
     def __del__(self):
         """Handle deletion of device"""
-        if hasattr(self, "port") and (Device._instance._used[self.port] is not None):
-            Device._instance._used[self.port] = None
+        # Delete yourself from the in-use list
+        if Device._instance:
+            if Device._instance.is_port_in_use(self.port):
+                # Get deleted from the in-use list from the BuildHAT class
+                Device._instance.disuse_device(self.port)
             self._conn.callit = None
-            self.deselect()
-            self.off()
 
     @staticmethod
     def name_for_id(typeid):
