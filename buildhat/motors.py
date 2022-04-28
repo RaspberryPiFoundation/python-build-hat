@@ -22,14 +22,17 @@ class PassiveMotor(Device):
 
         :param port: Port of device
         """
+        super().__init__(port)
         self._default_speed = 20
         self._currentspeed = 0
-        super().__init__(port)
 
-    def _reset(self):
-        super()._reset()
+    def _startup(self):
+        super()._startup()
         self.plimit(0.7)
         self.bias(0.3)
+
+    def _shutdown(self):
+        self._write("port {} ; select; pwm ; coast ; off ;".format(self.port))
 
     def set_default_speed(self, default_speed):
         """Set the default speed of the motor
@@ -108,21 +111,24 @@ class Motor(Device):
 
         :param port: Port of device
         """
+        super().__init__(port)
         self.default_speed = 20
-        self._release = True
         self._bqueue = deque(maxlen=5)
         self._cvqueue = Condition()
-        self._oldpos = None
-        super().__init__(port)
         self.when_rotated = None
 
-    def _reset(self):
-        super()._reset()
+    def _startup(self):
+        super()._startup()
+        self._release = True
         self._currentspeed = 0
         self.mode([(1, 0), (2, 0), (3, 0)])
         self.plimit(0.7)
         self.bias(0.3)
+        self._oldpos = None
         self._runmode = MotorRunmode.NONE
+
+    def _shutdown(self):
+        self._write("port {} ; select; pwm ; coast ; off ;".format(self.port))
 
     def set_default_speed(self, default_speed):
         """Set the default speed of the motor
