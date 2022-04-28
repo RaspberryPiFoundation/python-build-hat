@@ -18,17 +18,17 @@ class ForceSensor(Device):
         :param port: Port of device
         :param threshold_force: Optional
         """
+        super().__init__(port)
         self._when_pressed = None
         self._when_released = None
-        self._cond_force = Condition()
-        self._threshold_force = threshold_force
-        super().__init__(port)
-
-    def _reset(self):
-        super()._reset()
-        self.mode([(0, 0), (1, 0), (3, 0)])
         self._fired_pressed = False
         self._fired_released = False
+        self._cond_force = Condition()
+        self._threshold_force = threshold_force
+
+    def _startup(self):
+        super()._startup()
+        self.mode([(0, 0), (1, 0), (3, 0)])
 
     def _intermediate(self, data):
         with self._cond_force:
