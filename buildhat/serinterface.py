@@ -332,7 +332,6 @@ class BuildHAT:
 
     def use_device(self, dev):
         """Register a class as using a port"""
-
         self._use_lock.acquire()
         try:
             if self._used[dev.port] is None:
@@ -345,7 +344,6 @@ class BuildHAT:
 
     def disuse_device(self, port):
         """Unregister a class as using a port"""
-
         # Stop tracking device class because either:
         # A: The class has been deleted or
         # B: Signal from serial port that the backing device is gone
@@ -359,7 +357,6 @@ class BuildHAT:
 
     def is_port_in_use(self, port):
         """Indicate if a port is in use by a class"""
-
         return self._used[port] is not None
 
     def reset(self):
