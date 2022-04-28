@@ -1,8 +1,8 @@
 """Matrix device handling functionality"""
 
+import time
 from .devices import Device
 from .exc import MatrixError
-import time
 
 
 class Matrix(Device):
