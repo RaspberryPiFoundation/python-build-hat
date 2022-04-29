@@ -1,46 +1,83 @@
-from .exc import DeviceNotFound, DeviceChanged, DeviceInvalid, HatNotFound
-import threading
-import gpiozero
-import serial
-import time
+"""Build HAT handling functionality"""
+
 import queue
-from threading import Condition, Timer
-from gpiozero import DigitalOutputDevice
+import threading
+import time
 from enum import Enum
+from threading import Condition, Timer
+
+import serial
+from gpiozero import DigitalOutputDevice
+
+from .exc import BuildHATError
+
 
 class HatState(Enum):
+    """Current state that hat is in"""
+
     OTHER = 0
     FIRMWARE = 1
     NEEDNEWFIRMWARE = 2
     BOOTLOADER = 3
 
+
 class Connection:
+    """Connection information for a port"""
+
     def __init__(self):
+        """Initialise connection"""
         self.typeid = -1
         self.connected = False
         self.callit = None
 
     def update(self, typeid, connected, callit=None):
+        """Update connection information for port
+
+        :param typeid: Type ID of device on port
+        :param connected: Whether device is connected or not
+        :param callit: Callback function
+        """
         self.typeid = typeid
         self.connected = connected
         self.callit = callit
 
+
 def cmp(str1, str2):
+    """Look for str2 in str1
+
+    :param str1: String to look in
+    :param str2: String to look for
+    :return: Whether str2 exists
+    """
     return str1[:len(str2)] == str2
 
+
 class BuildHAT:
-    CONNECTED=": connected to active ID"
-    CONNECTEDPASSIVE=": connected to passive ID"
-    DISCONNECTED=": disconnected"
-    DEVTIMEOUT=": timeout during data phase: disconnecting"
-    NOTCONNECTED=": no device detected"
-    PULSEDONE=": pulse done"
-    RAMPDONE=": ramp done"
-    FIRMWARE="Firmware version: "
-    BOOTLOADER="BuildHAT bootloader version"
-    DONE="Done initialising ports"
+    """Interacts with Build HAT via UART interface"""
+
+    CONNECTED = ": connected to active ID"
+    CONNECTEDPASSIVE = ": connected to passive ID"
+    DISCONNECTED = ": disconnected"
+    DEVTIMEOUT = ": timeout during data phase: disconnecting"
+    NOTCONNECTED = ": no device detected"
+    PULSEDONE = ": pulse done"
+    RAMPDONE = ": ramp done"
+    FIRMWARE = "Firmware version: "
+    BOOTLOADER = "BuildHAT bootloader version"
+    DONE = "Done initialising ports"
+    PROMPT = "BHBL>"
+    RESET_GPIO_NUMBER = 4
+    BOOT0_GPIO_NUMBER = 22
 
     def __init__(self, firmware, signature, version, device="/dev/serial0"):
+        """Interact with Build HAT
+
+        :param firmware: Firmware file
+        :param signature: Signature file
+        :param version: Firmware version
+        :param device: Serial device to use
+        :raises BuildHATError: Occurs if can't find HAT
+        """
         self.cond = Condition()
         self.state = HatState.OTHER
         self.connections = []
@@ -52,7 +89,7 @@ class BuildHAT:
         self.vincond = Condition()
         self.vin = None
 
-        for i in range(4):
+        for _ in range(4):
             self.connections.append(Connection())
             self.portcond.append(Condition())
             self.pulsecond.append(Condition())
@@ -73,7 +110,7 @@ class BuildHAT:
                 break
             if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
                 self.state = HatState.FIRMWARE
-                ver =  line[len(BuildHAT.FIRMWARE):].split(' ')
+                ver = line[len(BuildHAT.FIRMWARE):].split(' ')
                 if int(ver[0]) == version:
                     self.state = HatState.FIRMWARE
                     break
@@ -90,15 +127,14 @@ class BuildHAT:
                     break
                 else:
                     self.write(b"version\r")
-        # Use to force hat reset
-        #self.state = HatState.NEEDNEWFIRMWARE
+
         if self.state == HatState.NEEDNEWFIRMWARE:
             self.resethat()
             self.loadfirmware(firmware, signature)
         elif self.state == HatState.BOOTLOADER:
             self.loadfirmware(firmware, signature)
         elif self.state == HatState.OTHER:
-            raise HatNotFound()
+            raise BuildHATError("HAT not found")
 
         self.cbqueue = queue.Queue()
         self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))
@@ -122,10 +158,9 @@ class BuildHAT:
             self.cond.wait()
 
     def resethat(self):
-        RESET_GPIO_NUMBER = 4
-        BOOT0_GPIO_NUMBER = 22
-        reset = DigitalOutputDevice(RESET_GPIO_NUMBER)
-        boot0 = DigitalOutputDevice(BOOT0_GPIO_NUMBER)
+        """Reset the HAT"""
+        reset = DigitalOutputDevice(BuildHAT.RESET_GPIO_NUMBER)
+        boot0 = DigitalOutputDevice(BuildHAT.BOOT0_GPIO_NUMBER)
         boot0.off()
         reset.off()
         time.sleep(0.01)
@@ -136,6 +171,11 @@ class BuildHAT:
         time.sleep(0.5)
 
     def loadfirmware(self, firmware, signature):
+        """Load firmware
+
+        :param firmware: Firmware to load
+        :param signature: Signature to load
+        """
         with open(firmware, "rb") as f:
             firm = f.read()
         with open(signature, "rb") as f:
@@ -156,18 +196,25 @@ class BuildHAT:
         self.getprompt()
 
     def getprompt(self):
-        # Need to decide what we will do, when no prompt
-        PROMPT="BHBL>"
+        """Loop until prompt is found
+
+        Need to decide what we will do, when no prompt
+        """
         while True:
             line = b""
             try:
                 line = self.ser.readline().decode('utf-8', 'ignore')
             except serial.SerialException:
                 pass
-            if line[:len(PROMPT)] == PROMPT:
+            if line[:len(BuildHAT.PROMPT)] == BuildHAT.PROMPT:
                 break
 
     def checksum(self, data):
+        """Calculate checksum from data
+
+        :param data: Data to calculate the checksum from
+        :return: Checksum that has been calculated
+        """
         u = 1
         for i in range(0, len(data)):
             if (u & 0x80000000) != 0:
@@ -178,9 +225,14 @@ class BuildHAT:
         return u
 
     def write(self, data):
+        """Write data to the serial port of Build HAT
+
+        :param data: Data to write to Build HAT
+        """
         self.ser.write(data)
 
     def shutdown(self):
+        """Turn off the Build HAT devices"""
         if not self.fin:
             self.fin = True
             self.running = False
@@ -193,11 +245,16 @@ class BuildHAT:
                 if conn.typeid != 64:
                     turnoff += "port {} ; pwm ; coast ; off ;".format(p)
                 else:
-                    self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h) for h in [0xc2,0,0,0,0,0,0,0,0,0])).encode())
+                    self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h)
+                                                              for h in [0xc2, 0, 0, 0, 0, 0, 0, 0, 0, 0])).encode())
             self.write("{}\r".format(turnoff).encode())
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
+        """Event handling for callbacks
+
+        :param q: Queue of callback events
+        """
         while self.running:
             cb = q.get()
             # Test for empty tuple, which should only be passed when
@@ -210,6 +267,12 @@ class BuildHAT:
             q.task_done()
 
     def loop(self, cond, uselist, q):
+        """Event handling for Build HAT
+
+        :param cond: Condition used to block user's script till we're ready
+        :param uselist: Whether we're using the HATs 'list' function or not
+        :param q: Queue for callback events
+        """
         count = 0
         while self.running:
             line = b""
@@ -223,14 +286,14 @@ class BuildHAT:
                 portid = int(line[1])
                 msg = line[2:]
                 if cmp(msg, BuildHAT.CONNECTED):
-                    typeid = int(line[2+len(BuildHAT.CONNECTED):],16)
+                    typeid = int(line[2 + len(BuildHAT.CONNECTED):], 16)
                     self.connections[portid].update(typeid, True)
                     if typeid == 64:
                         self.write("port {} ; on\r".format(portid).encode())
                     if uselist:
                         count += 1
                 elif cmp(msg, BuildHAT.CONNECTEDPASSIVE):
-                    typeid = int(line[2+len(BuildHAT.CONNECTEDPASSIVE):],16)
+                    typeid = int(line[2 + len(BuildHAT.CONNECTEDPASSIVE):], 16)
                     self.connections[portid].update(typeid, True)
                     if uselist:
                         count += 1

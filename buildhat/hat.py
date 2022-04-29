@@ -1,13 +1,16 @@
-from .serinterface import BuildHAT
+"""HAT handling functionality"""
+
 from .devices import Device
-import os
-import sys
-import weakref
+
 
 class Hat:
-    """Allows enumeration of devices which are connected to the hat
-    """
+    """Allows enumeration of devices which are connected to the hat"""
+
     def __init__(self, device=None):
+        """Hat
+
+        :param device: Optional string containing path to Build HAT serial device
+        """
         self.led_status = -1
         if not device:
             Device._setup()
@@ -15,7 +18,7 @@ class Hat:
             Device._setup(device)
 
     def get(self):
-        """Gets devices which are connected or disconnected
+        """Get devices which are connected or disconnected
 
         :return: Dictionary of devices
         :rtype: dict
@@ -29,14 +32,14 @@ class Hat:
             elif Device._instance.connections[i].typeid == -1:
                 name = Device.DISCONNECTED_DEVICE
                 desc = ''
-            devices[chr(ord('A')+i)] = {"typeid" : Device._instance.connections[i].typeid,
-                                        "connected" : Device._instance.connections[i].connected,
-                                        "name" : name,
-                                        "description" : desc }
+            devices[chr(ord('A') + i)] = {"typeid": Device._instance.connections[i].typeid,
+                                          "connected": Device._instance.connections[i].connected,
+                                          "name": name,
+                                          "description": desc}
         return devices
 
     def get_vin(self):
-        """Gets the voltage present on the input power jack
+        """Get the voltage present on the input power jack
 
         :return: Voltage on the input power jack
         :rtype: float
@@ -53,9 +56,11 @@ class Hat:
             Device._instance.write("ledmode {}\r".format(intmode).encode())
 
     def set_leds(self, color="voltage"):
-        """Sets the two LEDs on or off on the BuildHAT.  By default
-        the color depends on the input voltage with green being nominal at around 8V
+        """Set the two LEDs on or off on the BuildHAT.
+
+        By default the color depends on the input voltage with green being nominal at around 8V
         (The fastest time the LEDs can be perceptually toggled is around 0.025 seconds)
+
         :param color: orange, green, both, off, or voltage (default)
         """
         if color == "orange":
@@ -73,6 +78,7 @@ class Hat:
 
     def orange_led(self, status=True):
         """Turn the BuildHAT's orange LED on or off
+
         :param status: True to turn it on, False to turn it off
         """
         if status:
@@ -92,6 +98,7 @@ class Hat:
 
     def green_led(self, status=True):
         """Turn the BuildHAT's green LED on or off
+
         :param status: True to turn it on, False to turn it off
         """
         if status:

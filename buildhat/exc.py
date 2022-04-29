@@ -1,32 +1,25 @@
-class MatrixInvalidPixel(Exception):
-    pass
+"""Exceptions for all build HAT classes"""
 
-class LightException(Exception):
-    pass
 
-class MotorException(Exception):
-    pass
+class DistanceSensorError(Exception):
+    """Error raised when invalid arguments passed to distance sensor functions"""
 
-class HatNotFound(Exception):
-    pass
 
-class DeviceInvalidMode(Exception):
-    pass
+class MatrixError(Exception):
+    """Error raised when invalid arguments passed to matrix functions"""
 
-class DeviceInvalid(Exception):
-    pass
 
-class DeviceNotFound(Exception):
-    pass
+class LightError(Exception):
+    """Error raised when invalid arguments passed to light functions"""
 
-class DeviceChanged(Exception):
-    pass
 
-class PortInUse(Exception):
-    pass
+class MotorError(Exception):
+    """Error raised when invalid arguments passed to motor functions"""
 
-class DistanceSensorException(Exception):
-    pass
 
-class DirectionInvalid(Exception):
-    pass
+class BuildHATError(Exception):
+    """Error raised when HAT not found"""
+
+
+class DeviceError(Exception):
+    """Error raised when there is a Device issue"""

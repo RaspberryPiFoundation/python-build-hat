@@ -1,20 +1,27 @@
-from .devices import Device
-from .exc import DeviceInvalid, DirectionInvalid, MotorException
-from threading import Condition
+"""Motor device handling functionality"""
+
+import threading
+import time
 from collections import deque
 from enum import Enum
-import threading
-import statistics
-import time
+from threading import Condition
+
+from .devices import Device
+from .exc import MotorError
+
 
 class PassiveMotor(Device):
     """Passive Motor device
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no passive motor attached to port
+    :raises DeviceError: Occurs if there is no passive motor attached to port
     """
 
     def __init__(self, port):
+        """Initialise motor
+
+        :param port: Port of device
+        """
         super().__init__(port)
         self._default_speed = 20
         self._currentspeed = 0
@@ -22,18 +29,20 @@ class PassiveMotor(Device):
         self.bias(0.3)
 
     def set_default_speed(self, default_speed):
-        """Sets the default speed of the motor
+        """Set the default speed of the motor
 
         :param default_speed: Speed ranging from -100 to 100
+        :raises MotorError: Occurs if invalid speed passed
         """
         if not (default_speed >= -100 and default_speed <= 100):
-            raise MotorException("Invalid Speed")
+            raise MotorError("Invalid Speed")
         self._default_speed = default_speed
 
     def start(self, speed=None):
         """Start motor
 
         :param speed: Speed ranging from -100 to 100
+        :raises MotorError: Occurs if invalid speed passed
         """
         if self._currentspeed == speed:
             # Already running at this speed, do nothing
@@ -43,29 +52,41 @@ class PassiveMotor(Device):
             speed = self._default_speed
         else:
             if not (speed >= -100 and speed <= 100):
-                raise MotorException("Invalid Speed")
+                raise MotorError("Invalid Speed")
         self._currentspeed = speed
-        cmd = "port {} ; pwm ; set {}\r".format(self.port, speed/100)
+        cmd = "port {} ; pwm ; set {}\r".format(self.port, speed / 100)
         self._write(cmd)
 
     def stop(self):
-        """Stops motor"""
+        """Stop motor"""
         cmd = "port {} ; off\r".format(self.port)
         self._write(cmd)
         self._currentspeed = 0
 
     def plimit(self, plimit):
+        """Limit power
+
+        :param plimit: Value 0 to 1
+        :raises MotorError: Occurs if invalid plimit value passed
+        """
         if not (plimit >= 0 and plimit <= 1):
-            raise MotorException("plimit should be 0 to 1")
+            raise MotorError("plimit should be 0 to 1")
         self._write("port {} ; plimit {}\r".format(self.port, plimit))
 
     def bias(self, bias):
+        """Bias motor
+
+        :param bias: Value 0 to 1
+        :raises MotorError: Occurs if invalid bias value passed
+        """
         if not (bias >= 0 and bias <= 1):
-            raise MotorException("bias should be 0 to 1")
+            raise MotorError("bias should be 0 to 1")
         self._write("port {} ; bias {}\r".format(self.port, bias))
 
 
 class MotorRunmode(Enum):
+    """Current mode motor is in"""
+
     NONE = 0
     FREE = 1
     DEGREES = 2
@@ -76,14 +97,18 @@ class Motor(Device):
     """Motor device
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no motor attached to port
+    :raises DeviceError: Occurs if there is no motor attached to port
     """
 
     def __init__(self, port):
+        """Initialise motor
+
+        :param port: Port of device
+        """
         super().__init__(port)
         self.default_speed = 20
         self._currentspeed = 0
-        self.mode([(1,0),(2,0),(3,0)])
+        self.mode([(1, 0), (2, 0), (3, 0)])
         self.plimit(0.7)
         self.bias(0.3)
         self._release = True
@@ -94,26 +119,29 @@ class Motor(Device):
         self._runmode = MotorRunmode.NONE
 
     def set_default_speed(self, default_speed):
-        """Sets the default speed of the motor
+        """Set the default speed of the motor
 
         :param default_speed: Speed ranging from -100 to 100
+        :raises MotorError: Occurs if invalid speed passed
         """
         if not (default_speed >= -100 and default_speed <= 100):
-            raise MotorException("Invalid Speed")
+            raise MotorError("Invalid Speed")
         self.default_speed = default_speed
 
     def run_for_rotations(self, rotations, speed=None, blocking=True):
-        """Runs motor for N rotations
+        """Run motor for N rotations
 
         :param rotations: Number of rotations
         :param speed: Speed ranging from -100 to 100
+        :param blocking: Whether call should block till finished
+        :raises MotorError: Occurs if invalid speed passed
         """
         self._runmode = MotorRunmode.DEGREES
         if speed is None:
             self.run_for_degrees(int(rotations * 360), self.default_speed, blocking)
         else:
             if not (speed >= -100 and speed <= 100):
-                raise MotorException("Invalid Speed")
+                raise MotorError("Invalid Speed")
             self.run_for_degrees(int(rotations * 360), speed, blocking)
 
     def _run_for_degrees(self, degrees, speed):
@@ -123,7 +151,7 @@ class Motor(Device):
             speed = abs(speed)
             mul = -1
         pos = self.get_position()
-        newpos = ((degrees*mul)+pos)/360.0
+        newpos = ((degrees * mul) + pos) / 360.0
         pos /= 360.0
         self._run_positional_ramp(pos, newpos, speed)
         self._runmode = MotorRunmode.NONE
@@ -133,10 +161,10 @@ class Motor(Device):
         data = self.get()
         pos = data[1]
         apos = data[2]
-        diff = (degrees-apos+180) % 360 - 180
-        newpos = (pos + diff)/360
-        v1 = (degrees - apos)%360
-        v2 = (apos - degrees)%360
+        diff = (degrees - apos + 180) % 360 - 180
+        newpos = (pos + diff) / 360
+        v1 = (degrees - apos) % 360
+        v2 = (apos - degrees) % 360
         mul = 1
         if diff > 0:
             mul = -1
@@ -144,18 +172,19 @@ class Motor(Device):
         if direction == "shortest":
             pass
         elif direction == "clockwise":
-            newpos = (pos + diff[1])/360
+            newpos = (pos + diff[1]) / 360
         elif direction == "anticlockwise":
-            newpos = (pos + diff[0])/360
+            newpos = (pos + diff[0]) / 360
         else:
-            raise DirectionInvalid("Invalid direction, should be: shortest, clockwise or anticlockwise")
+            raise MotorError("Invalid direction, should be: shortest, clockwise or anticlockwise")
         # Convert current motor position to decimal rotations from preset position to match newpos units
         pos /= 360.0
         self._run_positional_ramp(pos, newpos, speed)
         self._runmode = MotorRunmode.NONE
 
     def _run_positional_ramp(self, pos, newpos, speed):
-        """
+        """Ramp motor
+
         :param pos: Current motor position in decimal rotations (from preset position)
         :param newpos: New motor postion in decimal rotations (from preset position)
         :param speed: -100 to 100
@@ -163,8 +192,8 @@ class Motor(Device):
         # Collapse speed range to -5 to 5
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(
-            self.port, self.port, pos, newpos, dur)
+        cmd = "port {}; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(
+              self.port, self.port, pos, newpos, dur)
         self._write(cmd)
         with self._hat.rampcond[self.port]:
             self._hat.rampcond[self.port].wait()
@@ -173,18 +202,20 @@ class Motor(Device):
             self.coast()
 
     def run_for_degrees(self, degrees, speed=None, blocking=True):
-        """Runs motor for N degrees
+        """Run motor for N degrees
 
         Speed of 1 means 1 revolution / second
 
         :param degrees: Number of degrees to rotate
         :param speed: Speed ranging from -100 to 100
+        :param blocking: Whether call should block till finished
+        :raises MotorError: Occurs if invalid speed passed
         """
         self._runmode = MotorRunmode.DEGREES
         if speed is None:
             speed = self.default_speed
         if not (speed >= -100 and speed <= 100):
-            raise MotorException("Invalid Speed")
+            raise MotorError("Invalid Speed")
         if not blocking:
             th = threading.Thread(target=self._run_for_degrees, args=(degrees, speed))
             th.daemon = True
@@ -193,18 +224,21 @@ class Motor(Device):
             self._run_for_degrees(degrees, speed)
 
     def run_to_position(self, degrees, speed=None, blocking=True, direction="shortest"):
-        """Runs motor to position (in degrees)
+        """Run motor to position (in degrees)
 
         :param degrees: Position in degrees from -180 to 180
         :param speed: Speed ranging from 0 to 100
+        :param blocking: Whether call should block till finished
+        :param direction: shortest (default)/clockwise/anticlockwise
+        :raises MotorError: Occurs if invalid speed or angle passed
         """
         self._runmode = MotorRunmode.DEGREES
         if speed is None:
             speed = self.default_speed
         if not (speed >= 0 and speed <= 100):
-            raise MotorException("Invalid Speed")
+            raise MotorError("Invalid Speed")
         if degrees < -180 or degrees > 180:
-            raise MotorException("Invalid angle")
+            raise MotorError("Invalid angle")
         if not blocking:
             th = threading.Thread(target=self._run_to_position, args=(degrees, speed, direction))
             th.daemon = True
@@ -214,8 +248,9 @@ class Motor(Device):
 
     def _run_for_seconds(self, seconds, speed):
         self._runmode = MotorRunmode.SECONDS
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(self.port, self.port, speed, seconds);
-        self._write(cmd);
+        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(
+              self.port, self.port, speed, seconds)
+        self._write(cmd)
         with self._hat.pulsecond[self.port]:
             self._hat.pulsecond[self.port].wait()
         if self._release:
@@ -223,16 +258,18 @@ class Motor(Device):
         self._runmode = MotorRunmode.NONE
 
     def run_for_seconds(self, seconds, speed=None, blocking=True):
-        """Runs motor for N seconds
+        """Run motor for N seconds
 
         :param seconds: Time in seconds
         :param speed: Speed ranging from -100 to 100
+        :param blocking: Whether call should block till finished
+        :raises MotorError: Occurs when invalid speed specified
         """
         self._runmode = MotorRunmode.SECONDS
         if speed is None:
             speed = self.default_speed
         if not (speed >= -100 and speed <= 100):
-            raise MotorException("Invalid Speed")
+            raise MotorError("Invalid Speed")
         if not blocking:
             th = threading.Thread(target=self._run_for_seconds, args=(seconds, speed))
             th.daemon = True
@@ -244,6 +281,7 @@ class Motor(Device):
         """Start motor
 
         :param speed: Speed ranging from -100 to 100
+        :raises MotorError: Occurs when invalid speed specified
         """
         if self._runmode == MotorRunmode.FREE:
             if self._currentspeed == speed:
@@ -257,22 +295,23 @@ class Motor(Device):
             speed = self.default_speed
         else:
             if not (speed >= -100 and speed <= 100):
-                raise MotorException("Invalid Speed")
+                raise MotorError("Invalid Speed")
         cmd = "port {} ; set {}\r".format(self.port, speed)
         if self._runmode == MotorRunmode.NONE:
-            cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(self.port, self.port, speed)
+            cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(
+                  self.port, self.port, speed)
         self._runmode = MotorRunmode.FREE
         self._currentspeed = speed
         self._write(cmd)
 
     def stop(self):
-        """Stops motor"""
+        """Stop motor"""
         self._runmode = MotorRunmode.NONE
         self._currentspeed = 0
         self.coast()
 
     def get_position(self):
-        """Gets position of motor with relation to preset position (can be negative or positive)
+        """Get position of motor with relation to preset position (can be negative or positive)
 
         :return: Position of motor in degrees from preset position
         :rtype: int
@@ -280,7 +319,7 @@ class Motor(Device):
         return self.get()[1]
 
     def get_aposition(self):
-        """Gets absolute position of motor
+        """Get absolute position of motor
 
         :return: Absolute position of motor from -180 to 180
         :rtype: int
@@ -288,7 +327,7 @@ class Motor(Device):
         return self.get()[2]
 
     def get_speed(self):
-        """Gets speed of motor
+        """Get speed of motor
 
         :return: Speed of motor
         :rtype: int
@@ -298,10 +337,11 @@ class Motor(Device):
     @property
     def when_rotated(self):
         """
-        Handles rotation events
+        Handle rotation events
 
         :getter: Returns function to be called when rotated
         :setter: Sets function to be called when rotated
+        :return: Callback function
         """
         return self._when_rotated
 
@@ -317,53 +357,80 @@ class Motor(Device):
 
     @when_rotated.setter
     def when_rotated(self, value):
-        """Calls back, when motor has been rotated"""
+        """Call back, when motor has been rotated
+
+        :param value: Callback function
+        """
         self._when_rotated = value
         self.callback(self._intermediate)
 
     def plimit(self, plimit):
+        """Limit power
+
+        :param plimit: Value 0 to 1
+        :raises MotorError: Occurs if invalid plimit value passed
+        """
         if not (plimit >= 0 and plimit <= 1):
-            raise MotorException("plimit should be 0 to 1")
+            raise MotorError("plimit should be 0 to 1")
         self._write("port {} ; plimit {}\r".format(self.port, plimit))
 
     def bias(self, bias):
+        """Bias motor
+
+        :param bias: Value 0 to 1
+        :raises MotorError: Occurs if invalid bias value passed
+        """
         if not (bias >= 0 and bias <= 1):
-            raise MotorException("bias should be 0 to 1")
+            raise MotorError("bias should be 0 to 1")
         self._write("port {} ; bias {}\r".format(self.port, bias))
 
     def pwm(self, pwmv):
+        """PWM motor
+
+        :param pwmv: Value -1 to 1
+        :raises MotorError: Occurs if invalid pwm value passed
+        """
         if not (pwmv >= -1 and pwmv <= 1):
-            raise MotorException("pwm should be -1 to 1")
+            raise MotorError("pwm should be -1 to 1")
         self._write("port {} ; pwm ; set {}\r".format(self.port, pwmv))
 
     def coast(self):
+        """Coast motor"""
         self._write("port {} ; coast\r".format(self.port))
 
     def float(self):
+        """Float motor"""
         self.pwm(0)
+
 
 class MotorPair:
     """Pair of motors
 
     :param motora: One of the motors to drive
     :param motorb: Other motor in pair to drive
-    :raises DeviceInvalid: Occurs if there is no motor attached to port
+    :raises DeviceError: Occurs if there is no motor attached to port
     """
+
     def __init__(self, leftport, rightport):
+        """Initialise pair of motors
+
+        :param leftport: Left motor port
+        :param rightport:  Right motor port
+        """
         super().__init__()
         self._leftmotor = Motor(leftport)
         self._rightmotor = Motor(rightport)
         self.default_speed = 20
 
     def set_default_speed(self, default_speed):
-        """Sets the default speed of the motor
+        """Set the default speed of the motor
 
         :param default_speed: Speed ranging from -100 to 100
         """
         self.default_speed = default_speed
 
     def run_for_rotations(self, rotations, speedl=None, speedr=None):
-        """Runs pair of motors for N rotations
+        """Run pair of motors for N rotations
 
         :param rotations: Number of rotations
         :param speedl: Speed ranging from -100 to 100
@@ -376,7 +443,7 @@ class MotorPair:
         self.run_for_degrees(int(rotations * 360), speedl, speedr)
 
     def run_for_degrees(self, degrees, speedl=None, speedr=None):
-        """Runs pair of motors for degrees
+        """Run pair of motors for degrees
 
         :param degrees: Number of degrees
         :param speedl: Speed ranging from -100 to 100
@@ -396,7 +463,7 @@ class MotorPair:
         th2.join()
 
     def run_for_seconds(self, seconds, speedl=None, speedr=None):
-        """Runs pair for N seconds
+        """Run pair for N seconds
 
         :param seconds: Time in seconds
         :param speedl: Speed ranging from -100 to 100
@@ -418,7 +485,8 @@ class MotorPair:
     def start(self, speedl=None, speedr=None):
         """Start motors
 
-        :param speed: Speed ranging from -100 to 100
+        :param speedl: Speed ranging from -100 to 100
+        :param speedr: Speed ranging from -100 to 100
         """
         if speedl is None:
             speedl = self.default_speed
@@ -433,11 +501,12 @@ class MotorPair:
         self._rightmotor.stop()
 
     def run_to_position(self, degreesl, degreesr, speed=None, direction="shortest"):
-        """Runs pair to position (in degrees)
+        """Run pair to position (in degrees)
 
-           :param degreesl: Position in degrees for left motor
-           :param degreesr: Position in degrees for right motor
-           :param speed: Speed ranging from -100 to 100
+        :param degreesl: Position in degrees for left motor
+        :param degreesr: Position in degrees for right motor
+        :param speed: Speed ranging from -100 to 100
+        :param direction: shortest (default)/clockwise/anticlockwise
         """
         if speed is None:
             th1 = threading.Thread(target=self._leftmotor._run_to_position, args=(degreesl, self.default_speed, direction))

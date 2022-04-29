@@ -1,34 +1,43 @@
+"""Matrix device handling functionality"""
+
 from .devices import Device
-from .exc import DeviceInvalid, MatrixInvalidPixel
-import threading
-import time
+from .exc import MatrixError
+
 
 class Matrix(Device):
     """LED Matrix
 
     :param port: Port of device
-    :raises DeviceInvalid: Occurs if there is no LED matrix attached to port
+    :raises DeviceError: Occurs if there is no LED matrix attached to port
     """
+
     def __init__(self, port):
+        """Initialise matrix
+
+        :param port: Port of device
+        """
         super().__init__(port)
         self.on()
         self.mode(2)
-        self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
+        self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
 
-    def set_pixels(self, matrix):
+    def set_pixels(self, matrix, display=True):
         """Write pixel data to LED matrix
 
-        :param pixels: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
+        :param matrix: 3x3 list of tuples, with colour (0–10) and brightness (0–10) (see example for more detail)
+        :param display: Whether to update matrix or not
+        :raises MatrixError: Occurs if invalid matrix height/width provided
         """
+        if len(matrix) != 3:
+            raise MatrixError("Incorrect matrix height")
         for x in range(3):
+            if len(matrix[x]) != 3:
+                raise MatrixError("Incorrect matrix width")
             for y in range(3):
-                color, brightness = matrix[x][y]
-                if not (brightness >= 0 and brightness <= 10):
-                    raise MatrixInvalidPixel("Invalid brightness specified")
-                if not (color >= 0 and color <= 10):
-                    raise MatrixInvalidPixel("Invalid pixel specified")
+                matrix[x][y] = Matrix.normalize_pixel(matrix[x][y])  # pylint: disable=too-many-function-args
         self._matrix = matrix
-        self._output()
+        if display:
+            self._output()
 
     def _output(self):
         out = [0xc2]
@@ -39,7 +48,15 @@ class Matrix(Device):
         self._write1(out)
         self.deselect()
 
-    def strtocolor(self, colorstr):
+    @staticmethod
+    def strtocolor(colorstr):
+        """Return the BuldHAT's integer representation of a color string
+
+        :param colorstr: str of a valid color
+        :return: (0-10) representing the color
+        :rtype: int
+        :raises MatrixError: Occurs if invalid color specified
+        """
         if colorstr == "pink":
             return 1
         elif colorstr == "lilac":
@@ -62,7 +79,46 @@ class Matrix(Device):
             return 10
         elif colorstr == "":
             return 0
-        raise MatrixInvalidPixel("Invalid color specified")
+        raise MatrixError("Invalid color specified")
+
+    @staticmethod
+    def normalize_pixel(pixel):
+        """Validate a pixel tuple (color, brightness) and convert string colors to integers
+
+        :param pixel: tuple of colour (0–10) or string (ie:"red") and brightness (0–10)
+        :return: (color, brightness) integers
+        :rtype: tuple
+        :raises MatrixError: Occurs if invalid pixel specified
+        """
+        if isinstance(pixel, tuple):
+            c, brightness = pixel  # pylint: disable=unpacking-non-sequence
+            if isinstance(c, str):
+                c = Matrix.strtocolor(c)  # pylint: disable=too-many-function-args
+            if not (isinstance(brightness, int) and isinstance(c, int)):
+                raise MatrixError("Invalid pixel specified")
+            if not (brightness >= 0 and brightness <= 10):
+                raise MatrixError("Invalid brightness value specified")
+            if not (c >= 0 and c <= 10):
+                raise MatrixError("Invalid pixel color specified")
+            return (c, brightness)
+        else:
+            raise MatrixError("Invalid pixel specified")
+
+    @staticmethod
+    def validate_coordinate(coord):
+        """Validate an x,y coordinate for the 3x3 Matrix
+
+        :param coord: tuple of 0-2 for the X coordinate and 0-2 for the Y coordinate
+        :raises MatrixError: Occurs if invalid coordinate specified
+        """
+        # pylint: disable=unsubscriptable-object
+        if isinstance(coord, tuple):
+            if not (isinstance(coord[0], int) and isinstance(coord[1], int)):
+                raise MatrixError("Invalid coord specified")
+            elif coord[0] > 2 or coord[0] < 0 or coord[1] > 2 or coord[1] < 0:
+                raise MatrixError("Invalid coord specified")
+        else:
+            raise MatrixError("Invalid coord specified")
 
     def clear(self, pixel=None):
         """Clear matrix or set all as the same pixel
@@ -70,33 +126,32 @@ class Matrix(Device):
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
         """
         if pixel is None:
-            self._matrix = [[(0,0) for x in range(3)] for y in range(3)]
+            self._matrix = [[(0, 0) for x in range(3)] for y in range(3)]
         else:
-            color = ()
-            if isinstance(pixel, tuple):
-                c, brightness = pixel
-                if isinstance(c, str):
-                    c = self.strtocolor(c)
-                if not (brightness >= 0 and brightness <= 10):
-                    raise MatrixInvalidPixel("Invalid brightness specified")
-                if not (c >= 0 and c <= 10):
-                    raise MatrixInvalidPixel("Invalid pixel specified")
-                color = (c, brightness)
-            else:
-                raise MatrixInvalidPixel("Invalid pixel specified")
+            color = Matrix.normalize_pixel(pixel)  # pylint: disable=too-many-function-args
             self._matrix = [[color for x in range(3)] for y in range(3)]
         self._output()
 
+    def off(self):
+        """Pretends to turn matrix off
+
+        Never send the "off" command to the port a Matrix is connected to
+        Instead, just turn all the pixels off
+        """
+        self.clear()
+
     def level(self, level):
         """Use the matrix as a "level" meter from 0-9
+
         (The level meter is expressed in green which seems to be unchangeable)
 
         :param level: The height of the bar graph, 0-9
+        :raises MatrixError: Occurs if invalid level specified
         """
         if not isinstance(level, int):
-            raise MatrixInvalidPixel("Invalid level, not integer")
+            raise MatrixError("Invalid level, not integer")
         if not (level >= 0 and level <= 9):
-            raise MatrixInvalidPixel("Invalid level specified")
+            raise MatrixError("Invalid level specified")
         self.mode(0)
         self.select()
         self._write1([0xc0, level])
@@ -126,11 +181,12 @@ class Matrix(Device):
         fade which will cause the fade to "pop" in brightness.
 
         :param transition: Transition mode (0-2)
+        :raises MatrixError: Occurs if invalid transition
         """
         if not isinstance(transition, int):
-            raise MatrixInvalidPixel("Invalid transition, not integer")
+            raise MatrixError("Invalid transition, not integer")
         if not (transition >= 0 and transition <= 2):
-            raise MatrixInvalidPixel("Invalid transition specified")
+            raise MatrixError("Invalid transition specified")
         self.mode(3)
         self.select()
         self._write1([0xc3, transition])
@@ -144,22 +200,8 @@ class Matrix(Device):
         :param pixel: tuple of colour (0–10) or string and brightness (0–10)
         :param display: Whether to update matrix or not
         """
-        if isinstance(pixel, tuple):
-            c, brightness = pixel
-            if isinstance(c, str):
-                c = self.strtocolor(c)
-            if not (brightness >= 0 and brightness <= 10):
-                raise MatrixInvalidPixel("Invalid brightness specified")
-            if not (c >= 0 and c <= 10):
-                raise MatrixInvalidPixel("Invalid pixel specified")
-            color = (c, brightness)
-        else:
-            raise MatrixInvalidPixel("Invalid pixel specified")
-        if isinstance(coord, tuple):
-            if not (isinstance(coord[0], int) and isinstance(coord[1], int)):
-                raise MatrixInvalidPixel("Invalid coord specified")
-        else:
-            raise MatrixInvalidPixel("Invalid coord specified")
+        color = Matrix.normalize_pixel(pixel)  # pylint: disable=too-many-function-args
+        Matrix.validate_coordinate(coord)   # pylint: disable=too-many-function-args
         x, y = coord
         self._matrix[x][y] = color
         if display:

@@ -26,9 +26,13 @@ jobs:
     - name: Install dependencies for testing
       run: |
         if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+    - name: set pythonpath
+      run: |
+        echo "PYTHONPATH=." >> $GITHUB_ENV
     - name: Lint with flake8
       run: |
+        flake8 . --version
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude="docs/conf.py docs/sphinx_selective_exclude/modindex_exclude.py"
+        flake8 . --count --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
