@@ -313,19 +313,19 @@ class BuildHAT:
                         self.pulsecond[portid].notify()
 
             if uselist and count == 4:
-                def runit():
+                def runsleep1():
                     global uselist
                     uselist = False
                     with cond:
                         cond.notify()
-                t = Timer(3.0, runit)
+                t = Timer(3.0, runsleep1)
                 t.start()
 
             if not uselist and cmp(line, BuildHAT.DONE):
-                def runit():
+                def runsleep2():
                     with cond:
                         cond.notify()
-                t = Timer(8.0, runit)
+                t = Timer(8.0, runsleep2)
                 t.start()
 
             if line[0] == "P" and (line[2] == "C" or line[2] == "M"):
