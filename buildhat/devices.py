@@ -67,7 +67,7 @@ class Device:
         Device._used[p] = True
 
     @staticmethod
-    def _setup(device="/dev/serial0"):
+    def _setup(**kwargs):
         if Device._instance:
             return
         data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__), "data/")
@@ -77,7 +77,7 @@ class Device:
         vfile = open(ver)
         v = int(vfile.read())
         vfile.close()
-        Device._instance = BuildHAT(firm, sig, v, device=device)
+        Device._instance = BuildHAT(firm, sig, v, **kwargs)
         weakref.finalize(Device._instance, Device._instance.shutdown)
 
     def __del__(self):

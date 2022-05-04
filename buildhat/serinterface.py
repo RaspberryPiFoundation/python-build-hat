@@ -1,6 +1,8 @@
 """Build HAT handling functionality"""
 
+import logging
 import queue
+import tempfile
 import threading
 import time
 from enum import Enum
@@ -69,13 +71,14 @@ class BuildHAT:
     RESET_GPIO_NUMBER = 4
     BOOT0_GPIO_NUMBER = 22
 
-    def __init__(self, firmware, signature, version, device="/dev/serial0"):
+    def __init__(self, firmware, signature, version, device="/dev/serial0", debug=False):
         """Interact with Build HAT
 
         :param firmware: Firmware file
         :param signature: Signature file
         :param version: Firmware version
         :param device: Serial device to use
+        :param debug: Optional boolean to log debug information
         :raises BuildHATError: Occurs if can't find HAT
         """
         self.cond = Condition()
@@ -88,6 +91,10 @@ class BuildHAT:
         self.running = True
         self.vincond = Condition()
         self.vin = None
+        if debug:
+            tmp = tempfile.NamedTemporaryFile(suffix=".log", prefix="buildhat-", delete=False)
+            logging.basicConfig(filename=tmp.name, format='%(asctime)s %(message)s',
+                                level=logging.INFO)
 
         for _ in range(4):
             self.connections.append(Connection())
@@ -230,6 +237,8 @@ class BuildHAT:
         :param data: Data to write to Build HAT
         """
         self.ser.write(data)
+        if not self.fin:
+            logging.info("> {}".format(data.decode('utf-8', 'ignore')))
 
     def shutdown(self):
         """Turn off the Build HAT devices"""
@@ -277,11 +286,12 @@ class BuildHAT:
         while self.running:
             line = b""
             try:
-                line = self.ser.readline().decode('utf-8', 'ignore')
+                line = self.ser.readline().decode('utf-8', 'ignore').strip()
             except serial.SerialException:
                 pass
             if len(line) == 0:
                 continue
+            logging.info("< {}".format(line))
             if line[0] == "P" and line[2] == ":":
                 portid = int(line[1])
                 msg = line[2:]
@@ -326,7 +336,7 @@ class BuildHAT:
 
             if line[0] == "P" and (line[2] == "C" or line[2] == "M"):
                 portid = int(line[1])
-                data = line[5:].strip().split(" ")
+                data = line[5:].split(" ")
                 newdata = []
                 for d in data:
                     if "." in d:
@@ -341,8 +351,8 @@ class BuildHAT:
                 with self.portcond[portid]:
                     self.portcond[portid].notify()
 
-            if len(line) >= 5 and line[1] == "." and line.strip().endswith(" V"):
-                vin = float(line.strip().split(" ")[0])
+            if len(line) >= 5 and line[1] == "." and line.endswith(" V"):
+                vin = float(line.split(" ")[0])
                 self.vin = vin
                 with self.vincond:
                     self.vincond.notify()
