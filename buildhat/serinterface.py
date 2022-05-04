@@ -117,7 +117,7 @@ class BuildHAT:
                     break
                 else:
                     continue
-            if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
+            if cmp(line, BuildHAT.FIRMWARE):
                 self.state = HatState.FIRMWARE
                 ver = line[len(BuildHAT.FIRMWARE):].split(' ')
                 if int(ver[0]) == version:
@@ -126,7 +126,7 @@ class BuildHAT:
                 else:
                     self.state = HatState.NEEDNEWFIRMWARE
                     break
-            elif line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
+            elif cmp(line, BuildHAT.BOOTLOADER):
                 self.state = HatState.BOOTLOADER
                 break
             else:
@@ -194,13 +194,13 @@ class BuildHAT:
         self.write("load {} {}\r".format(len(firm), self.checksum(firm)).encode())
         time.sleep(0.1)
         self.write(b"\x02")
-        self.write(firm)
+        self.write(firm, log=False)
         self.write(b"\x03\r")
         self.getprompt()
         self.write("signature {}\r".format(len(sig)).encode())
         time.sleep(0.1)
         self.write(b"\x02")
-        self.write(sig)
+        self.write(sig, log=False)
         self.write(b"\x03\r")
         self.getprompt()
 
@@ -211,7 +211,7 @@ class BuildHAT:
         """
         while True:
             line = self.read()
-            if line[:len(BuildHAT.PROMPT)] == BuildHAT.PROMPT:
+            if cmp(line, BuildHAT.PROMPT):
                 break
 
     def checksum(self, data):
@@ -229,14 +229,14 @@ class BuildHAT:
             u = (u ^ data[i]) & 0xFFFFFFFF
         return u
 
-    def write(self, data):
+    def write(self, data, log=True):
         """Write data to the serial port of Build HAT
 
         :param data: Data to write to Build HAT
         """
         self.ser.write(data)
-        if not self.fin:
-            logging.info("> {}".format(data.decode('utf-8', 'ignore')))
+        if not self.fin and log:
+            logging.info("> {}".format(data.decode('utf-8', 'ignore').strip()))
 
     def read(self):
         """Read data from the serial port of Build HAT
