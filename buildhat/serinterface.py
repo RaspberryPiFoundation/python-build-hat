@@ -106,15 +106,17 @@ class BuildHAT:
         # Check if we're in the bootloader or the firmware
         self.write(b"version\r")
 
+        emptydata = 0
         incdata = 0
         while True:
-            try:
-                line = self.ser.readline().decode('utf-8', 'ignore')
-            except serial.SerialException:
-                pass
+            line = self.read()
             if len(line) == 0:
-                # Didn't recieve any data
-                break
+                # Didn't receive any data
+                emptydata += 1
+                if emptydata > 3:
+                    break
+                else:
+                    continue
             if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
                 self.state = HatState.FIRMWARE
                 ver = line[len(BuildHAT.FIRMWARE):].split(' ')
@@ -208,11 +210,7 @@ class BuildHAT:
         Need to decide what we will do, when no prompt
         """
         while True:
-            line = b""
-            try:
-                line = self.ser.readline().decode('utf-8', 'ignore')
-            except serial.SerialException:
-                pass
+            line = self.read()
             if line[:len(BuildHAT.PROMPT)] == BuildHAT.PROMPT:
                 break
 
@@ -239,6 +237,20 @@ class BuildHAT:
         self.ser.write(data)
         if not self.fin:
             logging.info("> {}".format(data.decode('utf-8', 'ignore')))
+
+    def read(self):
+        """Read data from the serial port of Build HAT
+
+        :return: Line that has been read
+        """
+        line = ""
+        try:
+            line = self.ser.readline().decode('utf-8', 'ignore').strip()
+        except serial.SerialException:
+            pass
+        if line != "":
+            logging.info("< {}".format(line))
+        return line
 
     def shutdown(self):
         """Turn off the Build HAT devices"""
@@ -284,14 +296,9 @@ class BuildHAT:
         """
         count = 0
         while self.running:
-            line = b""
-            try:
-                line = self.ser.readline().decode('utf-8', 'ignore').strip()
-            except serial.SerialException:
-                pass
+            line = self.read()
             if len(line) == 0:
                 continue
-            logging.info("< {}".format(line))
             if line[0] == "P" and line[2] == ":":
                 portid = int(line[1])
                 msg = line[2:]
