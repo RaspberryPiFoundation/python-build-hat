@@ -193,15 +193,15 @@ class BuildHAT:
         self.getprompt()
         self.write("load {} {}\r".format(len(firm), self.checksum(firm)).encode())
         time.sleep(0.1)
-        self.write(b"\x02")
-        self.write(firm, log=False)
-        self.write(b"\x03\r")
+        self.write(b"\x02", replace="0x02")
+        self.write(firm, replace="--firmware file--")
+        self.write(b"\x03\r", replace="0x03")
         self.getprompt()
         self.write("signature {}\r".format(len(sig)).encode())
         time.sleep(0.1)
-        self.write(b"\x02")
-        self.write(sig, log=False)
-        self.write(b"\x03\r")
+        self.write(b"\x02", replace="0x02")
+        self.write(sig, replace="--signature file--")
+        self.write(b"\x03\r", replace="0x03")
         self.getprompt()
 
     def getprompt(self):
@@ -229,14 +229,19 @@ class BuildHAT:
             u = (u ^ data[i]) & 0xFFFFFFFF
         return u
 
-    def write(self, data, log=True):
+    def write(self, data, log=True, replace=""):
         """Write data to the serial port of Build HAT
 
         :param data: Data to write to Build HAT
+        :param log: Whether to log line or not
+        :param replace: Whether to log an alternative string
         """
         self.ser.write(data)
         if not self.fin and log:
-            logging.info("> {}".format(data.decode('utf-8', 'ignore').strip()))
+            if replace != "":
+                logging.info("> {}".format(replace))
+            else:
+                logging.info("> {}".format(data.decode('utf-8', 'ignore').strip()))
 
     def read(self):
         """Read data from the serial port of Build HAT
