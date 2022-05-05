@@ -1,6 +1,8 @@
 """Build HAT handling functionality"""
 
+import logging
 import queue
+import tempfile
 import threading
 import time
 from enum import Enum
@@ -69,13 +71,14 @@ class BuildHAT:
     RESET_GPIO_NUMBER = 4
     BOOT0_GPIO_NUMBER = 22
 
-    def __init__(self, firmware, signature, version, device="/dev/serial0"):
+    def __init__(self, firmware, signature, version, device="/dev/serial0", debug=False):
         """Interact with Build HAT
 
         :param firmware: Firmware file
         :param signature: Signature file
         :param version: Firmware version
         :param device: Serial device to use
+        :param debug: Optional boolean to log debug information
         :raises BuildHATError: Occurs if can't find HAT
         """
         self.cond = Condition()
@@ -88,6 +91,10 @@ class BuildHAT:
         self.running = True
         self.vincond = Condition()
         self.vin = None
+        if debug:
+            tmp = tempfile.NamedTemporaryFile(suffix=".log", prefix="buildhat-", delete=False)
+            logging.basicConfig(filename=tmp.name, format='%(asctime)s %(message)s',
+                                level=logging.INFO)
 
         for _ in range(4):
             self.connections.append(Connection())
@@ -99,16 +106,18 @@ class BuildHAT:
         # Check if we're in the bootloader or the firmware
         self.write(b"version\r")
 
+        emptydata = 0
         incdata = 0
         while True:
-            try:
-                line = self.ser.readline().decode('utf-8', 'ignore')
-            except serial.SerialException:
-                pass
+            line = self.read()
             if len(line) == 0:
-                # Didn't recieve any data
-                break
-            if line[:len(BuildHAT.FIRMWARE)] == BuildHAT.FIRMWARE:
+                # Didn't receive any data
+                emptydata += 1
+                if emptydata > 3:
+                    break
+                else:
+                    continue
+            if cmp(line, BuildHAT.FIRMWARE):
                 self.state = HatState.FIRMWARE
                 ver = line[len(BuildHAT.FIRMWARE):].split(' ')
                 if int(ver[0]) == version:
@@ -117,7 +126,7 @@ class BuildHAT:
                 else:
                     self.state = HatState.NEEDNEWFIRMWARE
                     break
-            elif line[:len(BuildHAT.BOOTLOADER)] == BuildHAT.BOOTLOADER:
+            elif cmp(line, BuildHAT.BOOTLOADER):
                 self.state = HatState.BOOTLOADER
                 break
             else:
@@ -184,15 +193,15 @@ class BuildHAT:
         self.getprompt()
         self.write("load {} {}\r".format(len(firm), self.checksum(firm)).encode())
         time.sleep(0.1)
-        self.write(b"\x02")
-        self.write(firm)
-        self.write(b"\x03\r")
+        self.write(b"\x02", replace="0x02")
+        self.write(firm, replace="--firmware file--")
+        self.write(b"\x03\r", replace="0x03")
         self.getprompt()
         self.write("signature {}\r".format(len(sig)).encode())
         time.sleep(0.1)
-        self.write(b"\x02")
-        self.write(sig)
-        self.write(b"\x03\r")
+        self.write(b"\x02", replace="0x02")
+        self.write(sig, replace="--signature file--")
+        self.write(b"\x03\r", replace="0x03")
         self.getprompt()
 
     def getprompt(self):
@@ -201,12 +210,8 @@ class BuildHAT:
         Need to decide what we will do, when no prompt
         """
         while True:
-            line = b""
-            try:
-                line = self.ser.readline().decode('utf-8', 'ignore')
-            except serial.SerialException:
-                pass
-            if line[:len(BuildHAT.PROMPT)] == BuildHAT.PROMPT:
+            line = self.read()
+            if cmp(line, BuildHAT.PROMPT):
                 break
 
     def checksum(self, data):
@@ -224,12 +229,33 @@ class BuildHAT:
             u = (u ^ data[i]) & 0xFFFFFFFF
         return u
 
-    def write(self, data):
+    def write(self, data, log=True, replace=""):
         """Write data to the serial port of Build HAT
 
         :param data: Data to write to Build HAT
+        :param log: Whether to log line or not
+        :param replace: Whether to log an alternative string
         """
         self.ser.write(data)
+        if not self.fin and log:
+            if replace != "":
+                logging.info("> {}".format(replace))
+            else:
+                logging.info("> {}".format(data.decode('utf-8', 'ignore').strip()))
+
+    def read(self):
+        """Read data from the serial port of Build HAT
+
+        :return: Line that has been read
+        """
+        line = ""
+        try:
+            line = self.ser.readline().decode('utf-8', 'ignore').strip()
+        except serial.SerialException:
+            pass
+        if line != "":
+            logging.info("< {}".format(line))
+        return line
 
     def shutdown(self):
         """Turn off the Build HAT devices"""
@@ -275,11 +301,7 @@ class BuildHAT:
         """
         count = 0
         while self.running:
-            line = b""
-            try:
-                line = self.ser.readline().decode('utf-8', 'ignore')
-            except serial.SerialException:
-                pass
+            line = self.read()
             if len(line) == 0:
                 continue
             if line[0] == "P" and line[2] == ":":
@@ -326,7 +348,7 @@ class BuildHAT:
 
             if line[0] == "P" and (line[2] == "C" or line[2] == "M"):
                 portid = int(line[1])
-                data = line[5:].strip().split(" ")
+                data = line[5:].split(" ")
                 newdata = []
                 for d in data:
                     if "." in d:
@@ -341,8 +363,8 @@ class BuildHAT:
                 with self.portcond[portid]:
                     self.portcond[portid].notify()
 
-            if len(line) >= 5 and line[1] == "." and line.strip().endswith(" V"):
-                vin = float(line.strip().split(" ")[0])
+            if len(line) >= 5 and line[1] == "." and line.endswith(" V"):
+                vin = float(line.split(" ")[0])
                 self.vin = vin
                 with self.vincond:
                     self.vincond.notify()
