@@ -1,6 +1,8 @@
 """Build HAT handling functionality"""
 
+import logging
 import queue
+import tempfile
 import threading
 import time
 import weakref
@@ -90,13 +92,14 @@ class BuildHAT:
     _firmware_signature = None
     _firmware_version = None
 
-    def __init__(self, firmware, signature, version, device="/dev/serial0"):
+    def __init__(self, firmware, signature, version, device="/dev/serial0", debug=False):
         """Interact with Build HAT
 
         :param firmware: Firmware file
         :param signature: Signature file
         :param version: Firmware version
         :param device: Serial device to use
+        :param debug: Optional boolean to log debug information
         :raises BuildHATError: Occurs if can't find HAT
         """
         self.listcond = Condition()
@@ -118,6 +121,11 @@ class BuildHAT:
         # Class instances using each port
         self._use_lock = Lock()
         self._used = [None, None, None, None]
+
+        if debug:
+            tmp = tempfile.NamedTemporaryFile(suffix=".log", prefix="buildhat-", delete=False)
+            logging.basicConfig(filename=tmp.name, format='%(asctime)s %(message)s',
+                                level=logging.INFO)
 
         for _ in range(4):
             self.connections.append(Connection())
@@ -281,16 +289,16 @@ class BuildHAT:
         self.getprompt()
         self.write("load {} {}\r".format(len(firm), self.checksum(firm)).encode())
         time.sleep(0.1)
-        self.write(b"\x02")
-        self.write(firm)
-        self.write(b"\x03\r")
+        self.write(b"\x02", replace="0x02")
+        self.write(firm, replace="--firmware file--")
+        self.write(b"\x03\r", replace="0x03")
         time.sleep(0.1)
         self.getprompt()
         self.write("signature {}\r".format(len(sig)).encode())
         time.sleep(0.1)
-        self.write(b"\x02")
-        self.write(sig)
-        self.write(b"\x03\r")
+        self.write(b"\x02", replace="0x02")
+        self.write(sig, replace="--signature file--")
+        self.write(b"\x03\r", replace="0x03")
         time.sleep(0.1)
         self.getprompt()
 
@@ -300,12 +308,8 @@ class BuildHAT:
         Need to decide what we will do, when no prompt
         """
         while True:
-            line = b""
-            try:
-                line = self.ser.readline().decode('utf-8', 'ignore')
-            except serial.SerialException:
-                pass
-            if line[:len(BuildHAT.PROMPT)] == BuildHAT.PROMPT:
+            line = self.read()
+            if cmp(line, BuildHAT.PROMPT):
                 break
 
     def checksum(self, data):
@@ -323,12 +327,33 @@ class BuildHAT:
             u = (u ^ data[i]) & 0xFFFFFFFF
         return u
 
-    def write(self, data):
+    def write(self, data, log=True, replace=""):
         """Write data to the serial port of Build HAT
 
         :param data: Data to write to Build HAT
+        :param log: Whether to log line or not
+        :param replace: Whether to log an alternative string
         """
         self.ser.write(data)
+        if not self.fin and log:
+            if replace != "":
+                logging.info("> {}".format(replace))
+            else:
+                logging.info("> {}".format(data.decode('utf-8', 'ignore').strip()))
+
+    def read(self):
+        """Read data from the serial port of Build HAT
+
+        :return: Line that has been read
+        """
+        line = ""
+        try:
+            line = self.ser.readline().decode('utf-8', 'ignore').strip()
+        except serial.SerialException:
+            pass
+        if line != "":
+            logging.info("< {}".format(line))
+        return line
 
     def use_device(self, dev):
         """Register a class as using a port"""
@@ -548,7 +573,7 @@ class BuildHAT:
             if len(line) > 0 and line[0] == "P" and (line[2] == "C" or line[2] == "M"):
                 # Specific port mode information
                 portid = int(line[1])
-                data = line[5:].strip().split(" ")
+                data = line[5:].split(" ")
                 newdata = []
                 for d in data:
                     if "." in d:
