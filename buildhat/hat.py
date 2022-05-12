@@ -54,7 +54,7 @@ class Hat:
     def _set_led(self, intmode):
         if isinstance(intmode, int) and intmode >= -1 and intmode <= 3:
             self.led_status = intmode
-            Device._instance.write("ledmode {}\r".format(intmode).encode())
+            Device._instance.write(f"ledmode {intmode}\r".encode())
 
     def set_leds(self, color="voltage"):
         """Set the two LEDs on or off on the BuildHAT.
