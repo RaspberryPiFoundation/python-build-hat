@@ -191,13 +191,13 @@ class BuildHAT:
             sig = f.read()
         self.write(b"clear\r")
         self.getprompt()
-        self.write("load {} {}\r".format(len(firm), self.checksum(firm)).encode())
+        self.write(f"load {len(firm)} {self.checksum(firm)}\r".encode())
         time.sleep(0.1)
         self.write(b"\x02", replace="0x02")
         self.write(firm, replace="--firmware file--")
         self.write(b"\x03\r", replace="0x03")
         self.getprompt()
-        self.write("signature {}\r".format(len(sig)).encode())
+        self.write(f"signature {len(sig)}\r".encode())
         time.sleep(0.1)
         self.write(b"\x02", replace="0x02")
         self.write(sig, replace="--signature file--")
@@ -239,9 +239,9 @@ class BuildHAT:
         self.ser.write(data)
         if not self.fin and log:
             if replace != "":
-                logging.info("> {}".format(replace))
+                logging.info(f"> {replace}")
             else:
-                logging.info("> {}".format(data.decode('utf-8', 'ignore').strip()))
+                logging.info(f"> {data.decode('utf-8', 'ignore').strip()}")
 
     def read(self):
         """Read data from the serial port of Build HAT
@@ -254,7 +254,7 @@ class BuildHAT:
         except serial.SerialException:
             pass
         if line != "":
-            logging.info("< {}".format(line))
+            logging.info(f"< {line}")
         return line
 
     def shutdown(self):
@@ -269,11 +269,11 @@ class BuildHAT:
             for p in range(4):
                 conn = self.connections[p]
                 if conn.typeid != 64:
-                    turnoff += "port {} ; pwm ; coast ; off ;".format(p)
+                    turnoff += f"port {p} ; pwm ; coast ; off ;"
                 else:
-                    self.write("port {} ; write1 {}\r".format(p, ' '.join('{:x}'.format(h)
-                                                              for h in [0xc2, 0, 0, 0, 0, 0, 0, 0, 0, 0])).encode())
-            self.write("{}\r".format(turnoff).encode())
+                    hexstr = ' '.join(f'{h:x}' for h in [0xc2, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+                    self.write(f"port {p} ; write1 {hexstr}\r".encode())
+            self.write(f"{turnoff}\r".encode())
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
 
     def callbackloop(self, q):
@@ -311,7 +311,7 @@ class BuildHAT:
                     typeid = int(line[2 + len(BuildHAT.CONNECTED):], 16)
                     self.connections[portid].update(typeid, True)
                     if typeid == 64:
-                        self.write("port {} ; on\r".format(portid).encode())
+                        self.write(f"port {portid} ; on\r".encode())
                     if uselist:
                         count += 1
                 elif cmp(msg, BuildHAT.CONNECTEDPASSIVE):
