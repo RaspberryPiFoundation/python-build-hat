@@ -164,4 +164,4 @@ class DistanceSensor(Device):
 
     def on(self):
         """Turn on the sensor"""
-        self._write("port {} ; set -1\r".format(self.port))
+        self._write(f"port {self.port} ; set -1\r")
