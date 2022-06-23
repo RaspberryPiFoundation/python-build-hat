@@ -6,16 +6,17 @@ from .devices import Device
 class Hat:
     """Allows enumeration of devices which are connected to the hat"""
 
-    def __init__(self, device=None):
+    def __init__(self, device=None, debug=False):
         """Hat
 
         :param device: Optional string containing path to Build HAT serial device
+        :param debug: Optional boolean to log debug information
         """
         self.led_status = -1
-        if not device:
-            Device._setup()
+        if device is None:
+            Device._setup(debug=debug)
         else:
-            Device._setup(device)
+            Device._setup(device=device, debug=debug)
 
     def get(self):
         """Get devices which are connected or disconnected
@@ -53,7 +54,7 @@ class Hat:
     def _set_led(self, intmode):
         if isinstance(intmode, int) and intmode >= -1 and intmode <= 3:
             self.led_status = intmode
-            Device._instance.write("ledmode {}\r".format(intmode).encode())
+            Device._instance.write(f"ledmode {intmode}\r".encode())
 
     def set_leds(self, color="voltage"):
         """Set the two LEDs on or off on the BuildHAT.

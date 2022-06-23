@@ -30,4 +30,4 @@ class Light(Device):
         """
         if not (brightness >= 0 and brightness <= 100):
             raise LightError("Need brightness arg, of 0 to 100")
-        self._write("port {} ; on ; plimit {}\r".format(self.port, brightness / 100.0))
+        self._write(f"port {self.port} ; on ; plimit {brightness / 100.0}\r")

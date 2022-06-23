@@ -57,12 +57,11 @@ class Device:
             self._typeid in Device._device_names
             and Device._device_names[self._typeid][0] != type(self).__name__  # noqa: W503
         ) or self._typeid == -1:
-            raise DeviceError('There is not a {} connected to port {} (Found {})'.format(type(self).__name__,
-                                                                                         port, self.name))
+            raise DeviceError(f'There is not a {type(self).__name__} connected to port {port} (Found {self.name})')
         Device._instance._used[p] = weakref.ref(self)
 
     @staticmethod
-    def _setup(device="/dev/serial0"):
+    def _setup(**kwargs):
         if Device._instance:
             return
         data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__), "data/")
@@ -72,7 +71,7 @@ class Device:
         vfile = open(ver)
         v = int(vfile.read())
         vfile.close()
-        Device._instance = BuildHAT(firm, sig, v, device=device)
+        Device._instance = BuildHAT(firm, sig, v, **kwargs)
         weakref.finalize(Device._instance, Device._instance.shutdown)
 
     def __del__(self):
@@ -181,7 +180,7 @@ class Device:
 
     def reverse(self):
         """Reverse polarity"""
-        self._write("port {} ; plimit 1 ; set -1\r".format(self.port))
+        self._write(f"port {self.port} ; plimit 1 ; set -1\r")
 
     def get(self):
         """Extract information from device
@@ -197,7 +196,7 @@ class Device:
             idx = self._combimode
         else:
             raise DeviceError("Not in simple or combimode")
-        self._write("port {} ; selonce {}\r".format(self.port, idx))
+        self._write(f"port {self.port} ; selonce {idx}\r")
         # wait for data
         with Device._instance.portcond[self.port]:
             Device._instance.portcond[self.port].wait()
@@ -213,13 +212,13 @@ class Device:
             self._combimode = 0
             modestr = ""
             for t in modev:
-                modestr += "{} {} ".format(t[0], t[1])
-            self._write("port {} ; combi {} {}\r".format(self.port, self._combimode, modestr))
+                modestr += f"{t[0]} {t[1]} "
+            self._write(f"port {self.port} ; combi {self._combimode} {modestr}\r")
             self._simplemode = -1
         else:
             # Remove combi mode
             if self._combimode != -1:
-                self._write("port {} ; combi {}\r".format(self.port, self._combimode))
+                self._write(f"port {self.port} ; combi {self._combimode}\r")
             self._combimode = -1
             self._simplemode = int(modev)
 
@@ -235,26 +234,27 @@ class Device:
             idx = self._combimode
         else:
             raise DeviceError("Not in simple or combimode")
-        self._write("port {} ; select {}\r".format(self.port, idx))
+        self._write(f"port {self.port} ; select {idx}\r")
 
     def on(self):
         """Turn on sensor"""
-        self._write("port {} ; plimit 1 ; on\r".format(self.port))
+        self._write(f"port {self.port} ; plimit 1 ; on\r")
 
     def off(self):
         """Turn off sensor"""
-        self._write("port {} ; off\r".format(self.port))
+        self._write(f"port {self.port} ; off\r")
 
     def deselect(self):
         """Unselect data from mode"""
-        self._write("port {} ; select\r".format(self.port))
+        self._write(f"port {self.port} ; select\r")
 
     def _write(self, cmd):
         self.isconnected()
         Device._instance.write(cmd.encode())
 
     def _write1(self, data):
-        self._write("port {} ; write1 {}\r".format(self.port, ' '.join('{:x}'.format(h) for h in data)))
+        hexstr = ' '.join(f'{h:x}' for h in data)
+        self._write(f"port {self.port} ; write1 {hexstr}\r")
 
     def callback(self, func):
         """Set callback function
