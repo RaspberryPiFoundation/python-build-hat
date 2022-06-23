@@ -192,4 +192,4 @@ class ColorDistanceSensor(Device):
 
     def on(self):
         """Turn on the sensor and LED"""
-        self._write("port {} ; plimit 1 ; set -1\r".format(self.port))
+        self._write(f"port {self.port} ; plimit 1 ; set -1\r")

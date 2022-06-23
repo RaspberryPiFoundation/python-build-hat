@@ -287,14 +287,14 @@ class BuildHAT:
         self.write(b"clear\r")
         time.sleep(0.1)
         self.getprompt()
-        self.write("load {} {}\r".format(len(firm), self.checksum(firm)).encode())
+        self.write(f"load {len(firm)} {self.checksum(firm)}\r".encode())
         time.sleep(0.1)
         self.write(b"\x02", replace="0x02")
         self.write(firm, replace="--firmware file--")
         self.write(b"\x03\r", replace="0x03")
         time.sleep(0.1)
         self.getprompt()
-        self.write("signature {}\r".format(len(sig)).encode())
+        self.write(f"signature {len(sig)}\r".encode())
         time.sleep(0.1)
         self.write(b"\x02", replace="0x02")
         self.write(sig, replace="--signature file--")
@@ -337,9 +337,9 @@ class BuildHAT:
         self.ser.write(data)
         if not self.fin and log:
             if replace != "":
-                logging.info("> {}".format(replace))
+                logging.info(f"> {replace}")
             else:
-                logging.info("> {}".format(data.decode('utf-8', 'ignore').strip()))
+                logging.info(f"> {data.decode('utf-8', 'ignore').strip()}")
 
     def read(self):
         """Read data from the serial port of Build HAT
@@ -352,7 +352,7 @@ class BuildHAT:
         except serial.SerialException:
             pass
         if line != "":
-            logging.info("< {}".format(line))
+            logging.info(f"< {line}")
         return line
 
     def use_device(self, dev):
@@ -519,7 +519,7 @@ class BuildHAT:
                         # since it can't wait for the class to be lazily instantiated
                         # according to legend
                         if typeid == 64:
-                            self.write("plimit 1; port {} ; on\r".format(portid).encode())
+                            self.write(f"plimit 1; port {portid} ; on\r".encode())
                     if uselist and listing_status == CommandState.SENT:
                         count += 1
                     device_is_connecting = 0

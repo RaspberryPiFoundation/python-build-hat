@@ -20,7 +20,7 @@ Projects and inspiration: https://projects.raspberrypi.org/en/pathways/lego-intr
 
 To install the Build HAT library, enter the following commands in a terminal:
 
-    sudo pip3 install buildhat
+    pip3 install buildhat
 
 ## Usage
 

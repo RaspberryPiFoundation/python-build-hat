@@ -60,12 +60,12 @@ class PassiveMotor(Device):
             if not (speed >= -100 and speed <= 100):
                 raise MotorError("Invalid Speed")
         self._currentspeed = speed
-        cmd = "port {} ; pwm ; set {}\r".format(self.port, speed / 100)
+        cmd = f"port {self.port} ; pwm ; set {speed / 100}\r"
         self._write(cmd)
 
     def stop(self):
         """Stop motor"""
-        cmd = "port {} ; off\r".format(self.port)
+        cmd = f"port {self.port} ; off\r"
         self._write(cmd)
         self._currentspeed = 0
 
@@ -77,7 +77,7 @@ class PassiveMotor(Device):
         """
         if not (plimit >= 0 and plimit <= 1):
             raise MotorError("plimit should be 0 to 1")
-        self._write("port {} ; plimit {}\r".format(self.port, plimit))
+        self._write(f"port {self.port} ; plimit {plimit}\r")
 
     def bias(self, bias):
         """Bias motor
@@ -87,7 +87,7 @@ class PassiveMotor(Device):
         """
         if not (bias >= 0 and bias <= 1):
             raise MotorError("bias should be 0 to 1")
-        self._write("port {} ; bias {}\r".format(self.port, bias))
+        self._write(f"port {self.port} ; bias {bias}\r")
 
 
 class MotorRunmode(Enum):
@@ -204,8 +204,8 @@ class Motor(Device):
         # Collapse speed range to -5 to 5
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        cmd = "port {}; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 1 s4 0.0027777778 0 5 0 .1 3 ; set ramp {} {} {} 0\r".format(
-              self.port, self.port, pos, newpos, dur)
+        cmd = (f"port {self.port}; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3 ; "
+               f"set ramp {pos} {newpos} {dur} 0\r")
         self._write(cmd)
         with self._hat.rampcond[self.port]:
             self._hat.rampcond[self.port].wait()
@@ -260,8 +260,8 @@ class Motor(Device):
 
     def _run_for_seconds(self, seconds, speed):
         self._runmode = MotorRunmode.SECONDS
-        cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set pulse {} 0.0 {} 0\r".format(
-              self.port, self.port, speed, seconds)
+        cmd = (f"port {self.port} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
+               f"set pulse {speed} 0.0 {seconds} 0\r")
         self._write(cmd)
         with self._hat.pulsecond[self.port]:
             self._hat.pulsecond[self.port].wait()
@@ -308,10 +308,10 @@ class Motor(Device):
         else:
             if not (speed >= -100 and speed <= 100):
                 raise MotorError("Invalid Speed")
-        cmd = "port {} ; set {}\r".format(self.port, speed)
+        cmd = f"port {self.port} ; set {speed}\r"
         if self._runmode == MotorRunmode.NONE:
-            cmd = "port {} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {} 0 0 s1 1 0 0.003 0.01 0 100; set {}\r".format(
-                  self.port, self.port, speed)
+            cmd = (f"port {self.port} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
+                   f"set {speed}\r")
         self._runmode = MotorRunmode.FREE
         self._currentspeed = speed
         self._write(cmd)
@@ -384,7 +384,7 @@ class Motor(Device):
         """
         if not (plimit >= 0 and plimit <= 1):
             raise MotorError("plimit should be 0 to 1")
-        self._write("port {} ; plimit {}\r".format(self.port, plimit))
+        self._write(f"port {self.port} ; plimit {plimit}\r")
 
     def bias(self, bias):
         """Bias motor
@@ -394,7 +394,7 @@ class Motor(Device):
         """
         if not (bias >= 0 and bias <= 1):
             raise MotorError("bias should be 0 to 1")
-        self._write("port {} ; bias {}\r".format(self.port, bias))
+        self._write(f"port {self.port} ; bias {bias}\r")
 
     def pwm(self, pwmv):
         """PWM motor
@@ -404,11 +404,11 @@ class Motor(Device):
         """
         if not (pwmv >= -1 and pwmv <= 1):
             raise MotorError("pwm should be -1 to 1")
-        self._write("port {} ; pwm ; set {}\r".format(self.port, pwmv))
+        self._write(f"port {self.port} ; pwm ; set {pwmv}\r")
 
     def coast(self):
         """Coast motor"""
-        self._write("port {} ; coast\r".format(self.port))
+        self._write(f"port {self.port} ; coast\r")
 
     def float(self):
         """Float motor"""
