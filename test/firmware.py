@@ -2,7 +2,8 @@
 
 import time
 import unittest
-from multiprocessing import Process
+from multiprocessing import Process, Queue
+from queue import Empty
 
 from gpiozero import DigitalOutputDevice
 
@@ -24,23 +25,37 @@ def resethat():
     time.sleep(0.5)
 
 
-def reboot():
-    """Reboot hat"""
-    from buildhat import Hat
-    resethat()
-    h = Hat(debug=True)
-    print(h.get())
+def reboot(exc):
+    """Reboot hat and load firmware
+
+    :param exc: Queue to pass exceptions
+    """
+    try:
+        from buildhat import Hat
+        resethat()
+        h = Hat(debug=True)
+        print(h.get())
+    except Exception as e:
+        exc.put(e)
 
 
 class TestFirmware(unittest.TestCase):
     """Test firmware uploading functions"""
 
     def test_upload(self):
-        """Test uploading firmware"""
-        for _ in range(200):
-            p = Process(target=reboot)
+        """Test upload firmware
+
+        :raises exc.get: Raised if exception in subprocess
+        """
+        for _ in range(500):
+            exc = Queue()
+            p = Process(target=reboot, args=(exc,))
             p.start()
             p.join()
+            try:
+                raise exc.get(False)
+            except Empty:
+                pass
 
 
 if __name__ == '__main__':
