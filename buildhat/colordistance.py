@@ -121,7 +121,7 @@ class ColorDistanceSensor(Device):
         :return: Distance
         :rtype: int
         """
-        self.mode(6)
+        self.mode(1)
         distance = self.get()
         return distance
 
