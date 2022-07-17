@@ -122,7 +122,7 @@ class ColorDistanceSensor(Device):
         :rtype: int
         """
         self.mode(6)
-        distance = self.get()
+        distance = self.get()[0]
         return distance
 
     def _clamp(self, val, small, large):
