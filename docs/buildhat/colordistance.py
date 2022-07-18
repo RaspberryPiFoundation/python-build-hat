@@ -4,6 +4,7 @@ from buildhat import ColorDistanceSensor
 
 color = ColorDistanceSensor('C')
 
+print("Distance", color.get_distance())
 print("RGBI", color.get_color_rgb())
 print("Ambient", color.get_ambient_light())
 print("Reflected", color.get_reflected_light())

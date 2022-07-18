@@ -115,6 +115,16 @@ class ColorDistanceSensor(Device):
             readings.append(self.get()[0])
         return int(sum(readings) / len(readings))
 
+    def get_distance(self):
+        """Return the distance
+
+        :return: Distance
+        :rtype: int
+        """
+        self.mode(1)
+        distance = self.get()[0]
+        return distance
+
     def _clamp(self, val, small, large):
         return max(small, min(val, large))
 
