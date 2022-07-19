@@ -1,0 +1,29 @@
+- name: Run test
+  hosts: hosts
+  gather_facts: false
+  environment:
+    PYTHONPATH: /home/pi/Repositories/python-build-hat:/home/pi/.local/lib/python3.9/site-packages/
+  tasks:
+    - name: Wait 300 seconds, but only start checking after 60 seconds
+      wait_for_connection:
+        delay: 60
+        timeout: 300
+    - name: Run experiment
+      command: python3 /home/pi/Repositories/python-build-hat/test/firmware.py
+      vars:
+        ansible_command_timeout: 60 # timeout set to double time firmware.py takes to run
+    - name: Find logs from experiment
+      find:
+        paths: /tmp
+        patterns: "buildhat-*.log"
+      register: log_files
+    - name: Copy
+      copy:
+        remote_src: yes
+        src: "{{item.path}}"
+        dest: "/home/pi/logs/"
+      loop: "{{log_files.files}}"
+    - name: Shutdown machine
+      command: systemctl poweroff
+      when: shutdown is defined
+      become: yes
