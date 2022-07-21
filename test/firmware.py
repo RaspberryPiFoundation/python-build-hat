@@ -47,7 +47,7 @@ class TestFirmware(unittest.TestCase):
 
         :raises exc.get: Raised if exception in subprocess
         """
-        for _ in range(500):
+        for _ in range(2):
             exc = Queue()
             p = Process(target=reboot, args=(exc,))
             p.start()
