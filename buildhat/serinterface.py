@@ -94,7 +94,7 @@ class BuildHAT:
         if debug:
             tmp = tempfile.NamedTemporaryFile(suffix=".log", prefix="buildhat-", delete=False)
             logging.basicConfig(filename=tmp.name, format='%(asctime)s %(message)s',
-                                level=logging.INFO)
+                                level=logging.DEBUG)
 
         for _ in range(4):
             self.connections.append(Connection())
@@ -239,9 +239,9 @@ class BuildHAT:
         self.ser.write(data)
         if not self.fin and log:
             if replace != "":
-                logging.info(f"> {replace}")
+                logging.debug(f"> {replace}")
             else:
-                logging.info(f"> {data.decode('utf-8', 'ignore').strip()}")
+                logging.debug(f"> {data.decode('utf-8', 'ignore').strip()}")
 
     def read(self):
         """Read data from the serial port of Build HAT
@@ -254,7 +254,7 @@ class BuildHAT:
         except serial.SerialException:
             pass
         if line != "":
-            logging.info(f"< {line}")
+            logging.debug(f"< {line}")
         return line
 
     def shutdown(self):
