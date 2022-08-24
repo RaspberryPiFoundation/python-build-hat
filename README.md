@@ -1,5 +1,6 @@
 # Build HAT
 
+
 The Python Build HAT library supports the Raspberry Pi Build HAT, an add-on board for the Raspberry Pi computer, which allows control of up to four LEGO® TECHNIC™ motors and sensors included in the SPIKE™ Portfolio.
 
 ## Hardware
