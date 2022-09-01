@@ -144,7 +144,7 @@ class Motor(Device):
                 raise MotorError("Invalid Speed")
             self.run_for_degrees(int(rotations * 360), speed, blocking)
 
-    def _run_for_degrees(self, degrees, speed):
+    def _run_for_degrees(self, degrees, speed, run=True):
         self._runmode = MotorRunmode.DEGREES
         mul = 1
         if speed < 0:
@@ -153,10 +153,12 @@ class Motor(Device):
         pos = self.get_position()
         newpos = ((degrees * mul) + pos) / 360.0
         pos /= 360.0
-        self._run_positional_ramp(pos, newpos, speed)
-        self._runmode = MotorRunmode.NONE
+        cmd = self._run_positional_ramp(pos, newpos, speed, run)
+        if run:
+            self._runmode = MotorRunmode.NONE
+        return cmd
 
-    def _run_to_position(self, degrees, speed, direction):
+    def _run_to_position(self, degrees, speed, direction, run=True):
         self._runmode = MotorRunmode.DEGREES
         data = self.get()
         pos = data[1]
@@ -179,10 +181,12 @@ class Motor(Device):
             raise MotorError("Invalid direction, should be: shortest, clockwise or anticlockwise")
         # Convert current motor position to decimal rotations from preset position to match newpos units
         pos /= 360.0
-        self._run_positional_ramp(pos, newpos, speed)
-        self._runmode = MotorRunmode.NONE
+        cmd = self._run_positional_ramp(pos, newpos, speed, run)
+        if run:
+            self._runmode = MotorRunmode.NONE
+        return cmd
 
-    def _run_positional_ramp(self, pos, newpos, speed):
+    def _run_positional_ramp(self, pos, newpos, speed, run):
         """Ramp motor
 
         :param pos: Current motor position in decimal rotations (from preset position)
@@ -192,14 +196,17 @@ class Motor(Device):
         # Collapse speed range to -5 to 5
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        cmd = (f"port {self.port}; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3 ; "
-               f"set ramp {pos} {newpos} {dur} 0\r")
-        self._write(cmd)
-        with self._hat.rampcond[self.port]:
-            self._hat.rampcond[self.port].wait()
-        if self._release:
-            time.sleep(0.2)
-            self.coast()
+        setup = f"port {self.port}; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3\r"
+        cmd = f"set ramp {pos:.4f} {newpos:.4f} {dur:.4f} 0 ; "
+        self._write(setup)
+        if run:
+            self._write(f"{cmd}\r")
+            with self._hat.rampcond[self.port]:
+                self._hat.rampcond[self.port].wait()
+            if self._release:
+                time.sleep(0.2)
+                self.coast()
+        return cmd
 
     def run_for_degrees(self, degrees, speed=None, blocking=True):
         """Run motor for N degrees
@@ -246,16 +253,19 @@ class Motor(Device):
         else:
             self._run_to_position(degrees, speed, direction)
 
-    def _run_for_seconds(self, seconds, speed):
+    def _run_for_seconds(self, seconds, speed, run=True):
         self._runmode = MotorRunmode.SECONDS
-        cmd = (f"port {self.port} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
-               f"set pulse {speed} 0.0 {seconds} 0\r")
-        self._write(cmd)
-        with self._hat.pulsecond[self.port]:
-            self._hat.pulsecond[self.port].wait()
-        if self._release:
-            self.coast()
-        self._runmode = MotorRunmode.NONE
+        setup = f"port {self.port} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100;\r"
+        cmd = f"set pulse {speed} 0.0 {seconds} 0 ; "
+        self._write(setup)
+        if run:
+            self._write(f"{cmd}\r")
+            with self._hat.pulsecond[self.port]:
+                self._hat.pulsecond[self.port].wait()
+            if self._release:
+                self.coast()
+            self._runmode = MotorRunmode.NONE
+        return cmd
 
     def run_for_seconds(self, seconds, speed=None, blocking=True):
         """Run motor for N seconds
@@ -520,3 +530,60 @@ class MotorPair:
         th2.start()
         th1.join()
         th2.join()
+
+
+class Motors:
+    def __init__(self, *ports):
+        """Initialise motor"""
+        Device._setup()
+        self._ports = []
+        for port in ports:
+            self._ports += [Motor(port)]
+        self.default_speed = 20
+
+    def run_for_degrees(self, degrees):
+        speed = self.default_speed
+        cmd = ""
+        for motor in self._ports:
+            cmd += motor._run_for_degrees(degrees, speed, run=False)
+        self._write(f"{cmd}\r")
+
+    def run_for_seconds(self, seconds):
+        speed = self.default_speed
+        cmd = ""
+        for motor in self._ports:
+            cmd += motor._run_for_seconds(seconds, speed, run=False)
+        self._write(f"{cmd}\r")
+
+    def run_to_position_ok(self, degrees, direction="shortest"):
+        speed = self.default_speed
+        cmd = ""
+        for motor in self._ports:
+            cmd = motor._run_to_position(degrees, speed, direction, run=False)
+            self._write(f"{cmd}\r")
+
+    def run_to_position(self, degrees, direction="shortest"):
+        speed = self.default_speed
+        cmd = ""
+        for motor in self._ports:
+            cmd += motor._run_to_position(degrees, speed, direction, run=False)
+        self._write(f"{cmd}\r")
+
+    def start(self):
+        speed = self.default_speed
+        cmd = ""
+        for motor in self._ports:
+            setup = f"port {motor.port} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {motor.port} 0 0 s1 1 0 0.003 0.01 0 100;\r"
+            self._write(setup)
+            cmd += f"port {motor.port} ; set {speed} ; "
+        self._write(f"{cmd}\r")
+
+    def stop(self):
+        cmd = ""
+        for motor in self._ports:
+            cmd += f"port {motor.port} ; coast ; "
+        self._write(f"{cmd}\r")
+
+    def _write(self, cmd):
+        #self.isconnected()
+        Device._instance.write(cmd.encode())
