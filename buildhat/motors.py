@@ -108,7 +108,14 @@ class Motor(Device):
         super().__init__(port)
         self.default_speed = 20
         self._currentspeed = 0
-        self.mode([(1, 0), (2, 0), (3, 0)])
+        if self._typeid in {38}:
+            self.mode([(1, 0), (2, 0)])
+            self._combi = "1 0 2 0"
+            self._noapos = True
+        else:
+            self.mode([(1, 0), (2, 0), (3, 0)])
+            self._combi = "1 0 2 0 3 0"
+            self._noapos = False
         self.plimit(0.7)
         self.bias(0.3)
         self._release = True
@@ -160,7 +167,10 @@ class Motor(Device):
         self._runmode = MotorRunmode.DEGREES
         data = self.get()
         pos = data[1]
-        apos = data[2]
+        if self._noapos:
+            apos = pos
+        else:
+            apos = data[2]
         diff = (degrees - apos + 180) % 360 - 180
         newpos = (pos + diff) / 360
         v1 = (degrees - apos) % 360
@@ -192,7 +202,7 @@ class Motor(Device):
         # Collapse speed range to -5 to 5
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        cmd = (f"port {self.port}; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3 ; "
+        cmd = (f"port {self.port}; combi 0 {self._combi} ; select 0 ; pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3 ; "
                f"set ramp {pos} {newpos} {dur} 0\r")
         self._write(cmd)
         with self._hat.rampcond[self.port]:
@@ -248,7 +258,7 @@ class Motor(Device):
 
     def _run_for_seconds(self, seconds, speed):
         self._runmode = MotorRunmode.SECONDS
-        cmd = (f"port {self.port} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
+        cmd = (f"port {self.port} ; combi 0 {self._combi} ; select 0 ; pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
                f"set pulse {speed} 0.0 {seconds} 0\r")
         self._write(cmd)
         with self._hat.pulsecond[self.port]:
@@ -298,7 +308,7 @@ class Motor(Device):
                 raise MotorError("Invalid Speed")
         cmd = f"port {self.port} ; set {speed}\r"
         if self._runmode == MotorRunmode.NONE:
-            cmd = (f"port {self.port} ; combi 0 1 0 2 0 3 0 ; select 0 ; pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
+            cmd = (f"port {self.port} ; combi 0 {self._combi} ; select 0 ; pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
                    f"set {speed}\r")
         self._runmode = MotorRunmode.FREE
         self._currentspeed = speed
@@ -324,7 +334,10 @@ class Motor(Device):
         :return: Absolute position of motor from -180 to 180
         :rtype: int
         """
-        return self.get()[2]
+        if self._noapos:
+            raise MotorError("No absolute position with this motor")
+        else:
+            return self.get()[2]
 
     def get_speed(self):
         """Get speed of motor
@@ -346,7 +359,11 @@ class Motor(Device):
         return self._when_rotated
 
     def _intermediate(self, data):
-        speed, pos, apos = data
+        if self._noapos:
+            speed, pos = data
+            apos = None
+        else:
+            speed, pos, apos = data
         if self._oldpos is None:
             self._oldpos = pos
             return
