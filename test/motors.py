@@ -3,7 +3,7 @@
 import time
 import unittest
 
-from buildhat import Motor
+from buildhat import Hat, Motor
 from buildhat.exc import DeviceError, MotorError
 
 
@@ -120,6 +120,15 @@ class TestMotor(unittest.TestCase):
         m = Motor('A')
         while time.time() < t:
             m.run_to_position(0)
+
+    def test_continuous_feedback(self):
+        """Test feedback of motor for 30mins"""
+        Hat(debug=True)
+        t = time.time() + (60 * 30)
+        m = Motor('A')
+        m.start(40)
+        while time.time() < t:
+            _ = (m.get_speed(), m.get_position(), m.get_aposition())
 
 
 if __name__ == '__main__':
