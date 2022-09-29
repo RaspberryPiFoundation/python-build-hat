@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.5.10
+
+### Added
+
+* Support for 88008 motor
+* get_distance support for ColourDistanceSensor
+
+### Changed
+
+* Use debug log level for logging
+
+### Removed
+
+n/a
+
 ## 0.5.9
 
 ### Added
