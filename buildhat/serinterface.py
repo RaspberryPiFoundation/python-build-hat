@@ -104,6 +104,7 @@ class BuildHAT:
 
         self.ser = serial.Serial(device, 115200, timeout=5)
         # Check if we're in the bootloader or the firmware
+        """
         self.write(b"version\r")
 
         emptydata = 0
@@ -144,7 +145,8 @@ class BuildHAT:
             self.loadfirmware(firmware, signature)
         elif self.state == HatState.OTHER:
             raise BuildHATError("HAT not found")
-
+        """
+        self.state = HatState.FIRMWARE
         self.cbqueue = queue.Queue()
         self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))
         self.cb.daemon = True
