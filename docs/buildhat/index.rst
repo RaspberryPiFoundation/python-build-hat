@@ -40,9 +40,11 @@ power supply. For best results, use the `official Raspberry Pi Build HAT power s
    colordistancesensor.rst
    distancesensor.rst
    forcesensor.rst
+   light.rst
    matrix.rst
+   motionsensor.rst
    motor.rst
    motorpair.rst
    passivemotor.rst
+   tiltsensor.rst
    hat.rst
-   light.rst
