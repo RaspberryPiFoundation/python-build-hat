@@ -419,6 +419,28 @@ class Motor(Device):
         """Float motor"""
         self.pwm(0)
 
+    @property
+    def release(self):
+        """Determine if motor is released after running, so can be turned by hand
+
+        :getter: Returns whether motor is released, so can be turned by hand
+        :setter: Sets whether motor is released, so can be turned by hand
+        :return: Whether motor is released, so can be turned by hand
+        :rtype: bool
+        """
+        return self._release
+
+    @release.setter
+    def release(self, value):
+        """Determine if the motor is released after running, so can be turned by hand
+
+        :param value: Whether motor should be released, so can be turned by hand
+        :type value: bool
+        """
+        if not isinstance(value, bool):
+            raise MotorError("Must pass boolean")
+        self._release = value
+
 
 class MotorPair:
     """Pair of motors
@@ -438,6 +460,7 @@ class MotorPair:
         self._leftmotor = Motor(leftport)
         self._rightmotor = Motor(rightport)
         self.default_speed = 20
+        self._release = True
 
     def set_default_speed(self, default_speed):
         """Set the default speed of the motor
@@ -537,3 +560,27 @@ class MotorPair:
         th2.start()
         th1.join()
         th2.join()
+
+    @property
+    def release(self):
+        """Determine if motors are released after running, so can be turned by hand
+
+        :getter: Returns whether motors are released, so can be turned by hand
+        :setter: Sets whether motors are released, so can be turned by hand
+        :return: Whether motors are released, so can be turned by hand
+        :rtype: bool
+        """
+        return self._release
+
+    @release.setter
+    def release(self, value):
+        """Determine if motors are released after running, so can be turned by hand
+
+        :param value: Whether motors should be released, so can be turned by hand
+        :type value: bool
+        """
+        if not isinstance(value, bool):
+            raise MotorError("Must pass boolean")
+        self._release = value
+        self._leftmotor.release = value
+        self._rightmotor.release = value
