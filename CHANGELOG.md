@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.5.11
+
+### Added
+
+* Expose release property to allow motor to hold position
+* Updated documentation
+
+### Changed
+
+n/a
+
+### Removed
+
+n/a
+
 ## 0.5.10
 
 ### Added
