@@ -19,6 +19,26 @@ class TestMotor(unittest.TestCase):
         rotated = (pos2 - pos1) / 360
         self.assertLess(abs(rotated - 2), 0.5)
 
+    def test_nonblocking(self):
+        """Test motor nonblocking mode"""
+        m = Motor('A')
+        last = 0
+        for delay in [1, 0]:
+            for _ in range(3):
+                m.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m.run_to_position(last, blocking=False)
+                time.sleep(delay)
+                # Wait for a bit, before reading last position
+                time.sleep(7)
+                pos1 = m.get_aposition()
+                diff = abs((last - pos1 + 180) % 360 - 180)
+                self.assertLess(diff, 10)
+
     def test_position(self):
         """Test motor goes to desired position"""
         m = Motor('A')
