@@ -6,7 +6,7 @@ LEGO® TECHNIC™ motors which do not have an integrated rotation sensor (encode
 
 .. |location_link1| raw:: html
 
-   <a href="hhttps://www.lego.com/en-gb/product/train-motor-88011" target="_blank">LEGO® Train motor 88011</a>
+   <a href="https://www.lego.com/en-gb/product/train-motor-88011" target="_blank">LEGO® Train motor 88011</a>
 
 .. |location_link1b| raw:: html
 
