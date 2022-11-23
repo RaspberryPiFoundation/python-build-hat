@@ -566,7 +566,7 @@ class Motors:
         speed = self.default_speed
         cmd = ""
         for motor in self._ports:
-            cmd += motor._run_to_position(degrees, speed, direction, run=False)
+            cmd += f"port {motor.port} ; {motor._run_to_position(degrees, speed, direction, run=False)} "
         self._write(f"{cmd}\r")
 
     def start(self):
