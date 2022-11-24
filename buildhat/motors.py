@@ -583,6 +583,7 @@ class Motors:
         for motor in self._ports:
             cmd += f"port {motor.port} ; coast ; "
         self._write(f"{cmd}\r")
+        time.sleep(1)
 
     def _write(self, cmd):
         #self.isconnected()
