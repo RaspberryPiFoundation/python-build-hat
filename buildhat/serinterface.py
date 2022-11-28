@@ -151,14 +151,17 @@ class BuildHAT:
         self.cb.start()
 
         # Drop timeout value to 1s
+        listevt = threading.Event()
         self.ser.timeout = 1
-        self.th = threading.Thread(target=self.loop, args=(self.cond, self.state == HatState.FIRMWARE, self.cbqueue))
+        self.th = threading.Thread(target=self.loop, args=(self.cond, self.state == HatState.FIRMWARE, self.cbqueue, listevt))
         self.th.daemon = True
         self.th.start()
 
         if self.state == HatState.FIRMWARE:
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
+            time.sleep(3.5)
             self.write(b"list\r")
+            listevt.set()
         elif self.state == HatState.NEEDNEWFIRMWARE or self.state == HatState.BOOTLOADER:
             self.write(b"reboot\r")
 
@@ -292,7 +295,7 @@ class BuildHAT:
             cb[0]()(cb[1])
             q.task_done()
 
-    def loop(self, cond, uselist, q):
+    def loop(self, cond, uselist, q, listevt):
         """Event handling for Build HAT
 
         :param cond: Condition used to block user's script till we're ready
@@ -312,12 +315,12 @@ class BuildHAT:
                     self.connections[portid].update(typeid, True)
                     if typeid == 64:
                         self.write(f"port {portid} ; on\r".encode())
-                    if uselist:
+                    if uselist and listevt.is_set():
                         count += 1
                 elif cmp(msg, BuildHAT.CONNECTEDPASSIVE):
                     typeid = int(line[2 + len(BuildHAT.CONNECTEDPASSIVE):], 16)
                     self.connections[portid].update(typeid, True)
-                    if uselist:
+                    if uselist and listevt.is_set():
                         count += 1
                 elif cmp(msg, BuildHAT.DISCONNECTED):
                     self.connections[portid].update(-1, False)
@@ -325,7 +328,7 @@ class BuildHAT:
                     self.connections[portid].update(-1, False)
                 elif cmp(msg, BuildHAT.NOTCONNECTED):
                     self.connections[portid].update(-1, False)
-                    if uselist:
+                    if uselist and listevt.is_set():
                         count += 1
                 elif cmp(msg, BuildHAT.RAMPDONE):
                     with self.rampcond[portid]:
