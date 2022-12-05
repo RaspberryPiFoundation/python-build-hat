@@ -3,6 +3,7 @@
 import threading
 import time
 from collections import deque
+from concurrent.futures import Future
 from enum import Enum
 from threading import Condition
 
@@ -205,9 +206,10 @@ class Motor(Device):
         cmd = (f"port {self.port}; combi 0 {self._combi} ; select 0 ; selrate {self._interval}; "
                f"pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3; "
                f"set ramp {pos} {newpos} {dur} 0\r")
+        ftr = Future()
+        self._hat.rampcond[self.port].append(ftr)
         self._write(cmd)
-        with self._hat.rampcond[self.port]:
-            self._hat.rampcond[self.port].wait()
+        ftr.result()
         if self._release:
             time.sleep(0.2)
             self.coast()
@@ -228,9 +230,7 @@ class Motor(Device):
         if not (speed >= -100 and speed <= 100):
             raise MotorError("Invalid Speed")
         if not blocking:
-            th = threading.Thread(target=self._run_for_degrees, args=(degrees, speed))
-            th.daemon = True
-            th.start()
+            Device._instance.mqueue.put((self._run_for_degrees, (degrees, speed)))
         else:
             self._run_for_degrees(degrees, speed)
 
@@ -251,9 +251,7 @@ class Motor(Device):
         if degrees < -180 or degrees > 180:
             raise MotorError("Invalid angle")
         if not blocking:
-            th = threading.Thread(target=self._run_to_position, args=(degrees, speed, direction))
-            th.daemon = True
-            th.start()
+            Device._instance.mqueue.put((self._run_to_position, (degrees, speed, direction)))
         else:
             self._run_to_position(degrees, speed, direction)
 
@@ -262,9 +260,10 @@ class Motor(Device):
         cmd = (f"port {self.port} ; combi 0 {self._combi} ; select 0 ; selrate {self._interval}; "
                f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
                f"set pulse {speed} 0.0 {seconds} 0\r")
+        ftr = Future()
+        self._hat.pulsecond[self.port].append(ftr)
         self._write(cmd)
-        with self._hat.pulsecond[self.port]:
-            self._hat.pulsecond[self.port].wait()
+        ftr.result()
         if self._release:
             self.coast()
         self._runmode = MotorRunmode.NONE
@@ -283,9 +282,7 @@ class Motor(Device):
         if not (speed >= -100 and speed <= 100):
             raise MotorError("Invalid Speed")
         if not blocking:
-            th = threading.Thread(target=self._run_for_seconds, args=(seconds, speed))
-            th.daemon = True
-            th.start()
+            Device._instance.mqueue.put((self._run_for_seconds, (seconds, speed)))
         else:
             self._run_for_seconds(seconds, speed)
 

@@ -98,9 +98,9 @@ class BuildHAT:
 
         for _ in range(4):
             self.connections.append(Connection())
-            self.portcond.append(Condition())
-            self.pulsecond.append(Condition())
-            self.rampcond.append(Condition())
+            self.portcond.append([])
+            self.pulsecond.append([])
+            self.rampcond.append([])
 
         self.ser = serial.Serial(device, 115200, timeout=5)
         # Check if we're in the bootloader or the firmware
@@ -149,6 +149,11 @@ class BuildHAT:
         self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))
         self.cb.daemon = True
         self.cb.start()
+
+        self.mqueue = queue.Queue()
+        self.ml = threading.Thread(target=self.motorloop, args=(self.mqueue,))
+        self.ml.daemon = True
+        self.ml.start()
 
         # Drop timeout value to 1s
         listevt = threading.Event()
@@ -266,6 +271,7 @@ class BuildHAT:
             self.running = False
             self.th.join()
             self.cbqueue.put(())
+            self.mqueue.put((None, None))
             self.cb.join()
             turnoff = ""
             for p in range(4):
@@ -277,6 +283,18 @@ class BuildHAT:
                     self.write(f"port {p} ; write1 {hexstr}\r".encode())
             self.write(f"{turnoff}\r".encode())
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
+
+    def motorloop(self, q):
+        """Event handling for non-blocking motor commands
+
+        :param q: Queue of motor functions
+        """
+        while self.running:
+            func, data = q.get()
+            if func is None:
+                break
+            else:
+                func(*data)
 
     def callbackloop(self, q):
         """Event handling for callbacks
@@ -330,11 +348,11 @@ class BuildHAT:
                     if uselist and listevt.is_set():
                         count += 1
                 elif cmp(msg, BuildHAT.RAMPDONE):
-                    with self.rampcond[portid]:
-                        self.rampcond[portid].notify()
+                    ftr = self.rampcond[portid].pop()
+                    ftr.set_result(True)
                 elif cmp(msg, BuildHAT.PULSEDONE):
-                    with self.pulsecond[portid]:
-                        self.pulsecond[portid].notify()
+                    ftr = self.pulsecond[portid].pop()
+                    ftr.set_result(True)
 
             if uselist and count == 4:
                 with cond:
@@ -362,8 +380,11 @@ class BuildHAT:
                 if callit is not None:
                     q.put((callit, newdata))
                 self.connections[portid].data = newdata
-                with self.portcond[portid]:
-                    self.portcond[portid].notify()
+                try:
+                    ftr = self.portcond[portid].pop()
+                    ftr.set_result(newdata)
+                except IndexError:
+                    pass
 
             if len(line) >= 5 and line[1] == "." and line.endswith(" V"):
                 vin = float(line.split(" ")[0])
