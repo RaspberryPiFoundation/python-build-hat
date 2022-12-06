@@ -11,5 +11,7 @@ repos:
         'flake8-isort>=5.0',
         'flake8-pylint',
         'flake8-rst-docstrings',
-        'flake8-string-format'
+        'flake8-string-format',
+        'gpiozero',
+        'pyserial'
        ]

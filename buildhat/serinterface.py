@@ -159,7 +159,6 @@ class BuildHAT:
 
         if self.state == HatState.FIRMWARE:
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
-            time.sleep(3.5)
             self.write(b"list\r")
             listevt.set()
         elif self.state == HatState.NEEDNEWFIRMWARE or self.state == HatState.BOOTLOADER:
