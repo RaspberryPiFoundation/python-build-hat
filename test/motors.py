@@ -81,6 +81,23 @@ class TestMotor(unittest.TestCase):
         m.run_for_seconds(1)
         self.assertGreater(handle_motor.evt, 0)
 
+    def test_callback_interval(self):
+        """Test setting callback and interval"""
+        m = Motor('A')
+        m.interval = 10
+
+        def handle_motor(speed, pos, apos):
+            handle_motor.evt += 1
+        handle_motor.evt = 0
+        m.when_rotated = handle_motor
+        m.run_for_seconds(5)
+        self.assertGreater(handle_motor.evt, 0.8 * ((1 / ((m.interval) * 1e-3)) * 5))
+
+        handle_motor.evt = 0
+        m.interval = 5
+        m.run_for_seconds(5)
+        self.assertGreater(handle_motor.evt, 0.8 * ((1 / ((m.interval) * 1e-3)) * 5))
+
     def test_none_callback(self):
         """Test setting empty callback"""
         m = Motor('A')

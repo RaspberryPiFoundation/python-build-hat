@@ -58,6 +58,7 @@ class Device:
         self._simplemode = -1
         self._combimode = -1
         self._typeid = self._conn.typeid
+        self._interval = 100
         if (
             self._typeid in Device._device_names
             and Device._device_names[self._typeid][0] != type(self).__name__  # noqa: W503
@@ -239,7 +240,7 @@ class Device:
             idx = self._combimode
         else:
             raise DeviceError("Not in simple or combimode")
-        self._write(f"port {self.port} ; select {idx}\r")
+        self._write(f"port {self.port} ; select {idx} ; selrate {self._interval}\r")
 
     def on(self):
         """Turn on sensor"""
@@ -274,3 +275,28 @@ class Device:
             self._conn.callit = None
         else:
             self._conn.callit = weakref.WeakMethod(func)
+
+    @property
+    def interval(self):
+        """Interval between data points in milliseconds
+
+        :getter: Gets interval
+        :setter: Sets interval
+        :return: Device interval
+        :rtype: int
+        """
+        return self._interval
+
+    @interval.setter
+    def interval(self, value):
+        """Interval between data points in milliseconds
+
+        :param value: Interval
+        :type value: int
+        :raises DeviceError: Occurs if invalid interval passed
+        """
+        if isinstance(value, int) and value >= 0 and value <= 1000000000:
+            self._interval = value
+            self._write(f"port {self.port} ; selrate {self._interval}\r")
+        else:
+            raise DeviceError("Invalid interval")
