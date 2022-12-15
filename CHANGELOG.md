@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.5.12
+
+### Added
+
+* Ability to set custom device interval for callbacks
+
+### Changed
+
+* New firmware with mitigation for motor disconnecting and selrate command
+
+### Removed
+
+n/a
+
 ## 0.5.11
 
 ### Added
