@@ -87,10 +87,9 @@ class BuildHAT:
         self.portcond = []
         self.pulsecond = []
         self.rampcond = []
+        self.vincond = []
         self.fin = False
         self.running = True
-        self.vincond = Condition()
-        self.vin = None
         if debug:
             tmp = tempfile.NamedTemporaryFile(suffix=".log", prefix="buildhat-", delete=False)
             logging.basicConfig(filename=tmp.name, format='%(asctime)s %(message)s',
@@ -388,6 +387,5 @@ class BuildHAT:
 
             if len(line) >= 5 and line[1] == "." and line.endswith(" V"):
                 vin = float(line.split(" ")[0])
-                self.vin = vin
-                with self.vincond:
-                    self.vincond.notify()
+                ftr = self.vincond.pop()
+                ftr.set_result(vin)
