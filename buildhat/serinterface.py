@@ -88,6 +88,7 @@ class BuildHAT:
         self.pulsecond = []
         self.rampcond = []
         self.vincond = []
+        self.motorqueue = []
         self.fin = False
         self.running = True
         if debug:
@@ -100,6 +101,7 @@ class BuildHAT:
             self.portcond.append([])
             self.pulsecond.append([])
             self.rampcond.append([])
+            self.motorqueue.append(queue.Queue())
 
         self.ser = serial.Serial(device, 115200, timeout=5)
         # Check if we're in the bootloader or the firmware
@@ -149,10 +151,10 @@ class BuildHAT:
         self.cb.daemon = True
         self.cb.start()
 
-        self.mqueue = queue.Queue()
-        self.ml = threading.Thread(target=self.motorloop, args=(self.mqueue,))
-        self.ml.daemon = True
-        self.ml.start()
+        for q in self.motorqueue:
+            ml = threading.Thread(target=self.motorloop, args=(q,))
+            ml.daemon = True
+            ml.start()
 
         # Drop timeout value to 1s
         listevt = threading.Event()
@@ -270,7 +272,8 @@ class BuildHAT:
             self.running = False
             self.th.join()
             self.cbqueue.put(())
-            self.mqueue.put((None, None))
+            for q in self.motorqueue:
+                q.put((None, None))
             self.cb.join()
             turnoff = ""
             for p in range(4):

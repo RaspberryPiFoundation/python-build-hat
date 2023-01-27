@@ -230,7 +230,7 @@ class Motor(Device):
         if not (speed >= -100 and speed <= 100):
             raise MotorError("Invalid Speed")
         if not blocking:
-            Device._instance.mqueue.put((self._run_for_degrees, (degrees, speed)))
+            self._queue((self._run_for_degrees, (degrees, speed)))
         else:
             self._run_for_degrees(degrees, speed)
 
@@ -251,7 +251,7 @@ class Motor(Device):
         if degrees < -180 or degrees > 180:
             raise MotorError("Invalid angle")
         if not blocking:
-            Device._instance.mqueue.put((self._run_to_position, (degrees, speed, direction)))
+            self._queue((self._run_to_position, (degrees, speed, direction)))
         else:
             self._run_to_position(degrees, speed, direction)
 
@@ -282,7 +282,7 @@ class Motor(Device):
         if not (speed >= -100 and speed <= 100):
             raise MotorError("Invalid Speed")
         if not blocking:
-            Device._instance.mqueue.put((self._run_for_seconds, (seconds, speed)))
+            self._queue((self._run_for_seconds, (seconds, speed)))
         else:
             self._run_for_seconds(seconds, speed)
 
@@ -440,6 +440,9 @@ class Motor(Device):
         if not isinstance(value, bool):
             raise MotorError("Must pass boolean")
         self._release = value
+
+    def _queue(self, cmd):
+        Device._instance.motorqueue[self.port].put(cmd)
 
 
 class MotorPair:
