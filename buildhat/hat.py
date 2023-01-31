@@ -48,7 +48,7 @@ class Hat:
         :rtype: float
         """
         ftr = Future()
-        Device._instance.vincond.append(ftr)
+        Device._instance.vinftr.append(ftr)
         Device._instance.write(b"vin\r")
         return ftr.result()
 

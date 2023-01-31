@@ -204,7 +204,7 @@ class Device:
         else:
             raise DeviceError("Not in simple or combimode")
         ftr = Future()
-        self._hat.portcond[self.port].append(ftr)
+        self._hat.portftr[self.port].append(ftr)
         self._write(f"port {self.port} ; selonce {idx}\r")
         return ftr.result()
 

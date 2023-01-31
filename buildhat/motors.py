@@ -207,7 +207,7 @@ class Motor(Device):
                f"pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3; "
                f"set ramp {pos} {newpos} {dur} 0\r")
         ftr = Future()
-        self._hat.rampcond[self.port].append(ftr)
+        self._hat.rampftr[self.port].append(ftr)
         self._write(cmd)
         ftr.result()
         if self._release:
@@ -261,7 +261,7 @@ class Motor(Device):
                f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
                f"set pulse {speed} 0.0 {seconds} 0\r")
         ftr = Future()
-        self._hat.pulsecond[self.port].append(ftr)
+        self._hat.pulseftr[self.port].append(ftr)
         self._write(cmd)
         ftr.result()
         if self._release:

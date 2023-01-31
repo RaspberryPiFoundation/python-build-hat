@@ -84,10 +84,10 @@ class BuildHAT:
         self.cond = Condition()
         self.state = HatState.OTHER
         self.connections = []
-        self.portcond = []
-        self.pulsecond = []
-        self.rampcond = []
-        self.vincond = []
+        self.portftr = []
+        self.pulseftr = []
+        self.rampftr = []
+        self.vinftr = []
         self.motorqueue = []
         self.fin = False
         self.running = True
@@ -98,9 +98,9 @@ class BuildHAT:
 
         for _ in range(4):
             self.connections.append(Connection())
-            self.portcond.append([])
-            self.pulsecond.append([])
-            self.rampcond.append([])
+            self.portftr.append([])
+            self.pulseftr.append([])
+            self.rampftr.append([])
             self.motorqueue.append(queue.Queue())
 
         self.ser = serial.Serial(device, 115200, timeout=5)
@@ -352,10 +352,10 @@ class BuildHAT:
                     if uselist and listevt.is_set():
                         count += 1
                 elif cmp(msg, BuildHAT.RAMPDONE):
-                    ftr = self.rampcond[portid].pop()
+                    ftr = self.rampftr[portid].pop()
                     ftr.set_result(True)
                 elif cmp(msg, BuildHAT.PULSEDONE):
-                    ftr = self.pulsecond[portid].pop()
+                    ftr = self.pulseftr[portid].pop()
                     ftr.set_result(True)
 
             if uselist and count == 4:
@@ -385,12 +385,12 @@ class BuildHAT:
                     q.put((callit, newdata))
                 self.connections[portid].data = newdata
                 try:
-                    ftr = self.portcond[portid].pop()
+                    ftr = self.portftr[portid].pop()
                     ftr.set_result(newdata)
                 except IndexError:
                     pass
 
             if len(line) >= 5 and line[1] == "." and line.endswith(" V"):
                 vin = float(line.split(" ")[0])
-                ftr = self.vincond.pop()
+                ftr = self.vinftr.pop()
                 ftr.set_result(vin)
