@@ -30,4 +30,12 @@ class Light(Device):
         """
         if not (brightness >= 0 and brightness <= 100):
             raise LightError("Need brightness arg, of 0 to 100")
-        self._write(f"port {self.port} ; on ; plimit {brightness / 100.0}\r")
+        if brightness > 0:
+            self._write(f"port {self.port} ; on ; set {brightness / 100.0}\r")
+        else:
+            self.off()
+
+    def off(self):
+        """Turn off lights"""
+        # Using coast to turn off DIY lights completely
+        self._write(f"port {self.port} ; coast\r")
