@@ -1,5 +1,7 @@
 """HAT handling functionality"""
 
+from concurrent.futures import Future
+
 from .devices import Device
 
 
@@ -45,11 +47,10 @@ class Hat:
         :return: Voltage on the input power jack
         :rtype: float
         """
+        ftr = Future()
+        Device._instance.vinftr.append(ftr)
         Device._instance.write(b"vin\r")
-        with Device._instance.vincond:
-            Device._instance.vincond.wait()
-
-        return Device._instance.vin
+        return ftr.result()
 
     def _set_led(self, intmode):
         if isinstance(intmode, int) and intmode >= -1 and intmode <= 3:

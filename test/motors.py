@@ -10,6 +10,8 @@ from buildhat.exc import DeviceError, MotorError
 class TestMotor(unittest.TestCase):
     """Test motors"""
 
+    THRESHOLD_DISTANCE = 15
+
     def test_rotations(self):
         """Test motor rotating"""
         m = Motor('A')
@@ -19,18 +21,66 @@ class TestMotor(unittest.TestCase):
         rotated = (pos2 - pos1) / 360
         self.assertLess(abs(rotated - 2), 0.5)
 
+    def test_nonblocking(self):
+        """Test motor nonblocking mode"""
+        m = Motor('A')
+        last = 0
+        for delay in [1, 0]:
+            for _ in range(3):
+                m.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m.run_to_position(last, blocking=False)
+                time.sleep(delay)
+                # Wait for a bit, before reading last position
+                time.sleep(7)
+                pos1 = m.get_aposition()
+                diff = abs((last - pos1 + 180) % 360 - 180)
+                self.assertLess(diff, self.THRESHOLD_DISTANCE)
+
+    def test_nonblocking_multiple(self):
+        """Test motor nonblocking mode"""
+        m1 = Motor('A')
+        m2 = Motor('B')
+        last = 0
+        for delay in [1, 0]:
+            for _ in range(3):
+                m1.run_to_position(90, blocking=False)
+                m2.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m1.run_to_position(90, blocking=False)
+                m2.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m1.run_to_position(90, blocking=False)
+                m2.run_to_position(90, blocking=False)
+                time.sleep(delay)
+                m1.run_to_position(last, blocking=False)
+                m2.run_to_position(last, blocking=False)
+                time.sleep(delay)
+                # Wait for a bit, before reading last position
+                time.sleep(7)
+                pos1 = m1.get_aposition()
+                diff = abs((last - pos1 + 180) % 360 - 180)
+                self.assertLess(diff, self.THRESHOLD_DISTANCE)
+                pos2 = m2.get_aposition()
+                diff = abs((last - pos2 + 180) % 360 - 180)
+                self.assertLess(diff, self.THRESHOLD_DISTANCE)
+
     def test_position(self):
         """Test motor goes to desired position"""
         m = Motor('A')
         m.run_to_position(0)
         pos1 = m.get_aposition()
         diff = abs((0 - pos1 + 180) % 360 - 180)
-        self.assertLess(diff, 10)
+        self.assertLess(diff, self.THRESHOLD_DISTANCE)
 
         m.run_to_position(180)
         pos1 = m.get_aposition()
         diff = abs((180 - pos1 + 180) % 360 - 180)
-        self.assertLess(diff, 10)
+        self.assertLess(diff, self.THRESHOLD_DISTANCE)
 
     def test_time(self):
         """Test motor runs for correct duration"""

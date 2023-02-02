@@ -3,6 +3,7 @@
 import os
 import sys
 import weakref
+from concurrent.futures import Future
 
 from .exc import DeviceError
 from .serinterface import BuildHAT
@@ -202,11 +203,10 @@ class Device:
             idx = self._combimode
         else:
             raise DeviceError("Not in simple or combimode")
+        ftr = Future()
+        self._hat.portftr[self.port].append(ftr)
         self._write(f"port {self.port} ; selonce {idx}\r")
-        # wait for data
-        with Device._instance.portcond[self.port]:
-            Device._instance.portcond[self.port].wait()
-        return self._conn.data
+        return ftr.result()
 
     def mode(self, modev):
         """Set combimode or simple mode

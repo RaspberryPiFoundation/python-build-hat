@@ -84,13 +84,13 @@ class BuildHAT:
         self.cond = Condition()
         self.state = HatState.OTHER
         self.connections = []
-        self.portcond = []
-        self.pulsecond = []
-        self.rampcond = []
+        self.portftr = []
+        self.pulseftr = []
+        self.rampftr = []
+        self.vinftr = []
+        self.motorqueue = []
         self.fin = False
         self.running = True
-        self.vincond = Condition()
-        self.vin = None
         if debug:
             tmp = tempfile.NamedTemporaryFile(suffix=".log", prefix="buildhat-", delete=False)
             logging.basicConfig(filename=tmp.name, format='%(asctime)s %(message)s',
@@ -98,9 +98,10 @@ class BuildHAT:
 
         for _ in range(4):
             self.connections.append(Connection())
-            self.portcond.append(Condition())
-            self.pulsecond.append(Condition())
-            self.rampcond.append(Condition())
+            self.portftr.append([])
+            self.pulseftr.append([])
+            self.rampftr.append([])
+            self.motorqueue.append(queue.Queue())
 
         self.ser = serial.Serial(device, 115200, timeout=5)
         # Check if we're in the bootloader or the firmware
@@ -149,6 +150,11 @@ class BuildHAT:
         self.cb = threading.Thread(target=self.callbackloop, args=(self.cbqueue,))
         self.cb.daemon = True
         self.cb.start()
+
+        for q in self.motorqueue:
+            ml = threading.Thread(target=self.motorloop, args=(q,))
+            ml.daemon = True
+            ml.start()
 
         # Drop timeout value to 1s
         listevt = threading.Event()
@@ -266,6 +272,8 @@ class BuildHAT:
             self.running = False
             self.th.join()
             self.cbqueue.put(())
+            for q in self.motorqueue:
+                q.put((None, None))
             self.cb.join()
             turnoff = ""
             for p in range(4):
@@ -277,6 +285,20 @@ class BuildHAT:
                     self.write(f"port {p} ; write1 {hexstr}\r".encode())
             self.write(f"{turnoff}\r".encode())
             self.write(b"port 0 ; select ; port 1 ; select ; port 2 ; select ; port 3 ; select ; echo 0\r")
+
+    def motorloop(self, q):
+        """Event handling for non-blocking motor commands
+
+        :param q: Queue of motor functions
+        """
+        while self.running:
+            func, data = q.get()
+            if func is None:
+                break
+            else:
+                func(*data)
+                func = None  # Necessary for 'del' to function correctly on motor object
+                data = None
 
     def callbackloop(self, q):
         """Event handling for callbacks
@@ -330,11 +352,11 @@ class BuildHAT:
                     if uselist and listevt.is_set():
                         count += 1
                 elif cmp(msg, BuildHAT.RAMPDONE):
-                    with self.rampcond[portid]:
-                        self.rampcond[portid].notify()
+                    ftr = self.rampftr[portid].pop()
+                    ftr.set_result(True)
                 elif cmp(msg, BuildHAT.PULSEDONE):
-                    with self.pulsecond[portid]:
-                        self.pulsecond[portid].notify()
+                    ftr = self.pulseftr[portid].pop()
+                    ftr.set_result(True)
 
             if uselist and count == 4:
                 with cond:
@@ -362,11 +384,13 @@ class BuildHAT:
                 if callit is not None:
                     q.put((callit, newdata))
                 self.connections[portid].data = newdata
-                with self.portcond[portid]:
-                    self.portcond[portid].notify()
+                try:
+                    ftr = self.portftr[portid].pop()
+                    ftr.set_result(newdata)
+                except IndexError:
+                    pass
 
             if len(line) >= 5 and line[1] == "." and line.endswith(" V"):
                 vin = float(line.split(" ")[0])
-                self.vin = vin
-                with self.vincond:
-                    self.vincond.notify()
+                ftr = self.vinftr.pop()
+                ftr.set_result(vin)
