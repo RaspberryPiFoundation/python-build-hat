@@ -27,7 +27,6 @@ class PassiveMotor(Device):
         self._default_speed = 20
         self._currentspeed = 0
         self.plimit(0.7)
-        self.bias(0.3)
 
     def set_default_speed(self, default_speed):
         """Set the default speed of the motor
@@ -79,10 +78,10 @@ class PassiveMotor(Device):
 
         :param bias: Value 0 to 1
         :raises MotorError: Occurs if invalid bias value passed
-        """
-        if not (bias >= 0 and bias <= 1):
-            raise MotorError("bias should be 0 to 1")
-        self._write(f"port {self.port} ; bias {bias}\r")
+
+        .. deprecated:: 0.6.0
+        """  # noqa: RST303
+        raise MotorError("Bias no longer available")
 
 
 class MotorRunmode(Enum):
@@ -118,13 +117,21 @@ class Motor(Device):
             self._combi = "1 0 2 0 3 0"
             self._noapos = False
         self.plimit(0.7)
-        self.bias(0.3)
+        self.pwmparams(0.6, 0.01)
+        self._rpm = False
         self._release = True
         self._bqueue = deque(maxlen=5)
         self._cvqueue = Condition()
         self.when_rotated = None
         self._oldpos = None
         self._runmode = MotorRunmode.NONE
+
+    def set_speed_unit_rpm(self, rpm=False):
+        """Set whether to use RPM for speed units or not
+
+        :param rpm: Boolean to determine whether to use RPM for units
+        """
+        self._rpm = rpm
 
     def set_default_speed(self, default_speed):
         """Set the default speed of the motor
@@ -200,11 +207,13 @@ class Motor(Device):
         :param newpos: New motor postion in decimal rotations (from preset position)
         :param speed: -100 to 100
         """
-        # Collapse speed range to -5 to 5
-        speed *= 0.05
+        if self._rpm:
+            speed = self._speed_process(speed)
+        else:
+            speed *= 0.05  # Collapse speed range to -5 to 5
         dur = abs((newpos - pos) / speed)
         cmd = (f"port {self.port}; select 0 ; selrate {self._interval}; "
-               f"pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3; "
+               f"pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3 0.01; "
                f"set ramp {pos} {newpos} {dur} 0\r")
         ftr = Future()
         self._hat.rampftr[self.port].append(ftr)
@@ -258,9 +267,14 @@ class Motor(Device):
             self._run_to_position(degrees, speed, direction)
 
     def _run_for_seconds(self, seconds, speed):
+        speed = self._speed_process(speed)
         self._runmode = MotorRunmode.SECONDS
+        if self._rpm:
+            pid = f"pid_diff {self.port} 0 5 s2 0.0027777778 1 0 2.5 0 .4 0.01; "
+        else:
+            pid = f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100 0.01;"
         cmd = (f"port {self.port} ; select 0 ; selrate {self._interval}; "
-               f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
+               f"{pid}"
                f"set pulse {speed} 0.0 {seconds} 0\r")
         ftr = Future()
         self._hat.pulseftr[self.port].append(ftr)
@@ -309,10 +323,15 @@ class Motor(Device):
         else:
             if not (speed >= -100 and speed <= 100):
                 raise MotorError("Invalid Speed")
+        speed = self._speed_process(speed)
         cmd = f"port {self.port} ; set {speed}\r"
         if self._runmode == MotorRunmode.NONE:
+            if self._rpm:
+                pid = f"pid_diff {self.port} 0 5 s2 0.0027777778 1 0 2.5 0 .4 0.01; "
+            else:
+                pid = f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100 0.01; "
             cmd = (f"port {self.port} ; select 0 ; selrate {self._interval}; "
-                   f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
+                   f"{pid}"
                    f"set {speed}\r")
         self._runmode = MotorRunmode.FREE
         self._currentspeed = speed
@@ -401,10 +420,23 @@ class Motor(Device):
 
         :param bias: Value 0 to 1
         :raises MotorError: Occurs if invalid bias value passed
+
+        .. deprecated:: 0.6.0
+        """  # noqa: RST303
+        raise MotorError("Bias no longer available")
+
+    def pwmparams(self, pwmthresh, minpwm):
+        """PWM thresholds
+
+        :param pwmthresh: Value 0 to 1, threshold below, will switch from fast to slow, PWM
+        :param minpwm: Value 0 to 1, threshold below which it switches off the drive altogether
+        :raises MotorError: Occurs if invalid values are passed
         """
-        if not (bias >= 0 and bias <= 1):
-            raise MotorError("bias should be 0 to 1")
-        self._write(f"port {self.port} ; bias {bias}\r")
+        if not (pwmthresh >= 0 and pwmthresh <= 1):
+            raise MotorError("pwmthresh should be 0 to 1")
+        if not (minpwm >= 0 and minpwm <= 1):
+            raise MotorError("minpwm should be 0 to 1")
+        self._write(f"port {self.port} ; pwmparams {pwmthresh} {minpwm}\r")
 
     def pwm(self, pwmv):
         """PWM motor
@@ -453,6 +485,13 @@ class Motor(Device):
         """Wait for nonblocking commands to finish"""
         Device._instance.motorqueue[self.port].join()
 
+    def _speed_process(self, speed):
+        """Lower speed value"""
+        if self._rpm:
+            return speed / 60
+        else:
+            return speed
+
 
 class MotorPair:
     """Pair of motors
@@ -473,6 +512,7 @@ class MotorPair:
         self._rightmotor = Motor(rightport)
         self.default_speed = 20
         self._release = True
+        self._rpm = False
 
     def set_default_speed(self, default_speed):
         """Set the default speed of the motor
@@ -480,6 +520,15 @@ class MotorPair:
         :param default_speed: Speed ranging from -100 to 100
         """
         self.default_speed = default_speed
+
+    def set_speed_unit_rpm(self, rpm=False):
+        """Set whether to use RPM for speed units or not
+
+        :param rpm: Boolean to determine whether to use RPM for units
+        """
+        self._rpm = rpm
+        self._leftmotor.set_speed_unit_rpm(rpm)
+        self._rightmotor.set_speed_unit_rpm(rpm)
 
     def run_for_rotations(self, rotations, speedl=None, speedr=None):
         """Run pair of motors for N rotations
