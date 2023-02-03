@@ -69,6 +69,20 @@ class TestMotor(unittest.TestCase):
                 diff = abs((last - pos2 + 180) % 360 - 180)
                 self.assertLess(diff, self.THRESHOLD_DISTANCE)
 
+    def test_nonblocking_mixed(self):
+        """Test motor nonblocking mode mixed with blocking mode"""
+        m = Motor('A')
+        m.run_for_seconds(5, blocking=False)
+        m.run_for_degrees(360)
+        m.run_for_seconds(5, blocking=False)
+        m.run_to_position(180)
+        m.run_for_seconds(5, blocking=False)
+        m.run_for_seconds(5)
+        m.run_for_seconds(5, blocking=False)
+        m.start()
+        m.run_for_seconds(5, blocking=False)
+        m.stop()
+
     def test_position(self):
         """Test motor goes to desired position"""
         m = Motor('A')

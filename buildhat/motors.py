@@ -232,6 +232,7 @@ class Motor(Device):
         if not blocking:
             self._queue((self._run_for_degrees, (degrees, speed)))
         else:
+            self._wait_for_nonblocking()
             self._run_for_degrees(degrees, speed)
 
     def run_to_position(self, degrees, speed=None, blocking=True, direction="shortest"):
@@ -253,6 +254,7 @@ class Motor(Device):
         if not blocking:
             self._queue((self._run_to_position, (degrees, speed, direction)))
         else:
+            self._wait_for_nonblocking()
             self._run_to_position(degrees, speed, direction)
 
     def _run_for_seconds(self, seconds, speed):
@@ -284,6 +286,7 @@ class Motor(Device):
         if not blocking:
             self._queue((self._run_for_seconds, (seconds, speed)))
         else:
+            self._wait_for_nonblocking()
             self._run_for_seconds(seconds, speed)
 
     def start(self, speed=None):
@@ -292,6 +295,7 @@ class Motor(Device):
         :param speed: Speed ranging from -100 to 100
         :raises MotorError: Occurs when invalid speed specified
         """
+        self._wait_for_nonblocking()
         if self._runmode == MotorRunmode.FREE:
             if self._currentspeed == speed:
                 # Already running at this speed, do nothing
@@ -316,6 +320,7 @@ class Motor(Device):
 
     def stop(self):
         """Stop motor"""
+        self._wait_for_nonblocking()
         self._runmode = MotorRunmode.NONE
         self._currentspeed = 0
         self.coast()
@@ -443,6 +448,10 @@ class Motor(Device):
 
     def _queue(self, cmd):
         Device._instance.motorqueue[self.port].put(cmd)
+
+    def _wait_for_nonblocking(self):
+        """Wait for nonblocking commands to finish"""
+        Device._instance.motorqueue[self.port].join()
 
 
 class MotorPair:
