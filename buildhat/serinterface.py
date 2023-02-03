@@ -299,6 +299,7 @@ class BuildHAT:
                 func(*data)
                 func = None  # Necessary for 'del' to function correctly on motor object
                 data = None
+                q.task_done()
 
     def callbackloop(self, q):
         """Event handling for callbacks
