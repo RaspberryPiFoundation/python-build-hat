@@ -60,7 +60,7 @@ class Device:
         self._combimode = -1
         self._modestr = ""
         self._typeid = self._conn.typeid
-        self._interval = 100
+        self._interval = 10
         if (
             self._typeid in Device._device_names
             and Device._device_names[self._typeid][0] != type(self).__name__  # noqa: W503
