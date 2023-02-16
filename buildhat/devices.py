@@ -188,7 +188,7 @@ class Device:
 
     def reverse(self):
         """Reverse polarity"""
-        self._write(f"port {self.port} ; plimit 1 ; set -1\r")
+        self._write(f"port {self.port} ; port_plimit 1 ; set -1\r")
 
     def get(self):
         """Extract information from device
@@ -253,7 +253,7 @@ class Device:
 
     def on(self):
         """Turn on sensor"""
-        self._write(f"port {self.port} ; plimit 1 ; on\r")
+        self._write(f"port {self.port} ; port_plimit 1 ; on\r")
 
     def off(self):
         """Turn off sensor"""
