@@ -203,7 +203,7 @@ class Motor(Device):
         # Collapse speed range to -5 to 5
         speed *= 0.05
         dur = abs((newpos - pos) / speed)
-        cmd = (f"port {self.port}; combi 0 {self._combi} ; select 0 ; selrate {self._interval}; "
+        cmd = (f"port {self.port}; select 0 ; selrate {self._interval}; "
                f"pid {self.port} 0 1 s4 0.0027777778 0 5 0 .1 3; "
                f"set ramp {pos} {newpos} {dur} 0\r")
         ftr = Future()
@@ -259,7 +259,7 @@ class Motor(Device):
 
     def _run_for_seconds(self, seconds, speed):
         self._runmode = MotorRunmode.SECONDS
-        cmd = (f"port {self.port} ; combi 0 {self._combi} ; select 0 ; selrate {self._interval}; "
+        cmd = (f"port {self.port} ; select 0 ; selrate {self._interval}; "
                f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
                f"set pulse {speed} 0.0 {seconds} 0\r")
         ftr = Future()
@@ -311,7 +311,7 @@ class Motor(Device):
                 raise MotorError("Invalid Speed")
         cmd = f"port {self.port} ; set {speed}\r"
         if self._runmode == MotorRunmode.NONE:
-            cmd = (f"port {self.port} ; combi 0 {self._combi} ; select 0 ; selrate {self._interval}; "
+            cmd = (f"port {self.port} ; select 0 ; selrate {self._interval}; "
                    f"pid {self.port} 0 0 s1 1 0 0.003 0.01 0 100; "
                    f"set {speed}\r")
         self._runmode = MotorRunmode.FREE
