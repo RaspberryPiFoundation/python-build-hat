@@ -58,8 +58,9 @@ class Device:
         Device._setup()
         self._simplemode = -1
         self._combimode = -1
+        self._modestr = ""
         self._typeid = self._conn.typeid
-        self._interval = 100
+        self._interval = 10
         if (
             self._typeid in Device._device_names
             and Device._device_names[self._typeid][0] != type(self).__name__  # noqa: W503
@@ -196,16 +197,10 @@ class Device:
         :raises DeviceError: Occurs if device not in valid mode
         """
         self.isconnected()
-        idx = -1
-        if self._simplemode != -1:
-            idx = self._simplemode
-        elif self._combimode != -1:
-            idx = self._combimode
-        else:
+        if self._simplemode == -1 and self._combimode == -1:
             raise DeviceError("Not in simple or combimode")
         ftr = Future()
         self._hat.portftr[self.port].append(ftr)
-        self._write(f"port {self.port} ; selonce {idx}\r")
         return ftr.result()
 
     def mode(self, modev):
@@ -215,18 +210,32 @@ class Device:
         """
         self.isconnected()
         if isinstance(modev, list):
-            self._combimode = 0
             modestr = ""
             for t in modev:
                 modestr += f"{t[0]} {t[1]} "
-            self._write(f"port {self.port} ; combi {self._combimode} {modestr}\r")
+            if self._simplemode == -1 and self._combimode == 0 and self._modestr == modestr:
+                return
+            self._write(f"port {self.port}; select\r")
+            self._combimode = 0
+            self._write((f"port {self.port} ; combi {self._combimode} {modestr} ; "
+                         f"select {self._combimode} ; "
+                         f"selrate {self._interval}\r"))
             self._simplemode = -1
+            self._modestr = modestr
+            self._conn.combimode = 0
+            self._conn.simplemode = -1
         else:
+            if self._combimode == -1 and self._simplemode == int(modev):
+                return
             # Remove combi mode
             if self._combimode != -1:
                 self._write(f"port {self.port} ; combi {self._combimode}\r")
+            self._write(f"port {self.port}; select\r")
             self._combimode = -1
             self._simplemode = int(modev)
+            self._write(f"port {self.port} ; select {int(modev)} ; selrate {self._interval}\r")
+            self._conn.combimode = -1
+            self._conn.simplemode = int(modev)
 
     def select(self):
         """Request data from mode

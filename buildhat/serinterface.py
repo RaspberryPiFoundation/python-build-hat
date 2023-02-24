@@ -31,6 +31,8 @@ class Connection:
         self.typeid = -1
         self.connected = False
         self.callit = None
+        self.simplemode = -1
+        self.combimode = -1
 
     def update(self, typeid, connected, callit=None):
         """Update connection information for port
@@ -381,6 +383,11 @@ class BuildHAT:
                     else:
                         if d != "":
                             newdata.append(int(d))
+                # Check data was for our current mode
+                if line[2] == "M" and self.connections[portid].simplemode != int(line[3]):
+                    continue
+                elif line[2] == "C" and self.connections[portid].combimode != int(line[3]):
+                    continue
                 callit = self.connections[portid].callit
                 if callit is not None:
                     q.put((callit, newdata))

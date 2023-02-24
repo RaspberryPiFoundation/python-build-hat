@@ -185,22 +185,28 @@ class TestMotor(unittest.TestCase):
         """Test starting motor for 5mins"""
         t = time.time() + (60 * 5)
         m = Motor('A')
+        toggle = 0
         while time.time() < t:
-            m.start(0)
+            m.start(toggle)
+            toggle ^= 1
 
     def test_continuous_degrees(self):
         """Test setting degrees for 5mins"""
         t = time.time() + (60 * 5)
         m = Motor('A')
+        toggle = 0
         while time.time() < t:
-            m.run_for_degrees(0)
+            m.run_for_degrees(toggle)
+            toggle ^= 1
 
     def test_continuous_position(self):
         """Test setting position of motor for 5mins"""
         t = time.time() + (60 * 5)
         m = Motor('A')
+        toggle = 0
         while time.time() < t:
-            m.run_to_position(0)
+            m.run_to_position(toggle)
+            toggle ^= 1
 
     def test_continuous_feedback(self):
         """Test feedback of motor for 30mins"""
@@ -210,6 +216,36 @@ class TestMotor(unittest.TestCase):
         m.start(40)
         while time.time() < t:
             _ = (m.get_speed(), m.get_position(), m.get_aposition())
+
+    def test_interval(self):
+        """Test motor interval"""
+        m = Motor('A')
+        m.interval = 10
+        count = 1000
+        expected_dur = count * m.interval * 1e-3
+        start = time.time()
+        for _ in range(count):
+            m.get_position()
+        end = time.time()
+        diff = abs((end - start) - expected_dur)
+        self.assertLess(diff, expected_dur * 0.1)
+
+    def test_dual_interval(self):
+        """Test dual motor interval"""
+        m1 = Motor('A')
+        m2 = Motor('B')
+        for interval in [10, 5]:
+            m1.interval = interval
+            m2.interval = interval
+            count = 1000
+            expected_dur = count * m1.interval * 1e-3
+            start = time.time()
+            for _ in range(count):
+                m1.get_position()
+                m2.get_position()
+            end = time.time()
+            diff = abs((end - start) - expected_dur)
+            self.assertLess(diff, expected_dur * 0.1)
 
 
 if __name__ == '__main__':
