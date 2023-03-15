@@ -596,3 +596,93 @@ class MotorPair:
         self._release = value
         self._leftmotor.release = value
         self._rightmotor.release = value
+
+
+class TargetTrackerMotor(Device):
+    """Motor device which can be used to track a target.
+
+    This type of motor is non-blocking by default and doesn't wait for a command to be finished. An actual running
+    command will be overwritten. If you need sequential execution which waits for a movement to finish, then use the
+    ~Motor class.
+
+    :param port: Port of device
+    :raises DeviceError: Occurs if there is no motor attached to port
+    """
+
+    def __init__(self, port):
+        """Initialise motor
+
+        :param port:
+        """
+        super().__init__(port)
+        if self._typeid in {38}:
+            self.mode([(1, 0), (2, 0)])
+            self._combi = "1 0 2 0"
+            self._noapos = True
+        else:
+            self.mode([(1, 0), (2, 0), (3, 0)])
+            self._combi = "1 0 2 0 3 0"
+            self._noapos = False
+        self.plimit(0.7)
+        self.bias(0.3)
+        self._init_pid()
+
+    def _init_pid(self):
+        """Initialize the pid controller"""
+        cmd = f"pid {self.port} 0 5 s2 0.0027777778 1 5 0 .1 3\r "
+        self._write(cmd)
+
+    def plimit(self, plimit):
+        """Limit power
+
+        :param plimit: Value 0 to 1
+        :raises MotorError: Occurs if invalid plimit value passed
+        """
+        if not (0 <= plimit <= 1):
+            raise MotorError("plimit should be 0 to 1")
+        self._write(f"port {self.port} ; plimit {plimit}\r")
+
+    def bias(self, bias):
+        """Bias motor
+
+        :param bias: Value 0 to 1
+        :raises MotorError: Occurs if invalid bias value passed
+        """
+        if not (0 <= bias <= 1):
+            raise MotorError("bias should be 0 to 1")
+        self._write(f"port {self.port} ; bias {bias}\r")
+
+    def run_to_position(self, degrees):
+        """Run motor to position (in degrees)
+
+        :param degrees: Position in degrees from -180 to 180
+        """
+        cmd = f"port {self.port}; set {1 / 360 * degrees}\r"
+        self._write(cmd)
+
+    def get_position(self):
+        """Get position of motor with relation to preset position (can be negative or positive)
+
+        :return: Position of motor in degrees from preset position
+        :rtype: int
+        """
+        return self.get()[1]
+
+    def get_aposition(self):
+        """Get absolute position of motor
+
+        :return: Absolute position of motor from -180 to 180
+        :rtype: int
+        """
+        if self._noapos:
+            raise MotorError("No absolute position with this motor")
+        else:
+            return self.get()[2]
+
+    def get_speed(self):
+        """Get speed of motor
+
+        :return: Speed of motor
+        :rtype: int
+        """
+        return self.get()[0]
