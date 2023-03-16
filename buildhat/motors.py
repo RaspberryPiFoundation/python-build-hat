@@ -117,7 +117,7 @@ class Motor(Device):
             self._combi = "1 0 2 0 3 0"
             self._noapos = False
         self.plimit(0.7)
-        self.pwmparams(0.6, 0.01)
+        self.pwmparams(0.65, 0.01)
         self._rpm = False
         self._release = True
         self._bqueue = deque(maxlen=5)
