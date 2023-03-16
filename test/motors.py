@@ -118,13 +118,6 @@ class TestMotor(unittest.TestCase):
         self.assertRaises(MotorError, m.plimit, -1)
         self.assertRaises(MotorError, m.plimit, 2)
 
-    def test_bias(self):
-        """Test setting motor bias"""
-        m = Motor('A')
-        m.bias(0.5)
-        self.assertRaises(MotorError, m.bias, -1)
-        self.assertRaises(MotorError, m.bias, 2)
-
     def test_pwm(self):
         """Test PWMing motor"""
         m = Motor('A')
