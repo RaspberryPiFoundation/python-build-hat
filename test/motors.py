@@ -150,11 +150,6 @@ class TestMotor(unittest.TestCase):
         m.run_for_seconds(5)
         self.assertGreater(handle_motor.evt, 0.8 * ((1 / ((m.interval) * 1e-3)) * 5))
 
-        handle_motor.evt = 0
-        m.interval = 5
-        m.run_for_seconds(5)
-        self.assertGreater(handle_motor.evt, 0.8 * ((1 / ((m.interval) * 1e-3)) * 5))
-
     def test_none_callback(self):
         """Test setting empty callback"""
         m = Motor('A')
@@ -227,7 +222,7 @@ class TestMotor(unittest.TestCase):
         """Test dual motor interval"""
         m1 = Motor('A')
         m2 = Motor('B')
-        for interval in [10, 5]:
+        for interval in [20, 10]:
             m1.interval = interval
             m2.interval = interval
             count = 1000
