@@ -71,7 +71,7 @@ class PassiveMotor(Device):
         """
         if not (plimit >= 0 and plimit <= 1):
             raise MotorError("plimit should be 0 to 1")
-        self._write(f"port {self.port} ; plimit {plimit}\r")
+        self._write(f"port {self.port} ; port_plimit {plimit}\r")
 
     def bias(self, bias):
         """Bias motor
@@ -413,7 +413,7 @@ class Motor(Device):
         """
         if not (plimit >= 0 and plimit <= 1):
             raise MotorError("plimit should be 0 to 1")
-        self._write(f"port {self.port} ; plimit {plimit}\r")
+        self._write(f"port {self.port} ; port_plimit {plimit}\r")
 
     def bias(self, bias):
         """Bias motor

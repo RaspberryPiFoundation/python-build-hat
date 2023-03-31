@@ -210,4 +210,4 @@ class ColorSensor(Device):
 
     def on(self):
         """Turn on the sensor and LED"""
-        self._write(f"port {self.port} ; plimit 1 ; set -1\r")
+        self.reverse()
