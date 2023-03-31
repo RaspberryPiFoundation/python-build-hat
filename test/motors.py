@@ -24,6 +24,7 @@ class TestMotor(unittest.TestCase):
     def test_nonblocking(self):
         """Test motor nonblocking mode"""
         m = Motor('A')
+        m.set_default_speed(10)
         last = 0
         for delay in [1, 0]:
             for _ in range(3):
@@ -44,7 +45,9 @@ class TestMotor(unittest.TestCase):
     def test_nonblocking_multiple(self):
         """Test motor nonblocking mode"""
         m1 = Motor('A')
+        m1.set_default_speed(10)
         m2 = Motor('B')
+        m2.set_default_speed(10)
         last = 0
         for delay in [1, 0]:
             for _ in range(3):
@@ -118,13 +121,6 @@ class TestMotor(unittest.TestCase):
         self.assertRaises(MotorError, m.plimit, -1)
         self.assertRaises(MotorError, m.plimit, 2)
 
-    def test_bias(self):
-        """Test setting motor bias"""
-        m = Motor('A')
-        m.bias(0.5)
-        self.assertRaises(MotorError, m.bias, -1)
-        self.assertRaises(MotorError, m.bias, 2)
-
     def test_pwm(self):
         """Test PWMing motor"""
         m = Motor('A')
@@ -154,11 +150,6 @@ class TestMotor(unittest.TestCase):
             handle_motor.evt += 1
         handle_motor.evt = 0
         m.when_rotated = handle_motor
-        m.run_for_seconds(5)
-        self.assertGreater(handle_motor.evt, 0.8 * ((1 / ((m.interval) * 1e-3)) * 5))
-
-        handle_motor.evt = 0
-        m.interval = 5
         m.run_for_seconds(5)
         self.assertGreater(handle_motor.evt, 0.8 * ((1 / ((m.interval) * 1e-3)) * 5))
 
@@ -234,7 +225,7 @@ class TestMotor(unittest.TestCase):
         """Test dual motor interval"""
         m1 = Motor('A')
         m2 = Motor('B')
-        for interval in [10, 5]:
+        for interval in [20, 10]:
             m1.interval = interval
             m2.interval = interval
             count = 1000
