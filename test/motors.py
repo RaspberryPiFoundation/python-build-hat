@@ -24,6 +24,7 @@ class TestMotor(unittest.TestCase):
     def test_nonblocking(self):
         """Test motor nonblocking mode"""
         m = Motor('A')
+        m.set_default_speed(10)
         last = 0
         for delay in [1, 0]:
             for _ in range(3):
@@ -44,7 +45,9 @@ class TestMotor(unittest.TestCase):
     def test_nonblocking_multiple(self):
         """Test motor nonblocking mode"""
         m1 = Motor('A')
+        m1.set_default_speed(10)
         m2 = Motor('B')
+        m2.set_default_speed(10)
         last = 0
         for delay in [1, 0]:
             for _ in range(3):
