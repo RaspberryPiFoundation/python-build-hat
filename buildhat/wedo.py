@@ -35,6 +35,7 @@ class MotionSensor(Device):
     :param port: Port of device
     :raises DeviceError: Occurs if there is no motion sensor attached to port
     """
+
     default_mode = 0
 
     def __init__(self, port):
@@ -48,8 +49,9 @@ class MotionSensor(Device):
 
     def set_default_data_mode(self, mode):
         """
-        Set the mode most often queried from this device to significantly
-        improve performance when repeatedly accessing data
+        Set the mode most often queried from this device.
+
+        This significantly improves performance when repeatedly accessing data
 
         :param mode: 0 for distance (default), 1 for movement count
         """
@@ -68,9 +70,11 @@ class MotionSensor(Device):
 
     def get_movement_count(self):
         """
-        Return the movement counter: The count of how many times the sensor has
-        detected an object that moved within 4 blocks of the sensor since the
-        sensor has been plugged in or the BuildHAT reset
+        Return the movement counter
+
+        This is the count of how many times the sensor has detected an object
+        that moved within 4 blocks of the sensor since the sensor has been
+        plugged in or the BuildHAT reset
 
         :return: Count of objects detected
         :rtype: int
