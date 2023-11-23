@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.6.0
+
+### Added
+
+* Support for Raspberry Pi 5 (https://github.com/RaspberryPiFoundation/python-build-hat/pull/203)
+
 ## 0.5.12
 
 ### Added
