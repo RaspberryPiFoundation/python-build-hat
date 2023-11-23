@@ -1,11 +1,11 @@
 """Build HAT handling functionality"""
 
 import logging
+import os
 import queue
 import tempfile
 import threading
 import time
-import os
 from enum import Enum
 from threading import Condition, Timer
 
