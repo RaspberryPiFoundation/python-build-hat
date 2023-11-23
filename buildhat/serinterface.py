@@ -5,6 +5,7 @@ import queue
 import tempfile
 import threading
 import time
+import os
 from enum import Enum
 from threading import Condition, Timer
 
@@ -105,6 +106,11 @@ class BuildHAT:
             self.rampftr.append([])
             self.motorqueue.append(queue.Queue())
 
+        # On a Pi 5 /dev/serial0 will point to /dev/ttyAMA10 (which *only*
+        # exists on a Pi 5, and is the 3-pin debug UART connector)
+        # The UART on the Pi 5 GPIO header is /dev/ttyAMA0
+        if device == "/dev/serial0" and os.readlink(device) == "ttyAMA10":
+            device = "/dev/ttyAMA0"
         self.ser = serial.Serial(device, 115200, timeout=5)
         # Check if we're in the bootloader or the firmware
         self.write(b"version\r")
