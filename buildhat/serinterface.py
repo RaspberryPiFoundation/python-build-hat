@@ -94,8 +94,10 @@ class BuildHAT:
         self.motorqueue = []
         self.fin = False
         self.running = True
+        self.debug_filename = None
         if debug:
             tmp = tempfile.NamedTemporaryFile(suffix=".log", prefix="buildhat-", delete=False)
+            self.debug_filename = tmp.name
             logging.basicConfig(filename=tmp.name, format='%(asctime)s %(message)s',
                                 level=logging.DEBUG)
 
