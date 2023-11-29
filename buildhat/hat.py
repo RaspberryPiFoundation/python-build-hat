@@ -41,6 +41,9 @@ class Hat:
                                           "description": desc}
         return devices
 
+    def get_logfile(self):
+        return Device._instance.debug_filename
+
     def get_vin(self):
         """Get the voltage present on the input power jack
 
