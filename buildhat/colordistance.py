@@ -202,6 +202,7 @@ class ColorDistanceSensor(Device):
 
     @property
     def ir_channel(self):
+        """Get the IR channel for message transmission"""
         return self._ir_channel
 
     @ir_channel.setter
@@ -217,20 +218,15 @@ class ColorDistanceSensor(Device):
         elif check_chan < 1:
             check_chan = 1
         # Internally: 0-3
-        self._ir_channel = int(check_chan)-1
+        self._ir_channel = int(check_chan) - 1
 
     @property
     def ir_address(self):
-        """
-        IR Address space of 0x0 for default PoweredUp or 0x1 for extra space
-        """
+        """IR Address space of 0x0 for default PoweredUp or 0x1 for extra space"""
         return self._ir_address
 
     def toggle_ir_toggle(self):
-        """
-        Toggle the IR toggle bit
-
-        """
+        """Toggle the IR toggle bit"""
         # IYKYK, because the RC documents are not clear
         if self._ir_toggle:
             self._ir_toggle = 0x0
@@ -241,7 +237,8 @@ class ColorDistanceSensor(Device):
     def send_ir_sop(self, port, mode):
         """
         Send an IR message via Power Functions RC Protocol in Single Output PWM mode
-        https://www.philohome.com/pf/pf.htm
+
+        PF IR RC Protocol documented at https://www.philohome.com/pf/pf.htm
 
         Port B is blue
 
@@ -297,7 +294,8 @@ class ColorDistanceSensor(Device):
     def send_ir_socstid(self, port, mode):
         """
         Send an IR message via Power Functions RC Protocol in Single Output Clear/Set/Toggle/Increment/Decrement mode
-        https://www.philohome.com/pf/pf.htm
+
+        PF IR RC Protocol documented at https://www.philohome.com/pf/pf.htm
 
         Valid values for mode are:
         0x0: Toggle full Clockwise/Forward (Stop to Clockwise, Clockwise to Stop, Counterclockwise to Clockwise)
@@ -320,7 +318,6 @@ class ColorDistanceSensor(Device):
         :param port: 'A' or 'B'
         :param mode: 0-15 indicating the port's mode to set
         """
-
         escape_modeselect = 0x0
         escape = escape_modeselect
 
@@ -352,7 +349,8 @@ class ColorDistanceSensor(Device):
     def send_ir_combo_pwm(self, port_b_mode, port_a_mode):
         """
         Send an IR message via Power Functions RC Protocol in Combo PWM mode
-        https://www.philohome.com/pf/pf.htm
+
+        PF IR RC Protocol documented at https://www.philohome.com/pf/pf.htm
 
         Valid values for the modes are:
         0x0 Float
@@ -375,7 +373,6 @@ class ColorDistanceSensor(Device):
         :param port_b_mode: 0-15 indicating the command to send to port B
         :param port_a_mode: 0-15 indicating the command to send to port A
         """
-
         escape_combo_pwm = 0x1
         escape = escape_combo_pwm
 
@@ -387,7 +384,8 @@ class ColorDistanceSensor(Device):
     def send_ir_combo_direct(self, port_b_output, port_a_output):
         """
         Send an IR message via Power Functions RC Protocol in Combo Direct mode
-        https://www.philohome.com/pf/pf.htm
+
+        PF IR RC Protocol documented at https://www.philohome.com/pf/pf.htm
 
         Valid values for the output variables are:
         0x0: Float output
@@ -419,7 +417,8 @@ class ColorDistanceSensor(Device):
     def send_ir_extended(self, mode):
         """
         Send an IR message via Power Functions RC Protocol in Extended mode
-        https://www.philohome.com/pf/pf.htm
+
+        PF IR RC Protocol documented at https://www.philohome.com/pf/pf.htm
 
         Valid values for the mode are:
         0x0: Brake Port A (timeout)
@@ -450,7 +449,8 @@ class ColorDistanceSensor(Device):
     def send_ir_single_pin(self, port, pin, mode, timeout):
         """
         Send an IR message via Power Functions RC Protocol in Single Pin mode
-        https://www.philohome.com/pf/pf.htm
+
+        PF IR RC Protocol documented at https://www.philohome.com/pf/pf.htm
 
         Valid values for the mode are:
         0x0: No-op
@@ -490,7 +490,7 @@ class ColorDistanceSensor(Device):
 
         if pin != 1 and pin != 2:
             return False
-        pin_value = pin-1
+        pin_value = pin - 1
 
         if mode > 0x3 or mode < 0x0:
             return False
@@ -499,7 +499,7 @@ class ColorDistanceSensor(Device):
         nibble2 = (self._ir_address << 3) | ir_mode
         nibble3 = (output_port << 3) | (pin_value << 3) | mode
 
-        return self._send_ir_nibbles(nibble1, nibble2, mode)
+        return self._send_ir_nibbles(nibble1, nibble2, nibble3)
 
     def _send_ir_nibbles(self, nibble1, nibble2, nibble3):
 
@@ -516,7 +516,7 @@ class ColorDistanceSensor(Device):
         if nibble1 < 0x0 or nibble2 < 0x0 or nibble3 < 0x0:
             return False
 
-        byte_two =  (nibble2 << 4) | nibble3
+        byte_two = (nibble2 << 4) | nibble3
 
         data = bytearray(3)
         data[0] = (0xc << 4) | mode
