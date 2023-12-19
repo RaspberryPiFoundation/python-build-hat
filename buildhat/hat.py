@@ -41,6 +41,14 @@ class Hat:
                                           "description": desc}
         return devices
 
+    def get_logfile(self):
+        """Get the filename of the debug log (If enabled, None otherwise)
+
+        :return: Path of the debug logfile
+        :rtype: str or None
+        """
+        return Device._instance.debug_filename
+
     def get_vin(self):
         """Get the voltage present on the input power jack
 
