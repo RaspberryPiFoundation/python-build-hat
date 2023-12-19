@@ -24,14 +24,14 @@ class Device:
                      62: ("DistanceSensor", "Distance Sensor"),               # 45604
                      63: ("ForceSensor", "Force Sensor"),                     # 45606
                      64: ("Matrix", "3x3 Color Light Matrix"),                # 45608
-                     38: ("Motor", "Medium Linear Motor"),                    # 88008
-                     46: ("Motor", "Large Motor"),                            # 88013
-                     47: ("Motor", "XL Motor"),                               # 88014
-                     48: ("Motor", "Medium Angular Motor (Cyan)"),            # 45603
-                     49: ("Motor", "Large Angular Motor (Cyan)"),             # 45602
-                     65: ("Motor", "Small Angular Motor"),                    # 45607
-                     75: ("Motor", "Medium Angular Motor (Grey)"),            # 88018
-                     76: ("Motor", "Large Angular Motor (Grey)")}             # 88017
+                     38: (["Motor", "TargetTrackerMotor"], "Medium Linear Motor"),                    # 88008
+                     46: (["Motor", "TargetTrackerMotor"], "Large Motor"),                            # 88013
+                     47: (["Motor", "TargetTrackerMotor"], "XL Motor"),                               # 88014
+                     48: (["Motor", "TargetTrackerMotor"], "Medium Angular Motor (Cyan)"),            # 45603
+                     49: (["Motor", "TargetTrackerMotor"], "Large Angular Motor (Cyan)"),             # 45602
+                     65: (["Motor", "TargetTrackerMotor"], "Small Angular Motor"),                    # 45607
+                     75: (["Motor", "TargetTrackerMotor"], "Medium Angular Motor (Grey)"),            # 88018
+                     76: (["Motor", "TargetTrackerMotor"], "Large Angular Motor (Grey)")}             # 88017
 
     _used = {0: False,
              1: False,
@@ -63,7 +63,7 @@ class Device:
         self._interval = 10
         if (
             self._typeid in Device._device_names
-            and Device._device_names[self._typeid][0] != type(self).__name__  # noqa: W503
+            and type(self).__name__ not in Device._device_names[self._typeid][0]  # noqa: W503
         ) or self._typeid == -1:
             raise DeviceError(f'There is not a {type(self).__name__} connected to port {port} (Found {self.name})')
         Device._used[p] = True
