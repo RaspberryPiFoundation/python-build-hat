@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.7.0
+
+Adds:
+
+* Mode 7 IR transmission to ColorDistanceSensor https://github.com/RaspberryPiFoundation/python-build-hat/pull/205
+* Debug log filename access https://github.com/RaspberryPiFoundation/python-build-hat/pull/204
+* Movement counter to WeDo 2.0 Motion Sensor https://github.com/RaspberryPiFoundation/python-build-hat/pull/201
+
 ## 0.6.0
 
 ### Added
