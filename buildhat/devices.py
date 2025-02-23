@@ -72,7 +72,15 @@ class Device:
     def _setup(**kwargs):
         if Device._instance:
             return
-        data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__), "data/")
+        if (
+            os.path.isdir(os.path.join(os.getcwd(), "data/"))
+            and os.path.isfile(os.path.join(os.getcwd(), "data", "firmware.bin"))
+            and os.path.isfile(os.path.join(os.getcwd(), "data", "signature.bin"))
+            and os.path.isfile(os.path.join(os.getcwd(), "data", "version"))
+        ):
+            data = os.path.join(os.getcwd(), "data/")
+        else:
+            data = os.path.join(os.path.dirname(sys.modules["buildhat"].__file__), "data/")
         firm = os.path.join(data, "firmware.bin")
         sig = os.path.join(data, "signature.bin")
         ver = os.path.join(data, "version")
