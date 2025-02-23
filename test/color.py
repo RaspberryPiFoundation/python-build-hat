@@ -34,7 +34,7 @@ class TestColor(unittest.TestCase):
         """Test to make sure we're not reading cached data"""
         color = ColorSensor('A')
         color.avg_reads = 1
-        color.interval = 1
+        color.interval = 10
 
         for _ in range(100):
             color.mode(2)
