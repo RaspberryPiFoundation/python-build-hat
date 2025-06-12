@@ -117,17 +117,9 @@ class BuildHAT:
         # Check if we're in the bootloader or the firmware
         self.write(b"version\r")
 
-        emptydata = 0
         incdata = 0
         while True:
             line = self.read()
-            if len(line) == 0:
-                # Didn't receive any data
-                emptydata += 1
-                if emptydata > 3:
-                    break
-                else:
-                    continue
             if cmp(line, BuildHAT.FIRMWARE):
                 self.state = HatState.FIRMWARE
                 ver = line[len(BuildHAT.FIRMWARE):].split(' ')
