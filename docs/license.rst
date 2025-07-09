@@ -3,7 +3,7 @@ License information
 
 The MIT License (MIT)
 
-Copyright (c) 2020-2021 - Raspberry Pi Foundation
+Copyright (c) 2020-2025 - Raspberry Pi Foundation
 
 Copyright (c) 2017-2021 - LEGO System A/S - Aastvej 1, 7190 Billund, DK
 

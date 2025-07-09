@@ -2,7 +2,7 @@
 
 """Setup file"""
 
-# Copyright (c) 2020-2021 Raspberry Pi Foundation
+# Copyright (c) 2020-2025 Raspberry Pi Foundation
 #
 # SPDX-License-Identifier: MIT
 
