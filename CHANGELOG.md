@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.8.0
+
+Adds:
+
+* Support for custom firmware (see: https://www.raspberrypi.com/news/build-hat-firmware-now-fully-open-source/)
+* Add W503 to Flake8 ignore
+* Increase interval for sensor while testing - avoids error that occurs when handling large amount of sensor data. In future, might be interesting to see if we can support faster UART baud rate.
+
 ## 0.7.0
 
 Adds:
