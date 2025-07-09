@@ -28,7 +28,7 @@ power supply. For best results, use the `official Raspberry Pi Build HAT power s
 
 .. _official Raspberry Pi Build HAT power supply: http://raspberrypi.com/products/build-hat-power-supply
 
-It is now possible to use custom firmware with the library.  To do this you can follow the steps below.
+It is now possible to use custom firmware with the library. To do this you can follow the steps below.
 
 .. code-block::
    :caption: Using custom firmware
