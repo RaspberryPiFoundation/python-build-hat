@@ -378,7 +378,7 @@ class BuildHAT:
                 def runit():
                     with cond:
                         cond.notify()
-                t = Timer(8.0, runit)
+                t = Timer(11.0, runit)
                 t.start()
 
             if line[0] == "P" and (line[2] == "C" or line[2] == "M"):

@@ -1,7 +1,7 @@
 [flake8]
 docstring_style=sphinx
 max-line-length = 127
-ignore = D400, Q000, S311,  PLW, PLC, PLR
+ignore = D400, Q000, S311, W503,  PLW, PLC, PLR
 per-file-ignores =
     buildhat/__init__.py:F401
 exclude = docs/conf.py, docs/sphinxcontrib/cmtinc-buildhat.py, docs/sphinx_selective_exclude/*.py
