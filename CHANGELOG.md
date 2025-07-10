@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.9.0
+
+Fixes:
+
+* Resend 'version' if empty data received from the Build HAT
+
 ## 0.8.0
 
 Adds:
