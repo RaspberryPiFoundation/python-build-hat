@@ -239,7 +239,7 @@ class BuildHAT:
             u = (u ^ data[i]) & 0xFFFFFFFF
         return u
 
-    def write(self, data, log=True, replace=""):
+    def write(self, data, log=False, replace=""):
         """Write data to the serial port of Build HAT
 
         :param data: Data to write to Build HAT
@@ -253,7 +253,7 @@ class BuildHAT:
             else:
                 logging.debug(f"> {data.decode('utf-8', 'ignore').strip()}")
 
-    def read(self):
+    def read(self, log=False):
         """Read data from the serial port of Build HAT
 
         :return: Line that has been read
@@ -263,7 +263,7 @@ class BuildHAT:
             line = self.ser.readline().decode('utf-8', 'ignore').strip()
         except serial.SerialException:
             pass
-        if line != "":
+        if line != "" and log:
             logging.debug(f"< {line}")
         return line
 
