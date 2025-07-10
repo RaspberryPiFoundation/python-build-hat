@@ -68,7 +68,7 @@ class ColorSensor(Device):
         cmin = min(r, g, b)
         delt = cmax - cmin
         h = 0
-        
+
         if delt == 0:
             h = 0
         elif cmax == r:
