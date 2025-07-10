@@ -29,16 +29,20 @@ class Hat:
         devices = {}
         for i in range(4):
             name = Device.UNKNOWN_DEVICE
-            if Device._instance.connections[i].typeid in Device._device_names:
-                name = Device._device_names[Device._instance.connections[i].typeid][0]
-                desc = Device._device_names[Device._instance.connections[i].typeid][1]
-            elif Device._instance.connections[i].typeid == -1:
+            desc = ''
+
+            typeid = Device._instance.connections[i].typeid
+            if typeid in Device._device_names:
+                name, desc = Device._device_names[typeid]
+            elif typeid == -1:
                 name = Device.DISCONNECTED_DEVICE
-                desc = ''
-            devices[chr(ord('A') + i)] = {"typeid": Device._instance.connections[i].typeid,
-                                          "connected": Device._instance.connections[i].connected,
-                                          "name": name,
-                                          "description": desc}
+                
+            devices[chr(ord('A') + i)] = {
+                "typeid": typeid,
+                "connected": Device._instance.connections[i].connected,
+                "name": name,
+                "description": desc
+            }
         return devices
 
     def get_logfile(self):
