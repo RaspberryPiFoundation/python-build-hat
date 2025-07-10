@@ -70,19 +70,20 @@ class ColorDistanceSensor(Device):
         cmax = max(r, g, b)
         cmin = min(r, g, b)
         delt = cmax - cmin
-        if cmax == cmin:
+        h = 0
+
+        if delt == 0:
             h = 0
         elif cmax == r:
             h = 60 * (((g - b) / delt) % 6)
         elif cmax == g:
-            h = 60 * ((((b - r) / delt)) + 2)
+            h = 60 * (((b - r) / delt) + 2)
         elif cmax == b:
-            h = 60 * ((((r - g) / delt)) + 4)
-        if cmax == 0:
-            s = 0
-        else:
-            s = delt / cmax
+            h = 60 * (((r - g) / delt) + 4)
+
+        s = 0 if cmax == 0 else delt / cmax
         v = cmax
+
         return int(h), int(s * 100), int(v * 100)
 
     def get_color(self):
