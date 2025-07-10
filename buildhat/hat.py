@@ -36,7 +36,7 @@ class Hat:
                 name, desc = Device._device_names[typeid]
             elif typeid == -1:
                 name = Device.DISCONNECTED_DEVICE
-               
+
             devices[chr(ord('A') + i)] = {
                 "typeid": typeid,
                 "connected": Device._instance.connections[i].connected,
