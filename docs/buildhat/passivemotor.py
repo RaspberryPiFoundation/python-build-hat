@@ -7,7 +7,7 @@ from buildhat import PassiveMotor
 motor = PassiveMotor('A')
 
 print("Start motor")
-motor.start()
+motor.start(50)
 time.sleep(3)
 print("Stop motor")
 motor.stop()
